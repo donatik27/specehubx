@@ -337,12 +337,10 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* Phase 1 - Completed */}
           <div className="bg-primary/10 pixel-border border-primary/50 p-4 relative overflow-hidden">
-            <div className="absolute top-2 right-2 text-2xl">✅</div>
-            <div className="opacity-70 line-through">
-              <h4 className="font-bold text-primary mb-1 font-mono">PHASE_1: CORE_INFRASTRUCTURE</h4>
-              <p className="text-xs text-muted-foreground font-mono mb-2">&gt; Database, API, UI framework setup</p>
-              <div className="text-xs font-mono text-primary/60">STATUS: COMPLETED</div>
-            </div>
+            <div className="absolute top-2 right-2 text-xl">✅</div>
+            <h4 className="font-bold text-primary mb-1 font-mono line-through">PHASE_1: CORE_INFRASTRUCTURE</h4>
+            <p className="text-xs text-muted-foreground font-mono mb-2">&gt; Database, API, UI framework setup</p>
+            <div className="text-xs font-mono text-primary/60">STATUS: COMPLETED</div>
           </div>
 
           {/* Phase 2 - Current (Active) */}
