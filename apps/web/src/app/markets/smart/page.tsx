@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { Brain, TrendingUp, RefreshCw, Users, DollarSign } from 'lucide-react'
 import type { SmartMarketData } from '@/lib/smart-markets'
 
@@ -110,9 +111,10 @@ export default function SmartMarketsPage() {
       {/* Markets Grid */}
       <div className="space-y-4">
         {markets.map((market, idx) => (
-          <div 
+          <Link 
             key={market.marketId}
-            className="bg-card pixel-border border-primary/30 p-6 hover:border-primary transition-all group relative overflow-hidden"
+            href={`/markets/smart/${market.marketId}`}
+            className="block bg-card pixel-border border-primary/30 p-6 hover:border-primary transition-all group relative overflow-hidden"
           >
             {/* Rank badge */}
             <div className="absolute top-3 left-3">
@@ -225,7 +227,7 @@ export default function SmartMarketsPage() {
                 </>
               )}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

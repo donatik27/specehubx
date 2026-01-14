@@ -12,6 +12,7 @@ import {
   Target,
   Activity
 } from 'lucide-react'
+import MarketTicker from '@/components/MarketTicker'
 
 interface Trader {
   address: string
@@ -231,7 +232,7 @@ export default function HomePage() {
               topTraders.slice(0, 3).map((trader) => (
                 <Link
                   key={trader.address}
-                  href={`/traders`}
+                  href={`/traders/${trader.address}`}
                   className="flex items-center gap-3 p-3 bg-black/40 pixel-border border-white/20 hover:border-[#FFD700] transition-all group"
                 >
                   <img
@@ -326,7 +327,7 @@ export default function HomePage() {
       </div>
 
       {/* Info Banner */}
-      <div className="mt-8 bg-card pixel-border border-primary/40 p-6">
+      <div className="mt-8 mb-12 bg-card pixel-border border-primary/40 p-6">
         <div className="flex items-start gap-4">
           <div className="p-2 bg-primary/20 pixel-border border-primary/50">
             <Sparkles className="h-6 w-6 text-primary alien-glow" />
@@ -355,6 +356,9 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Hot Markets Ticker */}
+      <MarketTicker />
     </div>
   )
 }

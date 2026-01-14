@@ -229,7 +229,8 @@ export default function TradersPage() {
               {currentTraders.map((trader, idx) => (
                 <tr 
                   key={trader.address}
-                  className="border-t border-white/10 hover:bg-primary/5 hover:border-primary/50 transition-all group"
+                  onClick={() => window.location.href = `/traders/${trader.address}`}
+                  className="border-t border-white/10 hover:bg-primary/5 hover:border-primary/50 transition-all group cursor-pointer"
                 >
                   <td className="p-3 text-primary font-bold font-mono text-sm group-hover:text-white transition-colors">
                     #{String(startIndex + idx + 1).padStart(3, '0')}

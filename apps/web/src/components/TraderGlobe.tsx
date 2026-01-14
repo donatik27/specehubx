@@ -138,6 +138,11 @@ function TraderPin({
     onHoverChange?.(null);
   };
 
+  const handleClick = () => {
+    // Navigate to trader profile
+    window.location.href = `/traders/${trader.address}`;
+  };
+
   // Tier colors
   const tierColor = {
     S: '#FFD700',
@@ -154,6 +159,8 @@ function TraderPin({
       <mesh
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
+        onClick={handleClick}
+        style={{ cursor: 'pointer' }}
       >
         <sphereGeometry args={[0.03, 16, 16]} />
         <meshBasicMaterial color={tierColor} />
