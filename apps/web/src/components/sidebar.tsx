@@ -8,7 +8,6 @@ import {
   TrendingUp, 
   Store, 
   Bell, 
-  Settings,
   Activity,
   Globe
 } from 'lucide-react'
@@ -21,7 +20,6 @@ const navigation = [
   { name: 'TRADER_RADAR', href: '/map', icon: Globe },
   { name: 'Markets', href: '/markets', icon: Store },
   { name: 'Alerts', href: '/alerts', icon: Bell },
-  { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'DIAGNOSTICS', href: '/health', icon: Activity },
 ]
 
