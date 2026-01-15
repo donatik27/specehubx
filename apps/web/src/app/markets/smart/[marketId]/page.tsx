@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, TrendingUp, Users, DollarSign, Target, Activity } from 'lucide-react'
+import { ArrowLeft, TrendingUp, Users, DollarSign, Target, Activity, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 
 interface Market {
@@ -147,24 +147,37 @@ export default function SmartMarketDetailPage() {
 
       {/* Market Header */}
       <div className="bg-card pixel-border border-purple-500/40 p-8 mb-6">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="text-4xl">🎯</div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-white mb-2">{market.question}</h1>
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-muted-foreground">
-                Category: <span className="text-primary">{market.category}</span>
-              </span>
-              <span className="text-muted-foreground">
-                Volume: <span className="text-green-500">${(market.volume / 1000000).toFixed(2)}M</span>
-              </span>
-              {market.endDate && (
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-start gap-4 flex-1">
+            <div className="text-4xl">🎯</div>
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-white mb-2">{market.question}</h1>
+              <div className="flex items-center gap-4 text-sm">
                 <span className="text-muted-foreground">
-                  Ends: <span className="text-white">{new Date(market.endDate).toLocaleDateString()}</span>
+                  Category: <span className="text-primary">{market.category}</span>
                 </span>
-              )}
+                <span className="text-muted-foreground">
+                  Volume: <span className="text-green-500">${(market.volume / 1000000).toFixed(2)}M</span>
+                </span>
+                {market.endDate && (
+                  <span className="text-muted-foreground">
+                    Ends: <span className="text-white">{new Date(market.endDate).toLocaleDateString()}</span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+          
+          {/* Polymarket Link */}
+          <a
+            href={`https://polymarket.com/event/${marketId}?via=01k`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 hover:text-purple-300 px-4 py-2 pixel-border border-purple-500/50 transition-all font-bold text-sm whitespace-nowrap"
+          >
+            <ExternalLink className="h-4 w-4" />
+            VIEW_ON_POLYMARKET
+          </a>
         </div>
       </div>
 
