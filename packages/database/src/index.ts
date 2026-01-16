@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 
-export * from '@prisma/client';
+// Export only PrismaClient - don't export enums (use @polymarket/shared instead)
+export { PrismaClient } from '@prisma/client';
+export type * from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

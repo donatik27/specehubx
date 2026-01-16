@@ -1,5 +1,6 @@
 import 'dotenv/config'
-import { prisma, Tier } from '@polymarket/database'
+import { prisma } from '@polymarket/database'
+import { Tier } from '@polymarket/shared'
 
 const API_BASE = 'https://data-api.polymarket.com/v1'
 

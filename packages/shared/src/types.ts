@@ -1,3 +1,6 @@
+// Tier type - must match Prisma schema enum
+export type Tier = 'S' | 'A' | 'B' | 'C' | 'D' | 'E';
+
 export interface PaginationParams {
   page?: number;
   limit?: number;
