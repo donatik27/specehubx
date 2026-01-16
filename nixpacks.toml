@@ -1,16 +1,18 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm"]
+nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = [
-  "pnpm install --frozen-lockfile",
-  "pnpm --filter @polymarket/database prisma generate"
+  "corepack enable",
+  "corepack prepare pnpm@latest --activate",
+  "pnpm install --frozen-lockfile"
 ]
 
 [phases.build]
 cmds = [
+  "pnpm --filter @polymarket/database prisma generate",
   "pnpm --filter @polymarket/shared build",
-  "pnpm --filter @polymarket/database build", 
+  "pnpm --filter @polymarket/database build",
   "pnpm --filter @polymarket/worker build"
 ]
 
