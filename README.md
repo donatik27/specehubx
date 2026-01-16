@@ -250,3 +250,4 @@ Private project
 
 Наступний крок: реалізація Polymarket API клієнта та ingestion логіки.
 
+# Database populated
