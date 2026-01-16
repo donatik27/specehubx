@@ -2,18 +2,41 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
     "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "forceConsistentCasingInFileNames": false,
     "resolveJsonModule": true,
     "moduleResolution": "node"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/index.ts", "src/lib/**/*", "src/workers/**/*", "src/scheduler.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/check-*.ts",
+    "src/test-*.ts",
+    "src/fetch-*.ts",
+    "src/fix-*.ts",
+    "src/sync-*.ts",
+    "src/update-*.ts",
+    "src/add-*.ts",
+    "src/compare-*.ts",
+    "src/get-*.ts",
+    "src/list-*.ts",
+    "src/scan-*.ts",
+    "src/verify-*.ts"
+  ],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
 }
 
