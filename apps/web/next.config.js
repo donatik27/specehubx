@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@polymarket/shared', '@polymarket/database'],
   outputFileTracing: true,
+  serverExternalPackages: ['@prisma/client', 'prisma', '@polymarket/database'],
   outputFileTracingIncludes: {
     '/api/**': [
       './node_modules/.prisma/client/**',
