@@ -5,7 +5,11 @@ const appDir = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(appDir, '..', '..');
 const pnpmStoreDir = path.join(repoRoot, 'node_modules', '.pnpm');
 const sourceDir = path.join(repoRoot, 'node_modules', '.prisma', 'client');
-const targetDir = path.join(appDir, '.prisma', 'client');
+const targetDirs = [
+  path.join(appDir, '.prisma', 'client'),
+  path.join(appDir, 'node_modules', '.prisma', 'client'),
+  path.join(repoRoot, 'node_modules', '.prisma', 'client'),
+];
 
 function findPnpmPrismaClientDir() {
   if (!fs.existsSync(pnpmStoreDir)) return null;
@@ -34,11 +38,15 @@ function copyPrismaEngines() {
     process.exit(1);
   }
 
-  fs.rmSync(targetDir, { recursive: true, force: true });
-  fs.mkdirSync(path.dirname(targetDir), { recursive: true });
-  fs.cpSync(resolvedSource, targetDir, { recursive: true });
+  for (const targetDir of targetDirs) {
+    fs.rmSync(targetDir, { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+    fs.cpSync(resolvedSource, targetDir, { recursive: true });
+  }
 
-  console.log(`[prisma] Copied engines from ${resolvedSource} to ${targetDir}`);
+  console.log(
+    `[prisma] Copied engines from ${resolvedSource} to:\n- ${targetDirs.join('\n- ')}`
+  );
 }
 
 copyPrismaEngines();
