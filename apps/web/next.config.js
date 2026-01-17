@@ -4,9 +4,10 @@ const nextConfig = {
   transpilePackages: ['@polymarket/shared', '@polymarket/database'],
   outputFileTracing: true,
   outputFileTracingIncludes: {
-    'app/api/**/*': [
+    '/api/**': [
       './node_modules/.prisma/client/**',
       './node_modules/@prisma/engines/**',
+      './node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/**',
     ],
   },
 }
