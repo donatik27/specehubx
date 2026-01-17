@@ -4,21 +4,21 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 
-// Try to load Prisma
-let prisma: any = null
-if (process.env.DATABASE_URL) {
-  try {
-    prisma = require('@polymarket/database').prisma
-  } catch (e) {
-    console.warn('⚠️  Prisma not available')
-  }
-}
-
 export async function GET(
   request: Request,
   { params }: { params: { marketId: string } }
 ) {
   const marketId = params.marketId
+
+  let prisma: any = null
+  if (process.env.DATABASE_URL) {
+    try {
+      const db = await import('@polymarket/database')
+      prisma = db.prisma
+    } catch (e) {
+      console.warn('⚠️  Prisma not available')
+    }
+  }
   
   try {
     // 1. Check if we have eventSlug in database

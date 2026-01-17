@@ -4,16 +4,6 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 
-// Try to load Prisma
-let prisma: any = null
-if (process.env.DATABASE_URL) {
-  try {
-    prisma = require('@polymarket/database').prisma
-  } catch (e) {
-    console.warn('⚠️  Prisma not available for multi-outcome API')
-  }
-}
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const eventSlug = searchParams.get('eventSlug')
@@ -21,6 +11,16 @@ export async function GET(request: Request) {
 
   if (!eventSlug && !marketId) {
     return NextResponse.json({ error: 'eventSlug or marketId required' }, { status: 400 })
+  }
+
+  let prisma: any = null
+  if (process.env.DATABASE_URL) {
+    try {
+      const db = await import('@polymarket/database')
+      prisma = db.prisma
+    } catch (e) {
+      console.warn('⚠️  Prisma not available for multi-outcome API')
+    }
   }
 
   if (!prisma) {

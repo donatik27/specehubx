@@ -4,18 +4,18 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 
 
-// Try to load Prisma (might not be available in all envs)
-let prisma: any = null
-if (process.env.DATABASE_URL) {
-  try {
-    prisma = require('@polymarket/database').prisma
-  } catch (e) {
-    console.warn('⚠️  Prisma not available')
-  }
-}
-
 export async function GET() {
   try {
+    let prisma: any = null
+    if (process.env.DATABASE_URL) {
+      try {
+        const db = await import('@polymarket/database')
+        prisma = db.prisma
+      } catch (e) {
+        console.warn('⚠️  Prisma not available')
+      }
+    }
+
     const response = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=100', {
       cache: 'no-cache'
     })

@@ -3,18 +3,18 @@ import { NextResponse } from 'next/server'
 // Force dynamic rendering - this route needs DATABASE_URL at runtime
 export const dynamic = 'force-dynamic'
 
-// Try to load Prisma (might not be available in all envs)
-let prisma: any = null
-if (process.env.DATABASE_URL) {
-  try {
-    prisma = require('@polymarket/database').prisma
-  } catch (e) {
-    console.warn('⚠️  Prisma not available')
-  }
-}
-
 export async function GET() {
   try {
+    let prisma: any = null
+    if (process.env.DATABASE_URL) {
+      try {
+        const db = await import('@polymarket/database')
+        prisma = db.prisma
+      } catch (e) {
+        console.warn('⚠️  Prisma not available')
+      }
+    }
+
     // ========== MODE 1: DATABASE (Real on-chain data) ==========
     if (prisma) {
       console.log('✅ Reading from DATABASE (real on-chain data)...');
