@@ -4,164 +4,171 @@ import { logger } from './lib/logger';
 
 async function main() {
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  logger.info('🔧 FIXING TWITTER TRADERS WITH DEFAULT PNL ($25K)');
+  logger.info('🔧 FIXING TWITTER TRADERS - CORRECT ALGORITHM');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
-  // Find all traders with Twitter but default PnL (25000)
-  const tradersToFix = await prisma.trader.findMany({
+  // STEP 1: Load ALL top-1000 traders from Polymarket (month leaderboard)
+  logger.info('📥 Loading top-1000 from Polymarket (MONTH)...');
+  
+  const allPolymarketTraders: any[] = [];
+  const BATCH_SIZE = 100;
+  
+  for (let offset = 0; offset < 1000; offset += BATCH_SIZE) {
+    const res = await fetch(
+      `https://data-api.polymarket.com/v1/leaderboard?timePeriod=month&orderBy=PNL&limit=${BATCH_SIZE}&offset=${offset}`
+    );
+    
+    if (!res.ok) {
+      logger.error({ status: res.status }, 'Polymarket API error');
+      break;
+    }
+    
+    const batch = await res.json();
+    if (batch.length === 0) break;
+    
+    allPolymarketTraders.push(...batch);
+    logger.info(`   ✓ Loaded ${allPolymarketTraders.length} traders...`);
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  
+  logger.info(`✅ Loaded ${allPolymarketTraders.length} traders from Polymarket`);
+  
+  // STEP 2: Filter only traders WITH Twitter
+  const tradersWithTwitter = allPolymarketTraders.filter(t => t.xUsername && t.xUsername.trim());
+  logger.info(`✅ Found ${tradersWithTwitter.length} traders with Twitter in Polymarket`);
+  logger.info('');
+  
+  // STEP 3: Get all traders from DB with Twitter (for matching)
+  const dbTraders = await prisma.trader.findMany({
     where: {
       twitterUsername: { not: null },
-      totalPnl: 25000, // Default value = not found
     },
   });
   
-  logger.info(`📊 Found ${tradersToFix.length} traders with Twitter but default PnL`);
+  logger.info(`📊 Database has ${dbTraders.length} traders with Twitter`);
   logger.info('');
   
-  if (tradersToFix.length === 0) {
-    logger.info('✅ No traders to fix!');
-    await prisma.$disconnect();
-    return;
+  // STEP 4: Match and update
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('🔄 MATCHING & UPDATING...');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
+  const normalizeUsername = (u: string) => u.replace('@', '').trim().toLowerCase();
+  
+  // Create a map for fast lookup: normalized Twitter username -> Polymarket data
+  const polymarketMap = new Map<string, any>();
+  for (const t of tradersWithTwitter) {
+    const normalized = normalizeUsername(t.xUsername);
+    polymarketMap.set(normalized, t);
   }
   
   let fixed = 0;
+  let alreadyCorrect = 0;
   let notFound = 0;
   
-  for (const trader of tradersToFix) {
-    const username = trader.twitterUsername!;
-    logger.info(`🔍 Searching for @${username}...`);
+  for (const dbTrader of dbTraders) {
+    const dbUsername = normalizeUsername(dbTrader.twitterUsername!);
     
-    try {
-      // Try Polymarket Profile API first
-      const usernameVariants = [
-        username,
-        username.replace('@', ''),
-        `@${username}`,
-      ];
+    // Find matching trader in Polymarket data
+    const polymarketData = polymarketMap.get(dbUsername);
+    
+    if (polymarketData) {
+      // Check if update is needed (PnL is different or address is different)
+      const newPnl = polymarketData.pnl || 0;
+      const currentPnl = dbTrader.totalPnl as number;
+      const newAddress = polymarketData.proxyWallet;
       
-      let foundData: any = null;
-      
-      // Try Profile API
-      for (const variant of usernameVariants) {
-        try {
-          const profileRes = await fetch(
-            `https://gamma-api.polymarket.com/profile/twitter/${variant}`
-          );
-          
-          if (profileRes.ok) {
-            const profile = await profileRes.json();
-            if (profile.address) {
-              foundData = profile;
-              logger.info(`   ✓ Found via Profile API: ${profile.address}`);
-              break;
-            }
-          }
-        } catch (e) {
-          // Try next variant
-        }
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-      
-      // If found address, fetch leaderboard data
-      if (foundData?.address) {
-        logger.info(`   → Fetching leaderboard data...`);
-        
-        for (const period of ['month', 'week', 'all', 'day']) {
-          const leaderboardRes = await fetch(
-            `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=1000`
-          );
-          
-          if (leaderboardRes.ok) {
-            const traders = await leaderboardRes.json();
-            const leaderboardData = traders.find((t: any) => 
-              t.proxyWallet?.toLowerCase() === foundData.address.toLowerCase()
-            );
-            
-            if (leaderboardData) {
-              foundData = { ...foundData, ...leaderboardData };
-              logger.info(`   ✓ Found leaderboard data in ${period}`);
-              break;
-            }
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
-      
-      // If still no data, search leaderboards by Twitter username
-      if (!foundData) {
-        logger.info(`   → Searching leaderboards...`);
-        
-        const normalizeUsername = (u: string) => u.replace('@', '').trim().toLowerCase();
-        const normalizedUsername = normalizeUsername(username);
-        
-        for (const period of ['month', 'week', 'all', 'day']) {
-          const leaderboardRes = await fetch(
-            `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=1000`
-          );
-          
-          if (leaderboardRes.ok) {
-            const traders = await leaderboardRes.json();
-            
-            const found = traders.find((t: any) => {
-              if (!t.xUsername) return false;
-              return normalizeUsername(t.xUsername) === normalizedUsername ||
-                     normalizeUsername(t.userName || '') === normalizedUsername;
-            });
-            
-            if (found) {
-              foundData = found;
-              logger.info(`   ✓ Found in ${period} leaderboard`);
-              break;
-            }
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-      }
-      
-      // Update if found
-      if (foundData && foundData.pnl && foundData.pnl !== 25000) {
-        const pnl = foundData.pnl || 25000;
-        const volume = foundData.volume || 0;
-        const marketsTraded = foundData.markets_traded || 10;
-        const winRate = marketsTraded > 0 && pnl > 0 
-          ? Math.min(((pnl / (volume || pnl)) * 100), 75)
+      // Update if PnL changed significantly (more than 1K difference) OR address is different
+      if (Math.abs(newPnl - currentPnl) > 1000 || dbTrader.address !== newAddress) {
+        const volume = polymarketData.volume || 0;
+        const marketsTraded = polymarketData.markets_traded || 10;
+        const winRate = marketsTraded > 0 && newPnl > 0 
+          ? Math.min(((newPnl / (volume || newPnl)) * 100), 75)
           : 50;
         
         // Determine tier based on PnL
         let tier = 'B';
-        if (pnl > 100000 || foundData.xUsername) tier = 'S';
-        else if (pnl > 50000) tier = 'A';
+        if (newPnl > 100000 || polymarketData.xUsername) tier = 'S';
+        else if (newPnl > 50000) tier = 'A';
         
-        await prisma.trader.update({
-          where: { address: trader.address },
-          data: {
-            totalPnl: pnl,
-            realizedPnl: pnl,
-            profilePicture: foundData.profileImage || trader.profilePicture,
-            displayName: foundData.userName || trader.displayName,
-            tier: tier as any,
-            tradeCount: marketsTraded,
-            winRate: winRate,
-            rarityScore: Math.floor(pnl + (volume * 0.1)),
-          },
-        });
+        // If address changed, we need to handle potential conflicts
+        if (dbTrader.address !== newAddress) {
+          // Check if new address already exists
+          const existingWithNewAddress = await prisma.trader.findUnique({
+            where: { address: newAddress },
+          });
+          
+          if (existingWithNewAddress) {
+            // Update existing trader with new address
+            await prisma.trader.update({
+              where: { address: newAddress },
+              data: {
+                totalPnl: newPnl,
+                realizedPnl: newPnl,
+                profilePicture: polymarketData.profileImage || existingWithNewAddress.profilePicture,
+                displayName: polymarketData.userName || existingWithNewAddress.displayName,
+                twitterUsername: polymarketData.xUsername,
+                tier: tier as any,
+                tradeCount: marketsTraded,
+                winRate: winRate,
+                rarityScore: Math.floor(newPnl + (volume * 0.1)),
+              },
+            });
+            
+            // Delete old trader with fake/wrong address
+            await prisma.trader.delete({
+              where: { address: dbTrader.address },
+            });
+            
+            logger.info(`   ✅ MERGED: @${polymarketData.xUsername} → ${newAddress.slice(0, 10)}... | PnL: $${(newPnl / 1000).toFixed(1)}K | ${tier}`);
+          } else {
+            // Update address directly
+            await prisma.trader.update({
+              where: { address: dbTrader.address },
+              data: {
+                address: newAddress,
+                totalPnl: newPnl,
+                realizedPnl: newPnl,
+                profilePicture: polymarketData.profileImage || dbTrader.profilePicture,
+                displayName: polymarketData.userName || dbTrader.displayName,
+                twitterUsername: polymarketData.xUsername,
+                tier: tier as any,
+                tradeCount: marketsTraded,
+                winRate: winRate,
+                rarityScore: Math.floor(newPnl + (volume * 0.1)),
+              },
+            });
+            
+            logger.info(`   ✅ FIXED ADDRESS: @${polymarketData.xUsername} → ${newAddress.slice(0, 10)}... | PnL: $${(newPnl / 1000).toFixed(1)}K | ${tier}`);
+          }
+        } else {
+          // Just update PnL and other data
+          await prisma.trader.update({
+            where: { address: dbTrader.address },
+            data: {
+              totalPnl: newPnl,
+              realizedPnl: newPnl,
+              profilePicture: polymarketData.profileImage || dbTrader.profilePicture,
+              displayName: polymarketData.userName || dbTrader.displayName,
+              tier: tier as any,
+              tradeCount: marketsTraded,
+              winRate: winRate,
+              rarityScore: Math.floor(newPnl + (volume * 0.1)),
+            },
+          });
+          
+          logger.info(`   ✅ UPDATED: @${polymarketData.xUsername} | PnL: $${(newPnl / 1000).toFixed(1)}K | ${tier}`);
+        }
         
-        logger.info(`   ✅ FIXED: @${username} → PnL: $${(pnl / 1000).toFixed(1)}K, Tier: ${tier}`);
         fixed++;
       } else {
-        logger.warn(`   ❌ NOT FOUND: @${username} (keeping default)`);
-        notFound++;
+        alreadyCorrect++;
       }
-      
-    } catch (error: any) {
-      logger.error({ error: error.message, username }, '   ❌ Error processing trader');
+    } else {
+      logger.warn(`   ❌ NOT IN TOP-1000: @${dbTrader.twitterUsername} (keeping current data)`);
       notFound++;
     }
-    
-    // Delay to avoid rate limits
-    await new Promise(resolve => setTimeout(resolve, 1500));
   }
   
   logger.info('');
@@ -169,8 +176,10 @@ async function main() {
   logger.info('✅ FIX COMPLETE!');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info(`📊 Results:`);
-  logger.info(`   ✅ Fixed: ${fixed} traders`);
-  logger.info(`   ❌ Not found: ${notFound} traders`);
+  logger.info(`   ✅ Fixed/Updated: ${fixed} traders`);
+  logger.info(`   ✓  Already correct: ${alreadyCorrect} traders`);
+  logger.info(`   ❌ Not in top-1000: ${notFound} traders`);
+  logger.info(`   📈 Total with Twitter: ${fixed + alreadyCorrect} traders`);
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   await prisma.$disconnect();
