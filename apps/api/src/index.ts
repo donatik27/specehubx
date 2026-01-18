@@ -264,7 +264,7 @@ app.get('/api/multi-outcome-positions', async (req, res) => {
         traderAddress: p.traderAddress,
         traderName: p.traderName,
         shares: Number(p.shares),
-        costBasis: Number(p.costBasis),
+        entryPrice: p.entryPrice,
       });
     }
 
