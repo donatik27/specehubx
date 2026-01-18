@@ -447,7 +447,14 @@ async function syncTraderPositions(payload: any) {
 }
 
 async function syncMapTraders(payload: any) {
-  logger.info('🗺️  Syncing map traders to database (using Profile API)...');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('🗺️  STARTING MAP TRADERS SYNC (131 traders)');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('📊 Strategy:');
+  logger.info('   1. Try Polymarket Profile API (by Twitter username)');
+  logger.info('   2. Search leaderboards (day/week/month/all, 5000 traders each)');
+  logger.info('   3. Create fallback profile if not found');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   // Map traders Twitter usernames (from static-traders.ts)
   const MAP_TRADERS_USERNAMES = [
@@ -464,6 +471,9 @@ async function syncMapTraders(payload: any) {
     'love_u_4ever', 'one8tyfive', 'smdx_btc', 'tulipking', 'vacoolaaaa',
     'videlake', 'wkmfa57',
   ];
+  
+  logger.info(`📝 Total traders to sync: ${MAP_TRADERS_USERNAMES.length}`);
+  logger.info('');
   
   try {
     let found = 0;
@@ -641,7 +651,17 @@ async function syncMapTraders(payload: any) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
-    logger.info(`✅ Map trader sync complete: ${found} found (${created} created), ${notFound} not found`);
+    logger.info('');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('✅ MAP TRADERS SYNC COMPLETE!');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info(`📊 Results:`);
+    logger.info(`   ✅ Found: ${found} traders`);
+    logger.info(`   🆕 Created fallback: ${created} traders`);
+    logger.info(`   ❌ Not found: ${notFound} traders`);
+    logger.info(`   📍 Total map traders: ${MAP_TRADERS_USERNAMES.length}`);
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('🎉 All map traders now have profiles in leaderboard!');
   } catch (error: any) {
     logger.error({ error: error.message }, '❌ Map trader sync failed');
     throw error;

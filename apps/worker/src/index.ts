@@ -17,7 +17,9 @@ async function main() {
   logger.info('✅ Jobs scheduled');
 
   // 🔥 IMMEDIATE FIRST RUN - don't wait 5 minutes!
-  logger.info('🔥 Triggering immediate data collection...');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('🔥 STARTING IMMEDIATE DATA COLLECTION...');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   // Trigger leaderboard sync immediately
   await queues.ingestion.add(
@@ -25,6 +27,7 @@ async function main() {
     { type: 'sync-leaderboard' },
     { priority: 1 }
   );
+  logger.info('✅ [1/3] Leaderboard sync queued (starts NOW)');
   
   // Trigger markets sync immediately (after 10 seconds)
   await queues.ingestion.add(
@@ -32,6 +35,7 @@ async function main() {
     { type: 'sync-markets' },
     { delay: 10000, priority: 1 }
   );
+  logger.info('✅ [2/3] Markets sync queued (starts in 10 seconds)');
   
   // Trigger map traders sync immediately (after leaderboard + markets)
   // Wait 3 minutes to ensure leaderboard is fully complete
@@ -40,9 +44,14 @@ async function main() {
     { type: 'sync-map-traders' },
     { delay: 180000, priority: 2 } // 3 minutes delay
   );
-  
-  logger.info('✅ Immediate jobs queued (leaderboard → markets → map-traders)');
-  logger.info('🎉 Worker is running');
+  logger.info('✅ [3/3] MAP TRADERS sync queued (starts in 3 minutes)');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('⏰ Timeline:');
+  logger.info('   NOW        → Leaderboard starts');
+  logger.info('   +10 sec    → Markets starts');
+  logger.info('   +3 min     → 🗺️  MAP TRADERS starts (131 traders)');
+  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.info('🎉 Worker is running - all existing jobs SAFE!');
 }
 
 main().catch((error) => {
