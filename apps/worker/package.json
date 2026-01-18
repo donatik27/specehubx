@@ -8,7 +8,8 @@
     "start:prod": "node dist/index.js",
     "clean": "rm -rf dist",
     "populate": "tsx src/fetch-all-traders.ts && tsx src/update-trader-locations.ts && tsx src/test-discovery.ts",
-    "geo": "tsx src/add-geolocation.ts"
+    "geo": "tsx src/add-geolocation.ts",
+    "sync-map": "tsx src/trigger-map-sync.ts"
   },
   "dependencies": {
     "@polymarket/database": "workspace:*",

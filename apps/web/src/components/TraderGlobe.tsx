@@ -140,7 +140,7 @@ function RotatingGlobe({
         
         // Auto-rotate around Y axis
         if (shouldRotate) {
-          groupRef.current.rotation.y += 0.002;
+      groupRef.current.rotation.y += 0.002;
         }
       }
     }

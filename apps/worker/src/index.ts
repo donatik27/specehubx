@@ -34,13 +34,14 @@ async function main() {
   );
   
   // Trigger map traders sync immediately (after leaderboard + markets)
+  // Wait 3 minutes to ensure leaderboard is fully complete
   await queues.ingestion.add(
     'sync-map-traders-immediate',
     { type: 'sync-map-traders' },
-    { delay: 30000, priority: 2 } // 30 seconds delay
+    { delay: 180000, priority: 2 } // 3 minutes delay
   );
   
-  logger.info('✅ Immediate jobs queued');
+  logger.info('✅ Immediate jobs queued (leaderboard → markets → map-traders)');
   logger.info('🎉 Worker is running');
 }
 

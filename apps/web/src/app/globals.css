@@ -115,7 +115,7 @@
                   inset 0 0 20px rgba(255, 215, 0, 0.3);
     }
   }
-
+  
   @keyframes pulse {
     0%, 100% { 
       transform: scale(1);
