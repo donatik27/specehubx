@@ -88,16 +88,5 @@ export async function scheduleJobs() {
   );
   logger.info('Scheduled: analyze-multi-outcome (every hour)');
 
-  // 5. Sync map traders every 24 hours (ensures all map traders are in DB)
-  await queues.ingestion.add(
-    'sync-map-traders',
-    { type: 'sync-map-traders' },
-    {
-      repeat: {
-        pattern: '0 0 * * *', // Every day at midnight
-      },
-    }
-  );
-  logger.info('Scheduled: sync-map-traders (daily at midnight)');
 }
 

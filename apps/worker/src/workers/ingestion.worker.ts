@@ -1,7 +1,6 @@
 import { JobData } from '../lib/queue';
 import { logger } from '../lib/logger';
 import prisma from '@polymarket/database';
-import { STATIC_MAPPED_TRADERS } from '@polymarket/shared';
 
 export async function handleIngestionJob(data: JobData) {
   switch (data.type) {
@@ -11,8 +10,8 @@ export async function handleIngestionJob(data: JobData) {
     case 'sync-markets':
       await syncMarkets(data.payload);
       break;
-    case 'sync-map-traders':
-      await syncMapTraders(data.payload);
+    case 'find-public-traders':
+      await findPublicTraders(data.payload);
       break;
     case 'sync-trader-trades':
       await syncTraderTrades(data.payload);
@@ -46,65 +45,40 @@ function assignTier(trader: any, leaderboard: any[]) {
 }
 
 async function syncLeaderboard(payload: any) {
-  logger.info('🚀 Syncing leaderboard from MULTIPLE time periods...');
+  logger.info('🚀 Syncing leaderboard: TOP-1000 MONTH ONLY');
   
   try {
-    const traderMap = new Map<string, any>(); // address -> trader data
+    const allTraders: any[] = [];
+    const BATCH_SIZE = 100;
+    const TOTAL_LIMIT = 1000;
     
-    // Fetch traders from different time periods to maximize coverage
-    const periods = [
-      { name: 'day', limit: 100 },
-      { name: 'week', limit: 500 },
-      { name: 'month', limit: 1000 },
-      { name: 'all', limit: 1000 },
-    ];
+    logger.info(`📥 Fetching top ${TOTAL_LIMIT} traders from MONTH leaderboard...`);
     
-    for (const period of periods) {
-      logger.info(`📥 Fetching top ${period.limit} traders from ${period.name.toUpperCase()} leaderboard...`);
+    for (let offset = 0; offset < TOTAL_LIMIT; offset += BATCH_SIZE) {
+      const res = await fetch(
+        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=month&orderBy=PNL&limit=${BATCH_SIZE}&offset=${offset}`
+      );
       
-      const BATCH_SIZE = 100;
-      let periodTraders = 0;
-      
-      for (let offset = 0; offset < period.limit; offset += BATCH_SIZE) {
-        const res = await fetch(
-          `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period.name}&orderBy=PNL&limit=${BATCH_SIZE}&offset=${offset}`
-        );
-        
-        if (!res.ok) {
-          logger.error({ status: res.status, period: period.name }, 'Polymarket API error');
-          break;
-        }
-        
-        const batch = await res.json();
-        
-        if (batch.length === 0) {
-          logger.info(`   ⚠️  Reached end of ${period.name} leaderboard at ${periodTraders} traders`);
-          break;
-        }
-        
-        // Add to map (deduplicate by address)
-        for (const t of batch) {
-          if (t.proxyWallet && !traderMap.has(t.proxyWallet)) {
-            traderMap.set(t.proxyWallet, t);
-            periodTraders++;
-          }
-        }
-        
-        logger.info(`   ✓ Fetched ${batch.length} traders from ${period.name} (new: ${periodTraders}, total unique: ${traderMap.size})`);
-        
-        // Small pause to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
+      if (!res.ok) {
+        logger.error({ status: res.status }, 'Polymarket API error');
+        break;
       }
       
-      logger.info(`✅ ${period.name.toUpperCase()} complete: ${periodTraders} new traders (total unique: ${traderMap.size})`);
+      const batch = await res.json();
+      
+      if (batch.length === 0) {
+        logger.info(`⚠️ Reached end of leaderboard at ${allTraders.length} traders`);
+        break;
+      }
+      
+      allTraders.push(...batch);
+      logger.info(`✓ Fetched ${batch.length} traders (total: ${allTraders.length})`);
+      
+      // Small pause to avoid rate limits
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
     
-    const allTraders = Array.from(traderMap.values());
-    logger.info(`✅ Fetched ${allTraders.length} UNIQUE traders across all time periods`);
-    
-    if (allTraders.length < 1000) {
-      logger.warn(`⚠️  Only fetched ${allTraders.length} unique traders (expected 1000+)`);
-    }
+    logger.info(`✅ Fetched ${allTraders.length} traders from MONTH leaderboard`)
     
     // Assign tiers and save to DB
     logger.info('💾 Saving traders to database...');
@@ -447,215 +421,83 @@ async function syncTraderPositions(payload: any) {
   logger.info('Trader positions sync completed (stub)');
 }
 
-async function syncMapTraders(payload: any) {
-  // Extract all Twitter usernames from STATIC_MAPPED_TRADERS
-  const MAP_TRADERS_USERNAMES = STATIC_MAPPED_TRADERS
-    .map(t => t.xUsername)
-    .filter(Boolean) as string[];
-  
+async function findPublicTraders(payload: any) {
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  logger.info(`🗺️  STARTING MAP TRADERS SYNC (${MAP_TRADERS_USERNAMES.length} traders)`);
+  logger.info('🔍 FINDING TOP-150 PUBLIC TRADERS (with Twitter)');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  logger.info('📊 Strategy:');
-  logger.info('   1. Try Polymarket Profile API (by Twitter username)');
-  logger.info('   2. Search leaderboards (day/week/month/all, 5000 traders each)');
-  logger.info('   3. Create fallback profile if not found');
-  logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  logger.info(`📝 Total traders to sync: ${MAP_TRADERS_USERNAMES.length}`);
-  logger.info('');
   
   try {
-    let found = 0;
-    let notFound = 0;
-    let created = 0;
+    const publicTradersMap = new Map<string, any>(); // address -> trader data
+    const MAX_TRADERS = 150;
     
-    for (const username of MAP_TRADERS_USERNAMES) {
-      try {
-        logger.info(`   🔍 Searching for @${username}...`);
-        
-        // STRATEGY 1: Try Polymarket Profile API (by Twitter username)
-        // Try multiple variants: with/without @, case variations
-        const usernameVariants = [
-          username,
-          `@${username}`,
-          username.replace('@', ''),
-          username.toLowerCase(),
-        ];
-        
-        let traderAddress: string | null = null;
-        let traderData: any = null;
-        
-        for (const variant of usernameVariants) {
-          const profileEndpoints = [
-            `https://gamma-api.polymarket.com/profile/twitter/${variant}`,
-            `https://data-api.polymarket.com/profile?twitter=${variant}`,
-          ];
-          
-          for (const endpoint of profileEndpoints) {
-            try {
-              const profileRes = await fetch(endpoint);
-              if (profileRes.ok) {
-                const profile = await profileRes.json();
-                if (profile.address || profile.proxyWallet) {
-                  traderAddress = profile.address || profile.proxyWallet;
-                  logger.info(`      ✓ Found @${username} via Profile API as "${variant}": ${traderAddress}`);
-                  break;
-                }
-              }
-            } catch (e) {
-              // Try next endpoint
-            }
-          }
-          
-          if (traderAddress) break;
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        // STRATEGY 2: Search ALL leaderboards (all periods, larger limit)
-        if (!traderAddress) {
-          logger.info(`      → Searching leaderboards...`);
-          const periods = ['day', 'week', 'month', 'all'];
-          
-          // Normalize username for comparison (remove @, trim, lowercase)
-          const normalizeUsername = (u: string) => u.replace('@', '').trim().toLowerCase();
-          const normalizedUsername = normalizeUsername(username);
-          
-          for (const period of periods) {
-            const leaderboardRes = await fetch(
-              `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=5000`
-            );
-            
-            if (leaderboardRes.ok) {
-              const traders = await leaderboardRes.json();
-              
-              // Try multiple match strategies
-              const trader = traders.find((t: any) => {
-                if (!t.xUsername) return false;
-                
-                // Strategy 1: Exact match (normalized)
-                if (normalizeUsername(t.xUsername) === normalizedUsername) return true;
-                
-                // Strategy 2: Match without @ prefix
-                if (t.xUsername.replace('@', '').toLowerCase() === normalizedUsername) return true;
-                
-                // Strategy 3: Match display name (some traders use different Twitter vs display name)
-                if (t.userName && normalizeUsername(t.userName) === normalizedUsername) return true;
-                
-                return false;
-              });
-              
-              if (trader && trader.proxyWallet) {
-                traderAddress = trader.proxyWallet;
-                traderData = trader;
-                logger.info(`      ✓ Found @${username} in ${period.toUpperCase()} as "${trader.xUsername}" (${traderAddress})`);
-                break;
-              }
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
-          
-          if (!traderAddress) {
-            logger.warn(`      ✗ @${username} NOT found in any leaderboard (searched ${periods.join(', ')})`);
-          }
-        }
-        
-        // If found address, fetch full leaderboard data
-        if (traderAddress && !traderData) {
-          logger.info(`      → Fetching leaderboard data for ${traderAddress}...`);
-          
-          for (const period of ['all', 'month', 'week', 'day']) {
-            const leaderboardRes = await fetch(
-              `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=5000`
-            );
-            
-            if (leaderboardRes.ok) {
-              const traders = await leaderboardRes.json();
-              const trader = traders.find((t: any) => 
-                t.proxyWallet?.toLowerCase() === traderAddress.toLowerCase()
-              );
-              
-              if (trader) {
-                traderData = trader;
-                logger.info(`      ✓ Found leaderboard data in ${period.toUpperCase()}`);
-                break;
-              }
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
-        }
-        
-        // Save to DB if found (ALWAYS UPDATE with latest data!)
-        if (traderAddress) {
-          // Calculate values from Polymarket data (or use fallback)
-          const pnl = traderData?.pnl || 25000; // Default B-tier PnL
-          const volume = traderData?.volume || 0;
-          const marketsTraded = traderData?.markets_traded || 10;
-          const winRate = marketsTraded > 0 && pnl > 0 
-            ? Math.min(((pnl / (volume || pnl)) * 100), 75)
-            : 50;
-          
-          // CRITICAL: Use UPSERT to always update with latest data!
-          const trader = await prisma.trader.upsert({
-            where: { address: traderAddress },
-            update: {
-              // Update existing trader with REAL data from Polymarket
-              displayName: traderData?.userName || username,
-              profilePicture: traderData?.profileImage || `https://unavatar.io/twitter/${username}`,
-              twitterUsername: username,
-              tier: pnl > 100000 ? 'S' : pnl > 50000 ? 'A' : 'B',
-              realizedPnl: pnl,
-              totalPnl: pnl,
-              tradeCount: marketsTraded,
-              winRate: winRate,
-              rarityScore: Math.floor(pnl + (volume * 0.1)),
-            },
-            create: {
-              // Create new trader with REAL data from Polymarket
-              address: traderAddress,
-              displayName: traderData?.userName || username,
-              profilePicture: traderData?.profileImage || `https://unavatar.io/twitter/${username}`,
-              twitterUsername: username,
-              tier: pnl > 100000 ? 'S' : pnl > 50000 ? 'A' : 'B',
-              realizedPnl: pnl,
-              totalPnl: pnl,
-              tradeCount: marketsTraded,
-              winRate: winRate,
-              rarityScore: Math.floor(pnl + (volume * 0.1)),
-            }
-          });
-          
-          const action = trader ? '🔄 Updated' : '✅ Created';
-          logger.info(`      ${action} profile for @${username} (${traderAddress}, PnL: $${(pnl / 1000).toFixed(1)}K)`);
-          found++;
-          if (!trader) created++;
-        } else {
-          // NOT FOUND: Skip trader (no fake profiles!)
-          logger.warn(`      ⚠️  @${username} NOT found in Polymarket - SKIPPING (no fake data)`);
-          notFound++;
-        }
-        
-      } catch (error: any) {
-        logger.error({ error: error.message, username }, 'Error processing trader');
-        notFound++;
+    // Search periods in order of priority: month > week > day
+    const periods = ['month', 'week', 'day'];
+    
+    for (const period of periods) {
+      if (publicTradersMap.size >= MAX_TRADERS) break;
+      
+      logger.info(`📥 Fetching from ${period.toUpperCase()} leaderboard...`);
+      
+      const res = await fetch(
+        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=1000`
+      );
+      
+      if (!res.ok) {
+        logger.error({ status: res.status, period }, 'API error');
+        continue;
       }
       
-      // Delay between traders to avoid rate limits
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const traders = await res.json();
+      
+      // Filter: only traders with Twitter (xUsername)
+      const withTwitter = traders.filter((t: any) => t.xUsername && t.proxyWallet);
+      
+      logger.info(`   Found ${withTwitter.length} traders with Twitter in ${period}`);
+      
+      // Add to map (deduplicate by address)
+      for (const t of withTwitter) {
+        if (publicTradersMap.size >= MAX_TRADERS) break;
+        
+        if (!publicTradersMap.has(t.proxyWallet)) {
+          publicTradersMap.set(t.proxyWallet, t);
+        }
+      }
+      
+      logger.info(`   ✓ Total unique: ${publicTradersMap.size}/${MAX_TRADERS}`);
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
+    
+    const publicTraders = Array.from(publicTradersMap.values());
     
     logger.info('');
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('✅ MAP TRADERS SYNC COMPLETE!');
+    logger.info(`✅ FOUND ${publicTraders.length} PUBLIC TRADERS`);
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info(`📊 Results:`);
-    logger.info(`   ✅ Found in Polymarket: ${found} traders`);
-    logger.info(`   ❌ Not found (skipped): ${notFound} traders`);
-    logger.info(`   📍 Only REAL traders with REAL data!`);
+    logger.info('');
+    logger.info('📋 TWITTER HANDLES LIST (copy this to give locations):');
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Sort by PnL (highest first)
+    publicTraders.sort((a, b) => (b.pnl || 0) - (a.pnl || 0));
+    
+    for (let i = 0; i < publicTraders.length; i++) {
+      const t = publicTraders[i];
+      const pnl = (t.pnl / 1000).toFixed(1);
+      logger.info(`${i + 1}. @${t.xUsername} | ${t.userName || 'Unknown'} | $${pnl}K | ${t.proxyWallet}`);
+    }
+    
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('');
+    logger.info('📝 NEXT STEP:');
+    logger.info('   1. Copy this list');
+    logger.info('   2. Manually check locations for each trader');
+    logger.info('   3. Send back list with locations');
+    logger.info('   4. We will add them to the map!');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
   } catch (error: any) {
-    logger.error({ error: error.message }, '❌ Map trader sync failed');
+    logger.error({ error: error.message }, '❌ Failed to find public traders');
     throw error;
   }
 }

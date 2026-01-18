@@ -274,39 +274,5 @@ const TRADER_LOCATIONS: Record<string, { country: string; displayName: string; t
   'guhhhtradez': { country: 'Croatia', displayName: 'guhhhtradez', tier: 'B' },
 };
 
-// Generate static traders with coordinates
-export const STATIC_MAPPED_TRADERS: MappedTrader[] = Object.entries(TRADER_LOCATIONS).map(([xUsername, data], index) => {
-  const cityOptions = COUNTRY_COORDS[data.country];
-  
-  if (!cityOptions || cityOptions.length === 0) {
-    // Skip traders without coordinates (console.warn not available in Node.js without DOM lib)
-    return null;
-  }
-  
-  // Pick random city from country (use index for deterministic but varied selection)
-  const cityIndex = (index * 7 + xUsername.length) % cityOptions.length;
-  const cityCoords = cityOptions[cityIndex];
-  
-  // Add larger random offset to prevent clustering (±1.0 degrees = ~100km)
-  // Use username hash for deterministic randomness
-  const hashCode = xUsername.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const latOffset = ((hashCode % 200) - 100) / 100; // Range: -1.0 to 1.0
-  const lonOffset = (((hashCode * 17) % 200) - 100) / 100; // Range: -1.0 to 1.0
-  
-  // Generate fake address based on username (lowercase for DB compatibility)
-  const fakeAddress = `0x${xUsername.slice(0, 8).padEnd(40, '0')}`.toLowerCase();
-  
-  return {
-    address: fakeAddress,
-    displayName: data.displayName,
-    avatar: `https://unavatar.io/twitter/${xUsername}`,
-    tier: data.tier,
-    xUsername,
-    latitude: cityCoords.lat + latOffset,
-    longitude: cityCoords.lon + lonOffset,
-    country: data.country,
-    totalPnl: data.tier === 'S' ? 100000 : data.tier === 'A' ? 50000 : 25000,
-    winRate: data.tier === 'S' ? 0.65 : data.tier === 'A' ? 0.58 : 0.52,
-    rarityScore: data.tier === 'S' ? 80000 : data.tier === 'A' ? 60000 : 40000,
-  };
-}).filter(Boolean) as MappedTrader[];
+// MAP TEMPORARILY DISABLED - will be populated manually after finding public traders
+export const STATIC_MAPPED_TRADERS: MappedTrader[] = [];
