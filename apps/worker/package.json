@@ -6,7 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "pnpm build && node dist/index.js",
     "start:prod": "node dist/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "populate": "tsx src/fetch-all-traders.ts && tsx src/update-trader-locations.ts && tsx src/test-discovery.ts"
   },
   "dependencies": {
     "@polymarket/database": "workspace:*",
