@@ -293,8 +293,8 @@ export const STATIC_MAPPED_TRADERS: MappedTrader[] = Object.entries(TRADER_LOCAT
   const latOffset = ((hashCode % 200) - 100) / 100; // Range: -1.0 to 1.0
   const lonOffset = (((hashCode * 17) % 200) - 100) / 100; // Range: -1.0 to 1.0
   
-  // Generate fake address based on username
-  const fakeAddress = `0x${xUsername.slice(0, 8).padEnd(40, '0')}`;
+  // Generate fake address based on username (lowercase for DB compatibility)
+  const fakeAddress = `0x${xUsername.slice(0, 8).padEnd(40, '0')}`.toLowerCase();
   
   return {
     address: fakeAddress,

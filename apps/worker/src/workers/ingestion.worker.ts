@@ -596,11 +596,11 @@ async function syncMapTraders(payload: any) {
           // FALLBACK: Create profile with fake address (deterministic from username)
           logger.warn(`      ⚠️  @${username} not found in API - creating fallback profile`);
           
-          // Generate deterministic address from Twitter username
-          const hash = username.split('').reduce((acc, char) => {
-            return ((acc << 5) - acc) + char.charCodeAt(0);
-          }, 0);
-          const fakeAddress = `0x${Math.abs(hash).toString(16).padStart(40, '0')}`;
+          // CRITICAL: Use SAME algorithm as static-traders.ts!
+          // This ensures addresses match between frontend and database
+          const fakeAddress = `0x${username.slice(0, 8).padEnd(40, '0')}`.toLowerCase();
+          
+          logger.info(`      → Fake address: ${fakeAddress}`);
           
           const existing = await prisma.trader.findUnique({
             where: { address: fakeAddress },
