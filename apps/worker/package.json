@@ -10,6 +10,7 @@
     "populate": "tsx src/fetch-all-traders.ts && tsx src/update-trader-locations.ts && tsx src/test-discovery.ts",
     "geo": "tsx src/add-geolocation.ts",
     "sync-map": "tsx src/trigger-map-sync.ts",
+    "fix-twitter": "tsx src/fix-twitter-traders.ts",
     "clean-fallback": "tsx src/clean-fallback-profiles.ts"
   },
   "dependencies": {
