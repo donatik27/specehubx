@@ -5,7 +5,7 @@ export interface MappedTrader {
   address: string;
   displayName: string;
   avatar: string;
-  tier: 'S' | 'A' | 'B' | 'C' | 'D' | 'E';
+  tier: 'S' | 'A' | 'B';
   xUsername?: string;
   latitude: number;
   longitude: number;

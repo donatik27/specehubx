@@ -179,14 +179,11 @@ function TraderPin({
     window.location.href = `/traders/${trader.address}`;
   };
 
-  // Tier colors for border
+  // Tier colors for border (only S, A, B)
   const tierColor = {
-    S: '#FFD700',
-    A: '#00ff00',
-    B: '#00aaff',
-    C: '#ffffff',
-    D: '#888888',
-    E: '#444444',
+    S: '#FFD700', // Gold for S-tier
+    A: '#ffffff', // White for A-tier
+    B: '#00ff00', // Green for B-tier
   }[trader.tier] || '#FFD700';
 
   return (

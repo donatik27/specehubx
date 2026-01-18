@@ -27,14 +27,18 @@ function assignTier(trader: any, leaderboard: any[]) {
   const totalTraders = leaderboard.length;
   const percentile = rank / totalTraders;
   
+  // Check if trader is public/verified
   const isPublic = trader.xUsername || trader.verifiedBadge;
   
-  if (isPublic || percentile <= 0.001) return 'S';
-  if (percentile <= 0.01) return 'A';
-  if (percentile <= 0.05) return 'B';
-  if (percentile <= 0.20) return 'C';
-  if (percentile <= 0.50) return 'D';
-  return 'E';
+  // Only 3 tiers: S, A, B
+  // S-tier: Top 10% OR public/verified traders
+  if (isPublic || percentile <= 0.10) return 'S';
+  
+  // A-tier: Top 40%
+  if (percentile <= 0.40) return 'A';
+  
+  // B-tier: Everyone else (top 1000)
+  return 'B';
 }
 
 async function syncLeaderboard(payload: any) {

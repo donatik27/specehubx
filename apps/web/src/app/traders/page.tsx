@@ -23,10 +23,7 @@ const tierColors: Record<string, string> = {
   S: 'bg-[#FFD700]/20 text-[#FFD700] border-[#FFD700]/50',
   A: 'bg-white/20 text-white border-white/50',
   B: 'bg-primary/20 text-primary border-primary/50',
-  C: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  D: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  E: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
-  X: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  X: 'bg-purple-500/20 text-purple-400 border-purple-500/30', // For public traders filter
 }
 
 export default function TradersPage() {
