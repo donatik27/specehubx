@@ -2,6 +2,25 @@ import { queues } from './lib/queue';
 import { logger } from './lib/logger';
 
 export async function scheduleJobs() {
+  const removeRepeatables = async (queue: any, names: string[]) => {
+    const jobs = await queue.getRepeatableJobs();
+    for (const job of jobs) {
+      if (names.includes(job.name)) {
+        await queue.removeRepeatableByKey(job.key);
+        logger.info(`Removed repeatable job: ${job.name}`);
+      }
+    }
+  };
+
+  // Clean up old repeatable jobs that are now disabled
+  await removeRepeatables(queues.ingestion, ['sync-markets']);
+  await removeRepeatables(queues.smartMarkets, [
+    'update-pinned-markets',
+    'discover-new-markets',
+    'refresh-pinned-selection',
+    'analyze-multi-outcome',
+  ]);
+
   // Sync leaderboard every 5 minutes
   await queues.ingestion.add(
     'sync-leaderboard',
@@ -40,54 +59,7 @@ export async function scheduleJobs() {
   logger.info('Scheduled: calculate-rarity-scores (every 30 minutes)');
 
   // === SMART MARKETS JOBS ===
-  
-  // 1. Update pinned markets (top-5) every 24 hours
-  await queues.smartMarkets.add(
-    'update-pinned-markets',
-    { type: 'update-pinned-markets' },
-    {
-      repeat: {
-        pattern: '0 */24 * * *', // Every 24 hours
-      },
-    }
-  );
-  logger.info('Scheduled: update-pinned-markets (every 24 hours)');
-  
-  // 2. Discover new markets every 30 minutes
-  await queues.smartMarkets.add(
-    'discover-new-markets',
-    { type: 'discover-new-markets' },
-    {
-      repeat: {
-        pattern: '*/30 * * * *', // Every 30 minutes
-      },
-    }
-  );
-  logger.info('Scheduled: discover-new-markets (every 30 minutes)');
-  
-  // 3. Refresh pinned selection every 6 hours
-  await queues.smartMarkets.add(
-    'refresh-pinned-selection',
-    { type: 'refresh-pinned-selection' },
-    {
-      repeat: {
-        pattern: '0 */6 * * *', // Every 6 hours
-      },
-    }
-  );
-  logger.info('Scheduled: refresh-pinned-selection (every 6 hours)');
-
-  // 4. Analyze multi-outcome events every 1 hour
-  await queues.smartMarkets.add(
-    'analyze-multi-outcome',
-    { type: 'analyze-multi-outcome' },
-    {
-      repeat: {
-        pattern: '0 * * * *', // Every hour
-      },
-    }
-  );
-  logger.info('Scheduled: analyze-multi-outcome (every hour)');
+  // Temporarily disabled to keep worker focused on leaderboard + media + map
 
 }
 

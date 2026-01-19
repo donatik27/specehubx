@@ -90,6 +90,7 @@ async function syncLeaderboard(payload: any) {
     // Save traders to DB (use profileImage from API, NOT profilePicture!)
     for (const t of allTraders) {
       if (!t.proxyWallet) continue;
+      const address = t.proxyWallet.toLowerCase();
       
       try {
         // Leaderboard API returns 'profileImage', not 'profilePicture'
@@ -126,9 +127,9 @@ async function syncLeaderboard(payload: any) {
         }
         
         await prisma.trader.upsert({
-          where: { address: t.proxyWallet },
+          where: { address },
           create: {
-            address: t.proxyWallet,
+            address,
             displayName: t.userName || `${t.proxyWallet?.slice(0, 6)}...`,
             profilePicture: profilePic,
             twitterUsername: t.xUsername || null,
