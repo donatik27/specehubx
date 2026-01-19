@@ -11,7 +11,8 @@
     "geo": "tsx src/add-geolocation.ts",
     "sync-map": "tsx src/trigger-map-sync.ts",
     "fix-twitter": "tsx src/fix-twitter-traders.ts",
-    "clean-fallback": "tsx src/clean-fallback-profiles.ts"
+    "clean-fallback": "tsx src/clean-fallback-profiles.ts",
+    "run-sync-public": "tsx src/run-sync-public.ts"
   },
   "dependencies": {
     "@polymarket/database": "workspace:*",
