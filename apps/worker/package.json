@@ -11,8 +11,6 @@
     "geo": "tsx src/add-geolocation.ts",
     "sync-map": "tsx src/trigger-map-sync.ts",
     "fix-twitter": "tsx src/fix-twitter-traders.ts",
-    "add-manual": "tsx src/add-traders-manual.ts",
-    "clean-tier-x": "tsx src/clean-tier-x.ts",
     "clean-fallback": "tsx src/clean-fallback-profiles.ts"
   },
   "dependencies": {
