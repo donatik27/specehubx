@@ -106,6 +106,12 @@ async function syncLeaderboard(payload: any) {
           ? Math.min(((t.pnl / volume) * 100), 100) // Estimate based on PnL/Volume ratio
           : 0;
         
+        // Check if trader already exists with Twitter username
+        const existing = await prisma.trader.findUnique({
+          where: { address: t.proxyWallet },
+          select: { twitterUsername: true },
+        });
+        
         await prisma.trader.upsert({
           where: { address: t.proxyWallet },
           create: {
@@ -123,7 +129,9 @@ async function syncLeaderboard(payload: any) {
           update: {
             displayName: t.userName || undefined,
             profilePicture: profilePic || undefined,
-            twitterUsername: t.xUsername || undefined,
+            // IMPORTANT: Only update twitterUsername if new value exists OR no existing value
+            // This prevents syncLeaderboard (MONTH) from erasing Twitter found in DAY/WEEK
+            twitterUsername: t.xUsername ? t.xUsername : (existing?.twitterUsername || undefined),
             tier: assignTier(t, allTraders),
             realizedPnl: t.pnl || 0,
             totalPnl: t.pnl || 0,
