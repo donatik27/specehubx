@@ -520,37 +520,49 @@ async function syncPublicTraders(payload: any) {
     for (const period of periods) {
       logger.info(`📥 Fetching top-1000 from ${period.toUpperCase()} leaderboard...`);
       
-      const res = await fetch(
-        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=1000`
-      );
+      // Fetch in batches of 100 (API limit per request)
+      const BATCH_SIZE = 100;
+      const TOTAL_LIMIT = 1000;
       
-      if (!res.ok) {
-        logger.error({ status: res.status, period }, 'API error');
-        continue;
-      }
-      
-      const traders = await res.json();
-      
-      // Filter: only traders with Twitter (xUsername)
-      const withTwitter = traders.filter((t: any) => t.xUsername && t.proxyWallet);
-      
-      logger.info(`   ✓ Found ${withTwitter.length} traders with Twitter in ${period}`);
-      
-      // Add to map (deduplicate by address, keep highest PnL)
-      for (const t of withTwitter) {
-        const existing = publicTradersMap.get(t.proxyWallet);
+      for (let offset = 0; offset < TOTAL_LIMIT; offset += BATCH_SIZE) {
+        const res = await fetch(
+          `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=${BATCH_SIZE}&offset=${offset}`
+        );
         
-        if (!existing || (t.pnl || 0) > (existing.pnl || 0)) {
-          publicTradersMap.set(t.proxyWallet, {
-            ...t,
-            period, // Track which period had the best PnL
-          });
+        if (!res.ok) {
+          logger.error({ status: res.status, period, offset }, 'API error');
+          break;
         }
+        
+        const traders = await res.json();
+        
+        if (traders.length === 0) {
+          logger.info(`   ⚠️ Reached end at offset ${offset}`);
+          break;
+        }
+        
+        // Filter: only traders with Twitter (xUsername) and trim whitespace
+        const withTwitter = traders.filter((t: any) => t.xUsername && t.xUsername.trim() && t.proxyWallet);
+        
+        // Add to map (deduplicate by address, keep highest PnL)
+        for (const t of withTwitter) {
+          const existing = publicTradersMap.get(t.proxyWallet);
+          
+          if (!existing || (t.pnl || 0) > (existing.pnl || 0)) {
+            publicTradersMap.set(t.proxyWallet, {
+              ...t,
+              period, // Track which period had the best PnL
+            });
+          }
+        }
+        
+        logger.info(`   ✓ Batch ${offset}-${offset + BATCH_SIZE}: ${withTwitter.length} with Twitter | Total: ${publicTradersMap.size}`);
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
-      logger.info(`   ✓ Total unique: ${publicTradersMap.size}`);
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
+      logger.info(`   ✅ ${period.toUpperCase()} complete: ${publicTradersMap.size} unique traders`);
+      logger.info('');
     }
     
     // Convert to array and sort by PnL (highest first)
@@ -649,9 +661,7 @@ async function syncPublicTraders(payload: any) {
     logger.info(`   📊 Total processed: ${publicTraders.length}`);
     logger.info(`   ✨ New traders: ${saved}`);
     logger.info(`   🔄 Updated traders: ${updated}`);
-    logger.info('');
-    logger.info('📍 NEXT STEP: Add locations for these traders manually');
-    logger.info('   They will appear in the X (Media) tab in the leaderboard');
+    logger.info('   ✅ Traders are now visible in X (Media) tab!');
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
   } catch (error: any) {
