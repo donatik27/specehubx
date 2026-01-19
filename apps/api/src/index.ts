@@ -37,6 +37,11 @@ app.get('/api/test-db', async (_req, res) => {
 
 app.get('/api/traders', async (_req, res) => {
   try {
+    // NOTE:
+    // Some historical records may contain the same wallet address with different casing.
+    // That can cause the UI to miss Twitter-linked profiles because the "top-1000" query
+    // might pick the non-twitter duplicate. We dedupe by lower(address) and prefer the
+    // record that has twitterUsername when available.
     const traders = await prisma.trader.findMany({
       select: {
         address: true,
@@ -51,22 +56,49 @@ app.get('/api/traders', async (_req, res) => {
         tradeCount: true,
       },
       orderBy: { totalPnl: 'desc' },
-      take: 1000,
+      take: 5000,
     });
 
-    const formattedTraders = traders.map(t => ({
-      address: t.address,
-      displayName: t.displayName || 'Unknown Trader',
-      avatar: t.profilePicture || `https://api.dicebear.com/7.x/shapes/svg?seed=${t.address}`,
-      tier: t.tier,
-      rarityScore: t.rarityScore,
-      estimatedPnL: Number(t.realizedPnl),
-      volume: 0, // TODO: Will be available after migration
-      winRate: t.winRate,
-      tradeCount: t.tradeCount,
-      verified: !!t.twitterUsername,
-      xUsername: t.twitterUsername,
-    }));
+    const deduped = new Map<string, (typeof traders)[number]>();
+    for (const t of traders) {
+      const key = t.address.toLowerCase();
+      const existing = deduped.get(key);
+      if (!existing) {
+        deduped.set(key, t);
+        continue;
+      }
+
+      const existingHasTwitter = !!(existing.twitterUsername && String(existing.twitterUsername).trim());
+      const candidateHasTwitter = !!(t.twitterUsername && String(t.twitterUsername).trim());
+
+      // Prefer twitter-linked record over non-twitter record
+      if (!existingHasTwitter && candidateHasTwitter) {
+        deduped.set(key, t);
+        continue;
+      }
+
+      // Otherwise prefer higher totalPnl
+      if (Number(t.totalPnl) > Number(existing.totalPnl)) {
+        deduped.set(key, t);
+      }
+    }
+
+    const formattedTraders = Array.from(deduped.values())
+      .sort((a, b) => Number(b.totalPnl) - Number(a.totalPnl))
+      .slice(0, 1000)
+      .map((t) => ({
+        address: t.address,
+        displayName: t.displayName || 'Unknown Trader',
+        avatar: t.profilePicture || `https://api.dicebear.com/7.x/shapes/svg?seed=${t.address}`,
+        tier: t.tier,
+        rarityScore: t.rarityScore,
+        estimatedPnL: Number(t.realizedPnl),
+        volume: 0, // TODO: Will be available after migration
+        winRate: t.winRate,
+        tradeCount: t.tradeCount,
+        verified: !!t.twitterUsername,
+        xUsername: t.twitterUsername,
+      }));
 
     res.json(formattedTraders);
   } catch (error) {
