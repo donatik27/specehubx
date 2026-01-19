@@ -514,8 +514,8 @@ async function syncPublicTraders(payload: any) {
     const publicTradersMap = new Map<string, any>();
     const MAX_TRADERS = 200;
     
-    // Fetch from MONTHLY and WEEKLY leaderboards
-    const periods = ['month', 'week'];
+    // Fetch from DAILY, WEEKLY and MONTHLY leaderboards
+    const periods = ['day', 'week', 'month'];
     
     for (const period of periods) {
       logger.info(`📥 Fetching top-1000 from ${period.toUpperCase()} leaderboard...`);
@@ -576,7 +576,31 @@ async function syncPublicTraders(payload: any) {
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     logger.info(`✅ SELECTED TOP-${publicTraders.length} PUBLIC TRADERS`);
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    logger.info('💾 Saving to database...');
+    
+    // STEP 1: Clean up - Remove traders with Twitter who are NOT in our found list
+    logger.info('🧹 Cleaning up old traders...');
+    const foundAddresses = new Set(publicTraders.map(t => t.proxyWallet.toLowerCase()));
+    
+    const oldTraders = await prisma.trader.findMany({
+      where: {
+        twitterUsername: { not: null },
+      },
+    });
+    
+    let deleted = 0;
+    for (const old of oldTraders) {
+      if (!foundAddresses.has(old.address.toLowerCase())) {
+        await prisma.trader.delete({
+          where: { address: old.address },
+        });
+        deleted++;
+        logger.info(`   🗑️ Deleted: ${old.displayName} (@${old.twitterUsername})`);
+      }
+    }
+    
+    logger.info(`✅ Cleaned up ${deleted} old traders`);
+    logger.info('');
+    logger.info('💾 Saving new traders to database...');
     
     let saved = 0;
     let updated = 0;
