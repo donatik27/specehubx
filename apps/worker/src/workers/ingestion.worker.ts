@@ -240,7 +240,7 @@ async function syncStaticXTraders() {
     logger.info('📥 Fetching MONTH leaderboard (for PnL)...');
     try {
       const res = await fetch(
-        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=month&orderBy=PNL&limit=1000`
+        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=month&orderBy=PNL&limit=5000`
       );
       
       if (res.ok) {
@@ -264,7 +264,7 @@ async function syncStaticXTraders() {
     for (const period of ['week', 'day']) {
       try {
         const res = await fetch(
-          `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=1000`
+          `https://data-api.polymarket.com/v1/leaderboard?timePeriod=${period}&orderBy=PNL&limit=5000`
         );
         
         if (res.ok) {
