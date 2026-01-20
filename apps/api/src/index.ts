@@ -468,18 +468,20 @@ app.get('/api/event-info', async (req, res) => {
 
     const event = events[0];
     
-    // Get top 10 markets by volume
+    // Get top 10 markets by price (don't filter too aggressively)
     const markets = (event.markets || [])
-      .filter((m: any) => !m.closed && m.outcomePrices)
+      .filter((m: any) => !m.closed) // Only exclude closed markets
       .map((m: any) => {
         let price = 0.5;
         try {
           const prices = typeof m.outcomePrices === 'string' 
             ? JSON.parse(m.outcomePrices) 
             : m.outcomePrices;
-          price = parseFloat(prices[0]) || 0.5;
+          if (prices && prices[0]) {
+            price = parseFloat(prices[0]) || 0.5;
+          }
         } catch (e) {
-          // Use default
+          // Use default 0.5
         }
         
         return {

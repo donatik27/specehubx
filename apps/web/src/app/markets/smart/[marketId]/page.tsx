@@ -276,8 +276,9 @@ export default function SmartMarketDetailPage() {
           if (eventRes.ok) {
             const eventData = await eventRes.json()
             
-            // Check if this is a multi-outcome event (more than 2 outcomes)
-            if (eventData.topOutcomes && eventData.topOutcomes.length > 2) {
+            // Always set eventInfo if we have valid data
+            // (Link should always work for multi-outcome events)
+            if (eventData.eventSlug && eventData.topOutcomes && eventData.topOutcomes.length > 0) {
               setEventInfo(eventData)
               console.log(`✅ Multi-outcome event: ${eventData.eventTitle} (${eventData.topOutcomes.length} top outcomes)`)
             }
