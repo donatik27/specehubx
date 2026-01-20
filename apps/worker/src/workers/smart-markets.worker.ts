@@ -214,7 +214,7 @@ async function discoverNewMarkets(payload: any) {
       select: { marketId: true }
     })).map(m => m.marketId);
     
-    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?limit=200&closed=false&order=volume&ascending=false');
+    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?limit=50&closed=false&order=volume&ascending=false');
     const allMarkets = await marketsRes.json();
     
     // Filter out pinned markets
@@ -233,8 +233,8 @@ async function discoverNewMarkets(payload: any) {
     
     let discoveredCount = 0;
     
-    // BATCHING: Process 20 markets at a time to avoid RPC rate limits
-    const BATCH_SIZE = 20;
+    // BATCHING: Process 5 markets at a time to avoid memory issues
+    const BATCH_SIZE = 5;
     for (let i = 0; i < markets.length; i += BATCH_SIZE) {
       const batch = markets.slice(i, i + BATCH_SIZE);
       logger.info(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(markets.length / BATCH_SIZE)} (${batch.length} markets)...`);

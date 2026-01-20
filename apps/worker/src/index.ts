@@ -46,36 +46,36 @@ async function main() {
   // );
   // logger.info('✅ [3/3] SYNC PUBLIC TRADERS queued (starts in 5 minutes)');
   
-  // 🧠 ALPHA MARKETS - Discover smart markets immediately
+  // 🧠 ALPHA MARKETS - Discover smart markets (delayed to save memory)
   await queues.smartMarkets.add(
     'discover-new-markets-immediate',
     { type: 'discover-new-markets' },
-    { delay: 60000, priority: 1 } // Start in 1 minute (after leaderboard)
+    { delay: 300000, priority: 1 } // Start in 5 minutes (after leaderboard completes)
   );
-  logger.info('✅ [2/4] Alpha Markets discovery queued (starts in 1 minute)');
+  logger.info('✅ [2/4] Alpha Markets discovery queued (starts in 5 minutes)');
   
   // 📌 Refresh pinned markets selection
   await queues.smartMarkets.add(
     'refresh-pinned-selection-immediate',
     { type: 'refresh-pinned-selection' },
-    { delay: 120000, priority: 1 } // Start in 2 minutes (after discovery)
+    { delay: 600000, priority: 1 } // Start in 10 minutes (after discovery)
   );
-  logger.info('✅ [3/4] Pinned markets refresh queued (starts in 2 minutes)');
+  logger.info('✅ [3/4] Pinned markets refresh queued (starts in 10 minutes)');
   
   // 🎯 Multi-outcome analysis
   await queues.smartMarkets.add(
     'analyze-multi-outcome-immediate',
     { type: 'analyze-multi-outcome' },
-    { delay: 180000, priority: 1 } // Start in 3 minutes
+    { delay: 900000, priority: 1 } // Start in 15 minutes
   );
-  logger.info('✅ [4/4] Multi-outcome analysis queued (starts in 3 minutes)');
+  logger.info('✅ [4/4] Multi-outcome analysis queued (starts in 15 minutes)');
   
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('⏰ Timeline:');
   logger.info('   NOW        → Leaderboard TOP-1000 (month only)');
-  logger.info('   +1 min     → Alpha Markets discovery');
-  logger.info('   +2 min     → Pinned markets selection');
-  logger.info('   +3 min     → Multi-outcome analysis');
+  logger.info('   +5 min     → Alpha Markets discovery (50 markets)');
+  logger.info('   +10 min    → Pinned markets selection');
+  logger.info('   +15 min    → Multi-outcome analysis');
   logger.info('   CONTINUOUS → X traders (static list, 115 curated)');
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('');

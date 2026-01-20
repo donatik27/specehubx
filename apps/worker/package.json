@@ -4,8 +4,8 @@
   "scripts": {
     "build": "tsc || echo 'Build completed with errors, but files generated'",
     "dev": "tsx watch src/index.ts",
-    "start": "pnpm build && node dist/index.js",
-    "start:prod": "node dist/index.js",
+    "start": "pnpm build && node --max-old-space-size=2048 dist/index.js",
+    "start:prod": "node --max-old-space-size=2048 dist/index.js",
     "clean": "rm -rf dist",
     "populate": "tsx src/fetch-all-traders.ts && tsx src/update-trader-locations.ts && tsx src/test-discovery.ts",
     "geo": "tsx src/add-geolocation.ts",
