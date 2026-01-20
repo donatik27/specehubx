@@ -17,6 +17,7 @@ interface Trader {
   rank?: number;
   verified?: boolean;
   xUsername?: string | null;
+  onRadar?: boolean;
 }
 
 const tierColors: Record<string, string> = {
@@ -226,7 +227,7 @@ export default function TradersPage() {
                 <th className="text-right p-3 text-xs font-bold text-primary uppercase tracking-wider w-24">Score</th>
                 <th className="text-right p-3 text-xs font-bold text-primary uppercase tracking-wider w-32">Credits</th>
                 <th className="text-right p-3 text-xs font-bold text-primary uppercase tracking-wider w-32">Volume</th>
-                <th className="text-right p-3 text-xs font-bold text-primary uppercase tracking-wider w-24">Win%</th>
+                <th className="text-center p-3 text-xs font-bold text-primary uppercase tracking-wider w-24">Radar</th>
               </tr>
             </thead>
             <tbody>
@@ -308,19 +309,45 @@ export default function TradersPage() {
                         {trader.estimatedPnL >= 0 ? '▲' : '▼'}
                       </span>
                       <span className={`font-bold font-mono text-base ${trader.estimatedPnL >= 0 ? 'text-primary' : 'text-red-500'}`}>
-                        ${(Math.abs(trader.estimatedPnL) / 1000).toFixed(0)}k
+                        {(() => {
+                          const abs = Math.abs(trader.estimatedPnL);
+                          if (abs >= 1_000_000) {
+                            return `$${(abs / 1_000_000).toFixed(1)}M`;
+                          }
+                          return `$${(abs / 1000).toFixed(0)}K`;
+                        })()}
                       </span>
                     </div>
                   </td>
                   <td className="p-3 text-right">
                     <span className="font-mono text-sm text-muted-foreground">
-                      ${(trader.volume / 1000).toFixed(0)}k
+                      {(() => {
+                        const vol = trader.volume;
+                        if (vol >= 1_000_000) {
+                          return `$${(vol / 1_000_000).toFixed(1)}M`;
+                        }
+                        return `$${(vol / 1000).toFixed(0)}K`;
+                      })()}
                     </span>
                   </td>
-                  <td className="p-3 text-right">
-                    <span className="font-bold font-mono text-base text-white group-hover:text-primary transition-colors">
-                      {(trader.winRate * 100).toFixed(1)}%
-                    </span>
+                  <td className="p-3">
+                    <div className="flex items-center justify-center">
+                      {trader.onRadar ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = '/map';
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 pixel-border border-primary bg-primary/10 hover:bg-primary/20 transition-all group/radar"
+                          title="On Trader Radar - Click to view map"
+                        >
+                          <span className="text-primary text-sm">📡</span>
+                          <span className="text-primary text-xs font-bold">✓</span>
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

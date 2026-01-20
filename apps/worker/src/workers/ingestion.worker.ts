@@ -28,24 +28,49 @@ export async function handleIngestionJob(data: JobData) {
   }
 }
 
-// Tier assignment function
-function assignTier(trader: any, leaderboard: any[]) {
+// Tier assignment function - Only S, A, B tiers
+function assignTier(trader: any, leaderboard: any[], hasTwitter: boolean) {
   const rank = leaderboard.findIndex(t => t.proxyWallet === trader.proxyWallet) + 1;
   const totalTraders = leaderboard.length;
   const percentile = rank / totalTraders;
   
-  // Check if trader is public/verified
-  const isPublic = trader.xUsername || trader.verifiedBadge;
+  // X-traders (with Twitter) get tier boost - minimum A-tier
+  if (hasTwitter) {
+    // Top 40% of X-traders are S-tier, rest are A-tier
+    if (percentile <= 0.40) return 'S';
+    return 'A'; // X-traders never below A
+  }
   
-  // Only 3 tiers: S, A, B
-  // S-tier: Top 10% OR public/verified traders
-  if (isPublic || percentile <= 0.10) return 'S';
+  // Regular traders distribution
+  if (percentile <= 0.35) return 'S';  // Top 35% = S-tier
+  if (percentile <= 0.70) return 'A';  // Next 35% = A-tier
+  return 'B';  // Bottom 30% = B-tier
+}
+
+// Calculate rarity score (max 1000 points)
+function calculateRarityScore(
+  pnl: number,
+  volume: number,
+  marketsTraded: number,
+  rank: number,
+  hasTwitter: boolean
+): number {
+  // PnL score (max 500 points) - $10M PnL = 500 points
+  const pnlScore = Math.min(500, Math.max(0, (pnl / 10_000) * 500));
   
-  // A-tier: Top 40%
-  if (percentile <= 0.40) return 'A';
+  // Volume score (max 300 points) - $50M volume = 300 points
+  const volumeScore = Math.min(300, Math.max(0, (volume / 50_000) * 300));
   
-  // B-tier: Everyone else (top 1000)
-  return 'B';
+  // Markets traded score (max 100 points) - 50 markets = 100 points
+  const marketsScore = Math.min(100, Math.max(0, marketsTraded * 2));
+  
+  // Rank bonus (max 100 points) - #1 = 100 points, #1000 = 0 points
+  const rankBonus = Math.min(100, Math.max(0, 100 - (rank / 10)));
+  
+  // Twitter bonus (50 points)
+  const twitterBonus = hasTwitter ? 50 : 0;
+  
+  return Math.floor(pnlScore + volumeScore + marketsScore + rankBonus + twitterBonus);
 }
 
 async function syncLeaderboard(payload: any) {
@@ -100,27 +125,34 @@ async function syncLeaderboard(payload: any) {
         // Extract volume and markets_traded from API
         const volume = t.volume || 0;
         const marketsTraded = t.markets_traded || 0;
-        
-        // Calculate win rate (if API provides profitable markets count)
-        // Note: Polymarket API doesn't directly provide win rate, so we estimate
-        // Win rate = profitable trades / total trades (simplified)
-        const winRate = marketsTraded > 0 && t.pnl > 0 
-          ? Math.min(((t.pnl / volume) * 100), 100) // Estimate based on PnL/Volume ratio
-          : 0;
+        const pnl = t.pnl || 0;
         
         // Check if this trader is in static X traders list (for twitterUsername)
         const staticTwitter = getTwitterByAddress(address);
+        const hasTwitter = !!(staticTwitter || t.xUsername);
         
-        // Build update object - only include twitterUsername if it has a value
+        // Calculate rank for this trader
+        const rank = allTraders.findIndex(trader => trader.proxyWallet === t.proxyWallet) + 1;
+        
+        // Calculate tier and score using new system
+        const tier = assignTier(t, allTraders, hasTwitter);
+        const rarityScore = calculateRarityScore(pnl, volume, marketsTraded, rank, hasTwitter);
+        
+        // Calculate win rate (approximation)
+        const winRate = marketsTraded > 0 && pnl > 0 && volume > 0
+          ? Math.min(((pnl / volume) * 100), 100)
+          : 0;
+        
+        // Build update object
         const updateData: any = {
           displayName: t.userName || undefined,
           profilePicture: profilePic || undefined,
-          tier: assignTier(t, allTraders),
-          realizedPnl: t.pnl || 0,
-          totalPnl: t.pnl || 0,
+          tier: tier,
+          realizedPnl: pnl,
+          totalPnl: pnl,
           tradeCount: marketsTraded,
           winRate: winRate,
-          rarityScore: Math.floor((t.pnl || 0) + (volume * 0.1)),
+          rarityScore: rarityScore,
           lastActiveAt: new Date(),
         };
         
@@ -138,12 +170,12 @@ async function syncLeaderboard(payload: any) {
             displayName: t.userName || `${t.proxyWallet?.slice(0, 6)}...`,
             profilePicture: profilePic,
             twitterUsername: staticTwitter || t.xUsername || null,
-            tier: assignTier(t, allTraders),
-            realizedPnl: t.pnl || 0,
-            totalPnl: t.pnl || 0,
+            tier: tier,
+            realizedPnl: pnl,
+            totalPnl: pnl,
             tradeCount: marketsTraded,
             winRate: winRate,
-            rarityScore: Math.floor((t.pnl || 0) + (volume * 0.1)),
+            rarityScore: rarityScore,
           },
           update: updateData,
         });

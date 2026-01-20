@@ -75,6 +75,8 @@ app.get('/api/traders', async (_req, res) => {
         totalPnl: true,
         winRate: true,
         tradeCount: true,
+        latitude: true,
+        longitude: true,
       },
       orderBy: { totalPnl: 'desc' },
       take: 5000,
@@ -130,6 +132,7 @@ app.get('/api/traders', async (_req, res) => {
         tradeCount: t.tradeCount,
         verified: !!t.twitterUsername,
         xUsername: t.twitterUsername,
+        onRadar: !!(t.latitude && t.longitude),
       }));
 
     res.json(formattedTraders);
