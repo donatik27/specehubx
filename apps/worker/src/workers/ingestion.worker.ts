@@ -364,28 +364,6 @@ async function syncStaticXTraders() {
 // Update PnL for ALL X traders (not just static, but ALL with twitterUsername)
 async function syncAllXTradersPnl() {
   try {
-    // Fetch leaderboard for metadata (displayName, profilePicture from Polymarket)
-    const leaderboardData = new Map<string, any>(); // address -> trader metadata
-    
-    logger.info('📥 Fetching leaderboard for Polymarket metadata...');
-    try {
-      const res = await fetch(
-        `https://data-api.polymarket.com/v1/leaderboard?timePeriod=month&orderBy=PNL&limit=5000`
-      );
-      
-      if (res.ok) {
-        const traders = await res.json();
-        for (const t of traders) {
-          if (t.proxyWallet) {
-            leaderboardData.set(t.proxyWallet.toLowerCase(), t);
-          }
-        }
-        logger.info(`   ✓ Found ${traders.length} traders in leaderboard`);
-      }
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (error: any) {
-      logger.error({ error: error.message }, 'Failed to fetch leaderboard');
-    }
     
     // Find ALL traders with twitterUsername (X traders)
     const allXTraders = await prisma.trader.findMany({
@@ -409,9 +387,28 @@ async function syncAllXTradersPnl() {
       try {
         const address = trader.address.toLowerCase();
         
-        // Fetch ALL-TIME PnL via user-pnl-api (same as Polymarket uses)
-        let allTimePnl = trader.totalPnl ? Number(trader.totalPnl) : 0; // Keep existing if fetch fails
+        // Fetch profile info + PnL from Polymarket (single request!)
+        let allTimePnl = trader.totalPnl ? Number(trader.totalPnl) : 0;
+        let displayName = trader.displayName || trader.twitterUsername;
+        let profilePicture: string | null = null;
+        
         try {
+          // Get profile info via leaderboard API with user param
+          const profileRes = await fetch(
+            `https://data-api.polymarket.com/v1/leaderboard?timePeriod=all&orderBy=VOL&limit=1&user=${address}`
+          );
+          
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (Array.isArray(profileData) && profileData.length > 0) {
+              const profile = profileData[0];
+              // Get Polymarket displayName and avatar
+              displayName = profile.userName || displayName;
+              profilePicture = profile.profileImage || null;
+            }
+          }
+          
+          // Get ALL-TIME PnL via user-pnl-api
           const pnlRes = await fetch(
             `https://user-pnl-api.polymarket.com/user-pnl?user_address=${address}&interval=1m&fidelity=1d`
           );
@@ -425,18 +422,13 @@ async function syncAllXTradersPnl() {
             }
           }
           
-          // Rate limit (important for 182 traders!)
-          await new Promise(resolve => setTimeout(resolve, 150));
+          // Rate limit (182 traders * 2 requests = 364 requests, 200ms = ~73 seconds)
+          await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error: any) {
-          logger.warn({ error: error.message, address }, 'Failed to fetch user-pnl');
+          logger.warn({ error: error.message, address }, 'Failed to fetch profile/pnl');
           failed++;
           continue;
         }
-        
-        // Get Polymarket metadata (displayName, profilePicture)
-        const metadata = leaderboardData.get(address);
-        const displayName = metadata?.userName || trader.displayName || trader.twitterUsername;
-        const profilePicture = metadata?.profileImage || null;
         
         // Update PnL + Polymarket metadata in DB
         await prisma.trader.update({
