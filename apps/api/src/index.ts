@@ -447,6 +447,64 @@ app.get('/api/markets', async (_req, res) => {
   }
 });
 
+app.get('/api/event-info', async (req, res) => {
+  const eventSlug = req.query.eventSlug as string | undefined;
+  
+  if (!eventSlug) {
+    return res.status(400).json({ error: 'eventSlug required' });
+  }
+
+  try {
+    // Fetch event from Polymarket API
+    const eventRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${eventSlug}`);
+    if (!eventRes.ok) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const events = (await eventRes.json()) as any[];
+    if (!events || events.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const event = events[0];
+    
+    // Get top 10 markets by volume
+    const markets = (event.markets || [])
+      .filter((m: any) => !m.closed && m.outcomePrices)
+      .map((m: any) => {
+        let price = 0.5;
+        try {
+          const prices = typeof m.outcomePrices === 'string' 
+            ? JSON.parse(m.outcomePrices) 
+            : m.outcomePrices;
+          price = parseFloat(prices[0]) || 0.5;
+        } catch (e) {
+          // Use default
+        }
+        
+        return {
+          id: m.id,
+          question: m.question,
+          price: price,
+          volume: m.volumeNum || 0
+        };
+      })
+      .sort((a: any, b: any) => b.price - a.price) // Sort by price (highest chance first)
+      .slice(0, 10); // TOP 10 only
+
+    res.json({
+      eventSlug: event.slug,
+      eventTitle: event.title,
+      eventDescription: event.description,
+      eventImage: event.image,
+      totalVolume: event.volume,
+      topOutcomes: markets
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/multi-outcome-positions', async (req, res) => {
   const eventSlug = req.query.eventSlug as string | undefined;
   const marketId = req.query.marketId as string | undefined;

@@ -18,6 +18,20 @@ interface Market {
   endDate: string
 }
 
+interface EventInfo {
+  eventSlug: string
+  eventTitle: string
+  eventDescription: string
+  eventImage: string
+  totalVolume: number
+  topOutcomes: Array<{
+    id: string
+    question: string
+    price: number
+    volume: number
+  }>
+}
+
 interface SmartTrader {
   address: string
   displayName: string
@@ -115,6 +129,7 @@ export default function SmartMarketDetailPage() {
 
   const [market, setMarket] = useState<Market | null>(null)
   const [eventSlug, setEventSlug] = useState<string | null>(null)
+  const [eventInfo, setEventInfo] = useState<EventInfo | null>(null)
   const [smartTraders, setSmartTraders] = useState<SmartTrader[]>([])
   const [multiOutcomePositions, setMultiOutcomePositions] = useState<MultiOutcomePosition[]>([])
   const [loading, setLoading] = useState(true)
@@ -253,9 +268,22 @@ export default function SmartMarketDetailPage() {
         }
       }
 
-      // Fetch multi-outcome positions if we have an event slug
+      // Fetch event info and multi-outcome positions if we have an event slug
       if (finalEventSlug) {
         try {
+          // Fetch event info (top 10 outcomes)
+          const eventRes = await fetch(`/api/event-info?eventSlug=${finalEventSlug}`)
+          if (eventRes.ok) {
+            const eventData = await eventRes.json()
+            
+            // Check if this is a multi-outcome event (more than 2 outcomes)
+            if (eventData.topOutcomes && eventData.topOutcomes.length > 2) {
+              setEventInfo(eventData)
+              console.log(`✅ Multi-outcome event: ${eventData.eventTitle} (${eventData.topOutcomes.length} top outcomes)`)
+            }
+          }
+          
+          // Fetch smart trader positions
           const multiRes = await fetch(`/api/multi-outcome-positions?eventSlug=${finalEventSlug}`)
           if (multiRes.ok) {
             const data = await multiRes.json()
@@ -265,7 +293,7 @@ export default function SmartMarketDetailPage() {
             }
           }
         } catch (error) {
-          console.error('Failed to fetch multi-outcome positions:', error)
+          console.error('Failed to fetch event data:', error)
         }
       }
 
@@ -363,16 +391,30 @@ export default function SmartMarketDetailPage() {
       <div className="bg-card pixel-border border-purple-500/40 p-8 mb-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-start gap-4 flex-1">
-            <div className="text-4xl">🎯</div>
+            <div className="text-4xl">{eventInfo ? '🏆' : '🎯'}</div>
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-white mb-2">{market.question}</h1>
+              <h1 className="text-2xl font-bold text-white mb-2">
+                {eventInfo ? eventInfo.eventTitle : market.question}
+              </h1>
+              {eventInfo && (
+                <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                  {eventInfo.eventDescription}
+                </p>
+              )}
               <div className="flex items-center gap-4 text-sm">
                 <span className="text-muted-foreground">
                   Category: <span className="text-primary">{market.category}</span>
                 </span>
                 <span className="text-muted-foreground">
-                  Volume: <span className="text-green-500">${(market.volume / 1000000).toFixed(2)}M</span>
+                  Volume: <span className="text-green-500">
+                    ${((eventInfo?.totalVolume || market.volume) / 1000000).toFixed(2)}M
+                  </span>
                 </span>
+                {eventInfo && (
+                  <span className="text-muted-foreground">
+                    Outcomes: <span className="text-white">{eventInfo.topOutcomes.length} shown</span>
+                  </span>
+                )}
                 {market.endDate && (
                   <span className="text-muted-foreground">
                     Ends: <span className="text-white">{new Date(market.endDate).toLocaleDateString()}</span>
@@ -394,6 +436,80 @@ export default function SmartMarketDetailPage() {
           </a>
         </div>
       </div>
+
+      {/* Top Outcomes for Multi-Outcome Events */}
+      {eventInfo && eventInfo.topOutcomes.length > 0 ? (
+        <div className="bg-card pixel-border border-primary/40 p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Activity className="h-6 w-6 text-primary alien-glow" />
+            <h2 className="text-2xl font-bold text-primary">TOP_OUTCOMES</h2>
+            <span className="text-xs text-muted-foreground">
+              (sorted by probability)
+            </span>
+            <span className="flex items-center gap-1 text-xs text-primary/70 font-mono">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+              LIVE
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {eventInfo.topOutcomes.map((outcome, idx) => {
+              const percentage = (outcome.price * 100).toFixed(1)
+              const isTop3 = idx < 3
+              
+              return (
+                <div
+                  key={outcome.id}
+                  className={`bg-black/40 pixel-border p-4 transition-all ${
+                    isTop3 ? 'border-primary/50 shadow-lg shadow-primary/10' : 'border-white/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2 flex-1">
+                      <span className={`px-2 py-1 text-xs font-bold pixel-border ${
+                        idx === 0 ? 'bg-[#FFD700] text-black' :
+                        idx === 1 ? 'bg-white text-black' :
+                        idx === 2 ? 'bg-primary text-black' :
+                        'bg-gray-600 text-white'
+                      }`}>
+                        #{idx + 1}
+                      </span>
+                      <h3 className={`text-sm font-bold flex-1 line-clamp-2 ${
+                        isTop3 ? 'text-primary' : 'text-white'
+                      }`}>
+                        {outcome.question.replace(/^Will\s+/i, '').replace(/\s+(win|make|reach|qualify).*/i, '')}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <div className={`text-3xl font-bold mb-1 ${
+                        isTop3 ? 'text-primary' : 'text-white'
+                      }`}>
+                        {percentage}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ${(outcome.volume / 1000000).toFixed(2)}M volume
+                      </div>
+                    </div>
+                    
+                    {/* Progress bar */}
+                    <div className="w-32">
+                      <div className="w-full bg-black/60 h-2 pixel-border border-white/10 overflow-hidden">
+                        <div 
+                          className={`h-full ${isTop3 ? 'bg-primary' : 'bg-white/50'}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {/* Smart Money Outcomes - Multi-Outcome Markets */}
       {multiOutcomePositions.length > 0 ? (
