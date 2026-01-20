@@ -426,7 +426,10 @@ export default function SmartMarketDetailPage() {
           
           {/* Polymarket Link */}
           <a
-            href={`/api/redirect-market/${marketId}`}
+            href={eventInfo 
+              ? `https://polymarket.com/event/${eventInfo.eventSlug}` 
+              : `/api/redirect-market/${marketId}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 hover:text-purple-300 px-4 py-2 pixel-border border-purple-500/50 transition-all font-bold text-sm whitespace-nowrap"
@@ -533,8 +536,10 @@ export default function SmartMarketDetailPage() {
               const shortName = extractOutcomeShortName(outcome.outcomeTitle, multiOutcomePositions)
               const isTopPick = idx === 0 // First one has most S-tier traders
 
-              // Use redirect endpoint to always get correct URL
-              const polymarketUrl = `/api/redirect-market/${marketId}`
+              // For multi-outcome events, link to event page on Polymarket
+              const polymarketUrl = eventInfo 
+                ? `https://polymarket.com/event/${eventInfo.eventSlug}`
+                : `/api/redirect-market/${marketId}`
 
               return (
                 <a
