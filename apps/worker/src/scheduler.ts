@@ -14,12 +14,7 @@ export async function scheduleJobs() {
 
   // Clean up old repeatable jobs that are now disabled
   await removeRepeatables(queues.ingestion, ['sync-markets']);
-  await removeRepeatables(queues.smartMarkets, [
-    'update-pinned-markets',
-    'discover-new-markets',
-    'refresh-pinned-selection',
-    'analyze-multi-outcome',
-  ]);
+  // Smart markets jobs are now ENABLED - don't remove them!
 
   // Sync leaderboard every 5 minutes
   await queues.ingestion.add(
