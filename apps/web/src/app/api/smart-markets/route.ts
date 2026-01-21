@@ -14,17 +14,33 @@ try {
 // Cache for event lookups (in-memory, resets on redeploy)
 const eventCache = new Map<string, { title: string; outcomeCount: number }>()
 
-async function findEventForMarket(marketId: string): Promise<{eventSlug: string; eventTitle: string; outcomeCount: number} | null> {
+async function findEventForMarket(marketId: string, existingEventSlug?: string | null): Promise<{eventSlug: string; eventTitle: string; outcomeCount: number} | null> {
   try {
-    // 1. Fetch market details to get negRiskMarketID
+    // If we already have eventSlug, fetch event directly
+    if (existingEventSlug) {
+      const eventsRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${existingEventSlug}`)
+      if (eventsRes.ok) {
+        const events = await eventsRes.json()
+        if (events && events[0]) {
+          const event = events[0]
+          return {
+            eventSlug: event.slug,
+            eventTitle: event.title,
+            outcomeCount: event.markets?.length || 0
+          }
+        }
+      }
+    }
+    
+    // Otherwise, search by negRiskMarketID
     const marketRes = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`)
     if (!marketRes.ok) return null
     
     const marketData = await marketRes.json()
     if (!marketData.negRiskMarketID) return null
     
-    // 2. Search for parent event
-    const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=2000')
+    // Search for parent event in top 500 (API max)
+    const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=500')
     if (!eventsRes.ok) return null
     
     const events = await eventsRes.json()
@@ -37,16 +53,11 @@ async function findEventForMarket(marketId: string): Promise<{eventSlug: string;
         )
         
         if (hasMatch) {
-          const result = {
+          return {
             eventSlug: event.slug,
             eventTitle: event.title,
             outcomeCount: event.markets.length
           }
-          
-          // Cache it
-          eventCache.set(String(marketId), { title: result.eventTitle, outcomeCount: result.outcomeCount })
-          
-          return result
         }
       }
     }
@@ -107,8 +118,8 @@ export async function GET(request: Request) {
           marketId: m.marketId,
           question: m.question,
           eventSlug: m.eventSlug,
-          eventTitle: null, // Will be enriched below
-          outcomeCount: null,
+          eventTitle: m.eventTitle || null,
+          outcomeCount: m.outcomeCount || null,
           currentOdds: m.currentOdds || 0,
           volume: m.volume || 0,
           liquidity: m.liquidity || 0,
@@ -135,8 +146,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No markets data available' }, { status: 503 })
     }
     
-    // 3. Enrich markets without eventSlug
-    const marketsToEnrich = markets.filter((m: any) => !m.eventSlug && m.marketId)
+    // 3. Enrich markets without eventTitle (fetch from Polymarket using eventSlug or negRiskMarketID)
+    const marketsToEnrich = markets.filter((m: any) => !m.eventTitle && m.marketId)
     
     if (marketsToEnrich.length > 0) {
       console.log(`🔍 Enriching ${marketsToEnrich.length} markets...`)
@@ -144,7 +155,7 @@ export async function GET(request: Request) {
       // Process in parallel for speed
       await Promise.all(
         marketsToEnrich.map(async (market) => {
-          const eventInfo = await findEventForMarket(market.marketId)
+          const eventInfo = await findEventForMarket(market.marketId, market.eventSlug)
           if (eventInfo) {
             market.eventSlug = eventInfo.eventSlug
             market.eventTitle = eventInfo.eventTitle
