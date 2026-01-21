@@ -36,6 +36,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@polymarket/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@polymarket/shared':
         specifier: workspace:*
         version: link:../../packages/shared

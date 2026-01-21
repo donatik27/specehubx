@@ -9,6 +9,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@polymarket/database": "workspace:*",
     "@polymarket/shared": "workspace:*",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-select": "^2.0.0",

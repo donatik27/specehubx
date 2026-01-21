@@ -257,7 +257,7 @@ export default function SmartMarketDetailPage() {
         // Fallback: fetch from markets API
         const marketsRes = await fetch('/api/markets')
         const allMarkets = await marketsRes.json()
-        foundMarket = allMarkets.find((m: any) => m.id === marketId)
+        foundMarket = allMarkets.find((m: any) => String(m.id) === String(marketId))
       }
 
       if (!foundMarket) {
@@ -295,7 +295,8 @@ export default function SmartMarketDetailPage() {
               for (const event of events) {
                 if (event.markets && Array.isArray(event.markets)) {
                   const hasMatch = event.markets.some((m: any) => 
-                    m.id === marketId || m.negRiskMarketID === polyMarket.negRiskMarketID
+                    String(m.id) === String(marketId) || 
+                    m.negRiskMarketID === polyMarket.negRiskMarketID
                   )
                   if (hasMatch) {
                     finalEventSlug = event.slug
