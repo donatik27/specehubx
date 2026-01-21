@@ -282,9 +282,23 @@ async function addGeolocation() {
         continue;
       }
       
-      // Add SMALL random offset to avoid exact overlap (±0.3 degrees ≈ 33km)
-      const latOffset = (Math.random() - 0.5) * 0.6; // ±0.3 degree
-      const lonOffset = (Math.random() - 0.5) * 0.6;
+      // Add TINY random offset to avoid exact overlap (±0.05 degrees ≈ 5.5km)
+      // Keep traders INLAND, not in ocean!
+      let latOffset = (Math.random() - 0.5) * 0.1; // ±0.05 degree
+      let lonOffset = (Math.random() - 0.5) * 0.1;
+      
+      // Special handling for coastal cities to avoid ocean
+      const cityName = selectedCity.toUpperCase();
+      if (cityName.includes('LA') || cityName.includes('SF') || cityName.includes('SEATTLE') || cityName.includes('MIAMI') || cityName.includes('SANDIEGO')) {
+        // West coast cities - nudge EAST (inland)
+        if (cityName.includes('LA') || cityName.includes('SF') || cityName.includes('SEATTLE') || cityName.includes('SANDIEGO')) {
+          lonOffset = Math.abs(lonOffset); // Always positive = EAST
+        }
+        // East coast / Miami - nudge WEST (inland)
+        if (cityName.includes('MIAMI') || cityName.includes('NYC') || cityName.includes('BOSTON')) {
+          lonOffset = -Math.abs(lonOffset); // Always negative = WEST
+        }
+      }
       
       await prisma.trader.update({
         where: { address: trader.address },
