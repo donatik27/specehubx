@@ -116,13 +116,13 @@ export default function HealthPage() {
           
           <div className="space-y-4">
             {/* Markets */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between group hover:bg-primary/5 p-2 rounded transition-all">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
+                <TrendingUp className="h-4 w-4 text-primary group-hover:animate-pulse" />
                 <span className="text-sm text-primary/70">MARKETS</span>
               </div>
               <div className="text-right">
-                <div className="text-primary text-xl font-bold tabular-nums">
+                <div className="text-primary text-xl font-bold tabular-nums group-hover:text-green-400 transition-colors">
                   {vitals?.vitals.markets.active || 0}
                 </div>
                 <div className="text-primary/50 text-[10px]">ACTIVE</div>
@@ -130,27 +130,29 @@ export default function HealthPage() {
             </div>
 
             {/* Traders */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between group hover:bg-primary/5 p-2 rounded transition-all">
               <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-primary" />
+                <Users className="h-4 w-4 text-primary group-hover:animate-pulse" />
                 <span className="text-sm text-primary/70">TRADERS</span>
               </div>
               <div className="text-right">
-                <div className="text-primary text-xl font-bold tabular-nums">
+                <div className="text-primary text-xl font-bold tabular-nums group-hover:text-green-400 transition-colors">
                   {vitals?.vitals.traders.total || 0}
                 </div>
-                <div className="text-primary/50 text-[10px]">S/A/B_TIER</div>
+                <div className="text-primary/50 text-[10px]">
+                  S:{vitals?.vitals.traders.sTier || 0} A:{vitals?.vitals.traders.aTier || 0} B:{vitals?.vitals.traders.bTier || 0}
+                </div>
               </div>
             </div>
 
             {/* Liquidity */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between group hover:bg-primary/5 p-2 rounded transition-all">
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary" />
+                <Zap className="h-4 w-4 text-primary group-hover:animate-pulse" />
                 <span className="text-sm text-primary/70">LIQUIDITY</span>
               </div>
               <div className="text-right">
-                <div className="text-primary text-xl font-bold tabular-nums">
+                <div className="text-primary text-xl font-bold tabular-nums group-hover:text-green-400 transition-colors">
                   ${((vitals?.vitals.markets.liquidity || 0) / 1_000_000).toFixed(1)}M
                 </div>
                 <div className="text-primary/50 text-[10px]">TOTAL</div>
@@ -159,11 +161,16 @@ export default function HealthPage() {
 
             {/* Status */}
             <div className="mt-4 pt-4 border-t border-primary/30">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-green-400 text-sm font-bold">
-                  {vitals?.vitals.performance.status || 'HEALTHY'}
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
+                  <span className="text-green-400 text-sm font-bold">
+                    {vitals?.vitals.performance.status || 'HEALTHY'}
+                  </span>
+                </div>
+                <div className="text-primary/50 text-[10px]">
+                  SYSTEM_OK
+                </div>
               </div>
             </div>
           </div>
@@ -173,47 +180,51 @@ export default function HealthPage() {
       {/* Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* API Response */}
-        <div className="bg-black border-2 border-primary/30 rounded-sm p-4">
+        <div className="bg-black border-2 border-primary/30 rounded-sm p-4 hover:border-primary/60 transition-all group">
           <div className="flex items-center gap-2 mb-3">
-            <Clock className="h-4 w-4 text-primary" />
+            <Clock className="h-4 w-4 text-primary group-hover:animate-spin" />
             <span className="text-primary text-sm">API_RESPONSE</span>
           </div>
-          <div className="text-primary text-3xl font-bold tabular-nums">
+          <div className="text-primary text-3xl font-bold tabular-nums group-hover:text-green-400 transition-all">
             {vitals?.vitals.performance.apiResponseTime || 0}
             <span className="text-lg text-primary/50 ml-1">ms</span>
           </div>
-          <div className={`text-xs mt-2 ${
+          <div className={`text-xs mt-2 flex items-center gap-2 ${
             (vitals?.vitals.performance.apiResponseTime || 0) < 100 
               ? 'text-green-400' 
               : 'text-yellow-400'
           }`}>
+            <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
             {(vitals?.vitals.performance.apiResponseTime || 0) < 100 ? '✓ FAST' : '⚠ MODERATE'}
           </div>
         </div>
 
         {/* Database */}
-        <div className="bg-black border-2 border-primary/30 rounded-sm p-4">
+        <div className="bg-black border-2 border-primary/30 rounded-sm p-4 hover:border-primary/60 transition-all group">
           <div className="flex items-center gap-2 mb-3">
-            <Database className="h-4 w-4 text-primary" />
+            <Database className="h-4 w-4 text-primary group-hover:animate-pulse" />
             <span className="text-primary text-sm">DATABASE_PING</span>
           </div>
-          <div className="text-primary text-3xl font-bold tabular-nums">
+          <div className="text-primary text-3xl font-bold tabular-nums group-hover:text-green-400 transition-all">
             {vitals?.vitals.performance.dbPingTime || 0}
             <span className="text-lg text-primary/50 ml-1">ms</span>
           </div>
-          <div className="text-green-400 text-xs mt-2">✓ CONNECTED</div>
+          <div className="text-green-400 text-xs mt-2 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse shadow-lg shadow-green-400/50" />
+            ✓ CONNECTED
+          </div>
         </div>
 
         {/* System Status */}
-        <div className="bg-black border-2 border-primary/30 rounded-sm p-4">
+        <div className="bg-black border-2 border-primary/30 rounded-sm p-4 hover:border-green-400/60 transition-all group">
           <div className="flex items-center gap-2 mb-3">
-            <Activity className="h-4 w-4 text-primary" />
-            <span className="text-primary text-sm">OVERALL_STATUS</span>
+            <Activity className="h-4 w-4 text-primary group-hover:text-green-400 group-hover:animate-pulse" />
+            <span className="text-primary text-sm group-hover:text-green-400 transition-colors">OVERALL_STATUS</span>
           </div>
-          <div className="text-green-400 text-3xl font-bold">
+          <div className="text-green-400 text-3xl font-bold group-hover:animate-pulse">
             {vitals?.status.toUpperCase() || 'HEALTHY'}
           </div>
-          <div className="text-primary/50 text-xs mt-2">
+          <div className="text-primary/50 text-xs mt-2 group-hover:text-green-400/70 transition-colors">
             All systems operational
           </div>
         </div>
