@@ -228,8 +228,21 @@ async function addGeolocation() {
     let updated = 0;
     let skipped = 0;
     
-    // Track how many traders assigned per region (for sequential distribution)
-    const regionCounters: Record<string, number> = {};
+    // CUSTOM USA DISTRIBUTION (user requested):
+    // - 4-6 in LA
+    // - 3-4 in Miami
+    // - 2 in NYC
+    // - Rest random
+    const usaCityDistribution = [
+      'US_LA', 'US_LA', 'US_LA', 'US_LA', 'US_LA', 'US_LA', // 6 in LA
+      'US_MIAMI', 'US_MIAMI', 'US_MIAMI', 'US_MIAMI', // 4 in Miami
+      'US_NYC', 'US_NYC', // 2 in NYC
+      // Rest random
+      'US_SF', 'US_SEATTLE', 'US_CHICAGO', 'US_DENVER', 'US_AUSTIN', 
+      'US_HOUSTON', 'US_ATLANTA', 'US_PHOENIX', 'US_VEGAS', 'US_PORTLAND',
+    ];
+    
+    let usaTraderIndex = 0;
     
     for (const trader of traders) {
       if (!trader.twitterUsername) continue;
@@ -244,21 +257,23 @@ async function addGeolocation() {
         continue;
       }
       
-      // Get city pool for this region
-      const cityPool = REGION_CITY_POOLS[region];
+      let selectedCity: string;
       
-      if (!cityPool || cityPool.length === 0) {
-        logger.warn({ username: trader.twitterUsername, region }, 'No cities for region');
-        continue;
+      if (region === 'United States') {
+        // Use custom distribution for USA
+        selectedCity = usaCityDistribution[usaTraderIndex % usaCityDistribution.length];
+        usaTraderIndex++;
+      } else {
+        // For other regions, use random from pool
+        const cityPool = REGION_CITY_POOLS[region];
+        
+        if (!cityPool || cityPool.length === 0) {
+          logger.warn({ username: trader.twitterUsername, region }, 'No cities for region');
+          continue;
+        }
+        
+        selectedCity = cityPool[Math.floor(Math.random() * cityPool.length)];
       }
-      
-      // SEQUENTIAL distribution: pick next city in rotation (not random!)
-      if (!regionCounters[region]) {
-        regionCounters[region] = 0;
-      }
-      const cityIndex = regionCounters[region] % cityPool.length;
-      const selectedCity = cityPool[cityIndex];
-      regionCounters[region]++;
       
       const cityCoords = CITY_COORDS[selectedCity];
       
