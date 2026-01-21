@@ -132,7 +132,33 @@ async function updatePinnedMarkets(payload: any) {
       try {
         const analysis = await analyzeMarket(client, market, smartTraders);
         
-        // Update in database
+        // Find parent event slug (for multi-outcome markets)
+        const eventSlug = await findEventSlug(market);
+        
+        // Update Market record with latest data + eventSlug
+        await prisma.market.upsert({
+          where: { id: market.id },
+          create: {
+            id: market.id,
+            question: market.question,
+            category: market.category,
+            slug: market.slug || null,
+            eventSlug: eventSlug,
+            endDate: market.endDate ? new Date(market.endDate) : null,
+            liquidity: market.liquidity || null,
+            volume: market.volume || null,
+            status: market.closed ? 'CLOSED' : 'OPEN'
+          },
+          update: {
+            question: market.question,
+            slug: market.slug || null,
+            eventSlug: eventSlug, // ✅ Update eventSlug for existing markets!
+            volume: market.volume || null,
+            liquidity: market.liquidity || null
+          }
+        });
+        
+        // Update smart stats in database
         await prisma.marketSmartStats.update({
           where: { id: pinnedStat.id },
           data: {
@@ -145,7 +171,7 @@ async function updatePinnedMarkets(payload: any) {
           }
         });
         
-        logger.info(`✅ Updated pinned #${pinnedStat.priority}: ${market.question.slice(0, 40)}... (${analysis.smartCount} traders)`);
+        logger.info(`✅ Updated pinned #${pinnedStat.priority}: ${market.question.slice(0, 40)}... (${analysis.smartCount} traders)${eventSlug ? ` [event: ${eventSlug}]` : ''}`);
       } catch (error) {
         logger.error({ error, marketId: market.id }, 'Failed to update pinned market');
       }
