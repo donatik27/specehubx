@@ -984,8 +984,22 @@ export default function SmartMarketDetailPage() {
                           <div className="text-sm font-bold text-white">
                             {(pos.shares / 1000).toFixed(1)}K shares
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            Entry: {(pos.entryPrice * 100).toFixed(1)}%
+                          <div className="text-xs space-y-0.5">
+                            <div className="text-muted-foreground">
+                              Entry: {(pos.entryPrice * 100).toFixed(1)}%
+                            </div>
+                            <div className="text-primary">
+                              Now: {(outcome.currentPrice * 100).toFixed(1)}%
+                            </div>
+                            {(() => {
+                              const pnlPercent = ((outcome.currentPrice - pos.entryPrice) / pos.entryPrice * 100)
+                              const pnlPositive = pnlPercent > 0
+                              return (
+                                <div className={pnlPositive ? 'text-green-400' : 'text-red-400'}>
+                                  {pnlPositive ? '+' : ''}{pnlPercent.toFixed(1)}%
+                                </div>
+                              )
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -1050,8 +1064,29 @@ export default function SmartMarketDetailPage() {
                           {trader.outcome}
                         </span>
                       </div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Entry: {(trader.price * 100).toFixed(1)}%
+                      <div className="text-xs space-y-0.5 mb-1">
+                        <div className="text-muted-foreground">
+                          Entry: {(trader.price * 100).toFixed(1)}%
+                        </div>
+                        {market.currentOdds && (
+                          <>
+                            <div className="text-primary">
+                              Now: {(market.currentOdds * 100).toFixed(1)}%
+                            </div>
+                            {(() => {
+                              const currentPrice = trader.outcome.toLowerCase() === 'yes' 
+                                ? market.currentOdds 
+                                : (1 - market.currentOdds)
+                              const pnlPercent = ((currentPrice - trader.price) / trader.price * 100)
+                              const pnlPositive = pnlPercent > 0
+                              return (
+                                <div className={pnlPositive ? 'text-green-400' : 'text-red-400'}>
+                                  {pnlPositive ? '+' : ''}{pnlPercent.toFixed(1)}%
+                                </div>
+                              )
+                            })()}
+                          </>
+                        )}
                       </div>
                       <div className="text-lg font-bold text-white">
                         ${(trader.amount / 1000).toFixed(1)}K
