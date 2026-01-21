@@ -16,6 +16,8 @@ interface Market {
   outcomePrices: string
   slug?: string
   eventSlug?: string
+  eventTitle?: string // Event title for multi-outcome markets
+  marketCount?: number // Number of markets in this event
 }
 
 export default function MarketsPage() {
@@ -41,10 +43,30 @@ export default function MarketsPage() {
 
       const data = await response.json()
 
-      setMarkets(data)
+      // Group by eventSlug to avoid duplicates
+      // For multi-outcome events, show event title once with combined volume
+      const eventMap = new Map<string, any>()
+      
+      for (const market of data) {
+        const key = market.eventSlug || market.id // Use eventSlug as key, fallback to marketId
+        
+        if (eventMap.has(key)) {
+          // Aggregate volume for same event
+          const existing = eventMap.get(key)
+          existing.volume += market.volume
+          existing.marketCount = (existing.marketCount || 1) + 1
+        } else {
+          eventMap.set(key, { ...market, marketCount: 1 })
+        }
+      }
+      
+      // Convert back to array and sort by volume
+      const deduplicated = Array.from(eventMap.values()).sort((a, b) => b.volume - a.volume)
+
+      setMarkets(deduplicated)
       setLastUpdate(new Date().toISOString())
       
-      console.log(`✅ Loaded ${data.length} markets`)
+      console.log(`✅ Loaded ${data.length} markets → ${deduplicated.length} unique events`)
       
     } catch (error) {
       console.error('Failed to fetch markets:', error)
@@ -177,13 +199,17 @@ export default function MarketsPage() {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl flex-shrink-0">🎯</span>
+                      <span className="text-2xl flex-shrink-0">{market.eventSlug && market.marketCount && market.marketCount > 1 ? '🏆' : '🎯'}</span>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm text-white group-hover:text-primary transition-colors truncate">
-                          {market.question}
+                          {market.eventTitle || market.question}
                         </p>
                         <p className="text-xs text-muted-foreground font-mono">
-                          ID: {market.id}
+                          {market.eventSlug && market.marketCount && market.marketCount > 1 ? (
+                            `Multi-outcome event • ${market.marketCount} outcomes`
+                          ) : (
+                            `ID: ${market.id}`
+                          )}
                         </p>
                       </div>
                     </div>

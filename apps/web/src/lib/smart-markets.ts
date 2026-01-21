@@ -15,6 +15,9 @@ export interface SmartMarketData {
     tier: string
     rarityScore: number
   }>
+  eventTitle?: string // Event title for multi-outcome markets
+  eventSlug?: string // Event slug
+  outcomeCount?: number // Number of outcomes in event
 }
 
 export interface TraderData {

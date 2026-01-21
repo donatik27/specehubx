@@ -364,6 +364,38 @@ app.get('/api/smart-markets', async (_req, res) => {
       (a, b) => b.smartScore - a.smartScore
     );
 
+    // Fetch event titles for multi-outcome markets
+    const uniqueEventSlugs = Array.from(
+      new Set(deduplicated.map(m => m.eventSlug).filter(Boolean))
+    );
+    const eventTitles = new Map<string, any>();
+    
+    for (const eventSlug of uniqueEventSlugs) {
+      try {
+        const eventRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${eventSlug}`);
+        if (eventRes.ok) {
+          const events = await eventRes.json();
+          if (events && events[0]) {
+            eventTitles.set(eventSlug, {
+              title: events[0].title,
+              marketCount: events[0].markets?.length || 0
+            });
+          }
+        }
+      } catch (e) {
+        // Skip if event fetch fails
+      }
+    }
+    
+    // Add event titles
+    deduplicated.forEach(m => {
+      if (m.eventSlug && eventTitles.has(m.eventSlug)) {
+        const eventInfo = eventTitles.get(m.eventSlug);
+        m.eventTitle = eventInfo.title;
+        m.outcomeCount = eventInfo.marketCount;
+      }
+    });
+
     res.json(deduplicated);
   } catch (error: any) {
     console.error('❌ API error:', error.message);
@@ -434,8 +466,29 @@ app.get('/api/markets', async (_req, res) => {
         select: { id: true, eventSlug: true },
       });
       const marketSlugMap = new Map(dbMarkets.map((m) => [m.id, m.eventSlug]));
+      
+      // Fetch event titles for multi-outcome markets
+      const uniqueEventSlugs = Array.from(new Set(dbMarkets.map(m => m.eventSlug).filter(Boolean)));
+      const eventTitles = new Map<string, string>();
+      
+      for (const eventSlug of uniqueEventSlugs) {
+        try {
+          const eventRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${eventSlug}`);
+          if (eventRes.ok) {
+            const events = await eventRes.json();
+            if (events && events[0]) {
+              eventTitles.set(eventSlug, events[0].title);
+            }
+          }
+        } catch (e) {
+          // Skip if event fetch fails
+        }
+      }
+      
       sorted.forEach((m: any) => {
-        m.eventSlug = marketSlugMap.get(m.id) || null;
+        const eventSlug = marketSlugMap.get(m.id);
+        m.eventSlug = eventSlug || null;
+        m.eventTitle = eventSlug ? eventTitles.get(eventSlug) : null;
       });
     } catch (e) {
       console.warn('⚠️  Could not enrich with eventSlug', e);

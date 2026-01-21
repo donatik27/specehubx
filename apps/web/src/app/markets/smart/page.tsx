@@ -224,10 +224,17 @@ export default function SmartMarketsPage() {
             <div className="mt-8">
               {/* Question */}
               <div className="flex items-start gap-3 mb-4">
-                <span className="text-3xl flex-shrink-0">🎯</span>
-                <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">
-                  {market.question}
-                </h3>
+                <span className="text-3xl flex-shrink-0">{market.eventTitle && market.outcomeCount && market.outcomeCount > 2 ? '🏆' : '🎯'}</span>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">
+                    {market.eventTitle || market.question}
+                  </h3>
+                  {market.eventTitle && market.outcomeCount && market.outcomeCount > 2 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Multi-outcome • {market.outcomeCount} outcomes
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Stats */}
@@ -363,10 +370,17 @@ export default function SmartMarketsPage() {
             <div className="mt-8">
               {/* Question */}
               <div className="flex items-start gap-3 mb-4">
-                <span className="text-3xl flex-shrink-0">🎯</span>
-                <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">
-                  {market.question}
-                </h3>
+                <span className="text-3xl flex-shrink-0">{market.eventTitle && market.outcomeCount && market.outcomeCount > 2 ? '🏆' : '🎯'}</span>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-white group-hover:text-primary transition-colors">
+                    {market.eventTitle || market.question}
+                  </h3>
+                  {market.eventTitle && market.outcomeCount && market.outcomeCount > 2 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Multi-outcome • {market.outcomeCount} outcomes
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Stats */}
