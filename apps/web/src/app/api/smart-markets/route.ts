@@ -4,13 +4,20 @@ import { proxyGet } from '../_lib/proxy'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
-  const proxied = await proxyGet(request, '/api/smart-markets')
-  if (!proxied) {
+  // Fetch directly from Railway API (не через proxy)
+  const base = process.env.API_BASE_URL
+  if (!base) {
     return NextResponse.json({ error: 'API service not configured' }, { status: 503 })
   }
   
-  // Parse response from Railway API
-  const markets = await proxied.json()
+  try {
+    // Fetch from Railway API
+    const response = await fetch(`${base}/api/smart-markets`)
+    if (!response.ok) {
+      return NextResponse.json({ error: 'Railway API error' }, { status: 500 })
+    }
+    
+    const markets = await response.json()
   
   // Enrich markets without eventSlug by fetching from Polymarket
   const marketsToEnrich = markets.filter((m: any) => !m.eventSlug && m.marketId)
@@ -56,4 +63,9 @@ export async function GET(request: Request) {
   }
   
   return NextResponse.json(markets)
+  
+  } catch (error: any) {
+    console.error('API enrichment error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }
