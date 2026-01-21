@@ -54,13 +54,21 @@ async function main() {
   );
   logger.info('✅ [2/4] Alpha Markets discovery queued (starts in 5 minutes)');
   
+  // 🔄 Update existing pinned markets (eventSlug + latest data)
+  await queues.smartMarkets.add(
+    'update-pinned-markets-immediate',
+    { type: 'update-pinned-markets' },
+    { delay: 120000, priority: 2 } // Start in 2 minutes (high priority!)
+  );
+  logger.info('✅ [3/6] Update pinned markets queued (starts in 2 minutes)');
+  
   // 📌 Refresh pinned markets selection
   await queues.smartMarkets.add(
     'refresh-pinned-selection-immediate',
     { type: 'refresh-pinned-selection' },
     { delay: 600000, priority: 1 } // Start in 10 minutes (after discovery)
   );
-  logger.info('✅ [3/4] Pinned markets refresh queued (starts in 10 minutes)');
+  logger.info('✅ [4/6] Pinned markets refresh queued (starts in 10 minutes)');
   
   // 🎯 Multi-outcome analysis
   await queues.smartMarkets.add(
@@ -68,11 +76,12 @@ async function main() {
     { type: 'analyze-multi-outcome' },
     { delay: 900000, priority: 1 } // Start in 15 minutes
   );
-  logger.info('✅ [4/4] Multi-outcome analysis queued (starts in 15 minutes)');
+  logger.info('✅ [5/6] Multi-outcome analysis queued (starts in 15 minutes)');
   
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('⏰ Timeline:');
   logger.info('   NOW        → Leaderboard TOP-1000 (month only)');
+  logger.info('   +2 min     → Update pinned markets (eventSlug fix)');
   logger.info('   +5 min     → Alpha Markets discovery (50 markets)');
   logger.info('   +10 min    → Pinned markets selection');
   logger.info('   +15 min    → Multi-outcome analysis');
