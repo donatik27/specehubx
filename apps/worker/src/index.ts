@@ -4,7 +4,7 @@ import { startWorkers } from './workers';
 import { scheduleJobs } from './scheduler';
 import { queues } from './lib/queue';
 
-// Trigger Railway rebuild v4 - FORCE DEPLOY NOW
+// Trigger Railway rebuild v5 - NORMALIZED SCORING 0-1000!
 async function main() {
   logger.info('🚀 Starting Polymarket Worker...');
 
