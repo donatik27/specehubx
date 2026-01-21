@@ -286,8 +286,8 @@ export default function SmartMarketDetailPage() {
           if (polyMarket.negRiskMarketID) {
             console.log(`🔍 This is a neg-risk market! Searching for parent event...`)
             
-            // Search through events to find matching one
-            const eventsRes = await fetch('/api/polymarket/events?limit=500')
+            // Search through events to find matching one (increased limit for older events)
+            const eventsRes = await fetch('/api/polymarket/events?limit=2000')
             if (eventsRes.ok) {
               const events = await eventsRes.json()
               console.log(`📊 Loaded ${events.length} events from Polymarket`)

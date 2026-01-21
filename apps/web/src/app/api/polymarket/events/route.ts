@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get('slug')
-    const limit = searchParams.get('limit') || '500'
+    const limit = searchParams.get('limit') || '2000' // Increased default for older events
     
     let url = `https://gamma-api.polymarket.com/events?limit=${limit}`
     if (slug) {
