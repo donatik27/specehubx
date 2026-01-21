@@ -1010,17 +1010,119 @@ export default function SmartMarketDetailPage() {
             )})}
           </div>
         ) : smartTraders.length > 0 ? (
-          <div className="space-y-4">
-            {smartTraders.map((trader, idx) => {
-              const tierColor = trader.tier === 'S' ? '#FFD700' : '#00ff00'
-              const isProfit = trader.outcome === (Array.isArray(market.outcomes) ? market.outcomes[0] : 'YES') // Simplified
+          (() => {
+            // Group traders by outcome/team
+            const groupedByOutcome = smartTraders.reduce((acc, trader) => {
+              const outcome = trader.outcome || 'Unknown'
+              if (!acc[outcome]) {
+                acc[outcome] = []
+              }
+              acc[outcome].push(trader)
+              return acc
+            }, {} as Record<string, typeof smartTraders>)
 
+            // If multiple outcomes, show grouped view
+            if (Object.keys(groupedByOutcome).length > 1 || eventInfo) {
               return (
-                <Link
-                  key={idx}
-                  href={`/traders/${trader.address}`}
-                  className="block bg-black/40 pixel-border border-white/20 p-4 hover:border-[#FFD700] transition-all group"
-                >
+                <div className="space-y-6">
+                  {Object.entries(groupedByOutcome).map(([outcome, traders]) => {
+                    const teamName = outcome.toLowerCase() === 'yes' 
+                      ? extractOutcomeShortName(market.question, [])
+                      : outcome
+                    
+                    return (
+                      <div key={outcome} className="bg-black/20 pixel-border border-[#FFD700]/20 p-4">
+                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                          <h3 className="text-lg font-bold text-[#FFD700]">
+                            {teamName || outcome}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-primary">
+                              {traders.length} {traders.length === 1 ? 'trader' : 'traders'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {traders.map((trader, idx) => (
+                            <Link
+                              key={idx}
+                              href={`/traders/${trader.address}`}
+                              className="block bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
+                            >
+                              <div className="flex items-center gap-3">
+                                {/* Tier Badge */}
+                                <div 
+                                  className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold flex-shrink-0"
+                                  style={{ backgroundColor: trader.tier === 'S' ? '#FFD700' : '#00ff00' }}
+                                >
+                                  {trader.tier}
+                                </div>
+
+                                {/* Trader Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-bold text-white group-hover:text-[#FFD700] transition-colors truncate">
+                                    {trader.displayName}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {trader.address.slice(0, 10)}...{trader.address.slice(-8)}
+                                  </p>
+                                </div>
+
+                                {/* Position */}
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-xs space-y-0.5 mb-1">
+                                    <div className="text-muted-foreground">
+                                      Entry: {(trader.price * 100).toFixed(1)}%
+                                    </div>
+                                    {(market as any).currentOdds && (
+                                      <>
+                                        <div className="text-primary">
+                                          Now: {((market as any).currentOdds * 100).toFixed(1)}%
+                                        </div>
+                                        {(() => {
+                                          const currentPrice = trader.outcome.toLowerCase() === 'yes' 
+                                            ? (market as any).currentOdds 
+                                            : (1 - (market as any).currentOdds)
+                                          const pnlPercent = ((currentPrice - trader.price) / trader.price * 100)
+                                          const pnlPositive = pnlPercent > 0
+                                          return (
+                                            <div className={pnlPositive ? 'text-green-400' : 'text-red-400'}>
+                                              {pnlPositive ? '+' : ''}{pnlPercent.toFixed(1)}%
+                                            </div>
+                                          )
+                                        })()}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="text-sm font-bold text-white">
+                                    ${(trader.amount / 1000).toFixed(1)}K
+                                  </div>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            }
+
+            // Fallback: flat list if only one outcome
+            return (
+              <div className="space-y-4">
+                {smartTraders.map((trader, idx) => {
+                  const tierColor = trader.tier === 'S' ? '#FFD700' : '#00ff00'
+                  const isProfit = trader.outcome === (Array.isArray(market.outcomes) ? market.outcomes[0] : 'YES')
+
+                  return (
+                    <Link
+                      key={idx}
+                      href={`/traders/${trader.address}`}
+                      className="block bg-black/40 pixel-border border-white/20 p-4 hover:border-[#FFD700] transition-all group"
+                    >
                   <div className="flex items-center gap-4">
                     {/* Avatar & Tier */}
                     <div className="relative flex-shrink-0">
@@ -1104,6 +1206,8 @@ export default function SmartMarketDetailPage() {
               )
             })}
           </div>
+            )
+          })()
         ) : (
           <div className="flex items-center justify-center h-32 text-muted-foreground">
             <div className="text-center">
