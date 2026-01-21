@@ -270,53 +270,68 @@ export default function SmartMarketDetailPage() {
       // Try to find event slug (from DB or by searching Polymarket directly)
       let finalEventSlug = eventSlug || foundMarket.eventSlug
       
-      // If no eventSlug yet, search Polymarket API directly
-      if (!finalEventSlug) {
-        try {
-          // Fetch market details from Polymarket to get negRiskMarketID
-          const polyMarketRes = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`)
-          if (polyMarketRes.ok) {
-            const polyMarket = await polyMarketRes.json()
+      console.log(`🔍 Market ${marketId}: Looking for event slug...`)
+      console.log(`   - eventSlug state: ${eventSlug}`)
+      console.log(`   - foundMarket.eventSlug: ${foundMarket.eventSlug}`)
+      
+      // ALWAYS search Polymarket API directly (don't rely on DB)
+      try {
+        console.log(`📡 Fetching market ${marketId} from Polymarket API...`)
+        const polyMarketRes = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`)
+        if (polyMarketRes.ok) {
+          const polyMarket = await polyMarketRes.json()
+          console.log(`✅ Got market data. negRiskMarketID: ${polyMarket.negRiskMarketID}`)
+          
+          // If it's a neg-risk market (multi-outcome), find parent event
+          if (polyMarket.negRiskMarketID) {
+            console.log(`🔍 This is a neg-risk market! Searching for parent event...`)
             
-            // If it's a neg-risk market (multi-outcome), find parent event
-            if (polyMarket.negRiskMarketID) {
-              console.log(`🔍 Searching for event with negRiskMarketID: ${polyMarket.negRiskMarketID}`)
+            // Search through events to find matching one
+            const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=500')
+            if (eventsRes.ok) {
+              const events = await eventsRes.json()
+              console.log(`📊 Loaded ${events.length} events from Polymarket`)
               
-              // Search through events to find matching one
-              const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=500')
-              if (eventsRes.ok) {
-                const events = await eventsRes.json()
-                for (const event of events) {
-                  if (event.markets && Array.isArray(event.markets)) {
-                    const hasMatch = event.markets.some((m: any) => 
-                      m.id === marketId || m.negRiskMarketID === polyMarket.negRiskMarketID
-                    )
-                    if (hasMatch) {
-                      finalEventSlug = event.slug
-                      setEventSlug(finalEventSlug)
-                      console.log(`✅ Found event: ${event.title} (${finalEventSlug})`)
-                      break
-                    }
+              for (const event of events) {
+                if (event.markets && Array.isArray(event.markets)) {
+                  const hasMatch = event.markets.some((m: any) => 
+                    m.id === marketId || m.negRiskMarketID === polyMarket.negRiskMarketID
+                  )
+                  if (hasMatch) {
+                    finalEventSlug = event.slug
+                    setEventSlug(finalEventSlug)
+                    console.log(`✅✅✅ FOUND EVENT: "${event.title}" (${finalEventSlug})`)
+                    console.log(`   - Event has ${event.markets.length} markets`)
+                    break
                   }
                 }
               }
+              
+              if (!finalEventSlug) {
+                console.warn(`⚠️  No event found for market ${marketId}`)
+              }
             }
+          } else {
+            console.log(`ℹ️  This is a binary market (no negRiskMarketID)`)
           }
-        } catch (error) {
-          console.error('Failed to search for event:', error)
         }
+      } catch (error) {
+        console.error('❌ Failed to search for event:', error)
       }
 
       // Fetch event info directly from Polymarket if we have event slug
       if (finalEventSlug) {
         try {
-          // Fetch event details directly from Polymarket API
+          console.log(`📡 Fetching event info for: ${finalEventSlug}`)
           const eventRes = await fetch(`https://gamma-api.polymarket.com/events?slug=${finalEventSlug}`)
           if (eventRes.ok) {
             const events = await eventRes.json()
             const event = events && events[0]
+            console.log(`✅ Got event: ${event ? event.title : 'null'}`)
             
             if (event && event.markets && event.markets.length > 0) {
+              console.log(`📊 Event has ${event.markets.length} markets total`)
+              
               // Parse all outcomes and sort by price (descending)
               const outcomes = event.markets
                 .filter((m: any) => !m.closed) // Only active markets
@@ -336,6 +351,8 @@ export default function SmartMarketDetailPage() {
                 .sort((a: any, b: any) => b.price - a.price)
                 .slice(0, 10) // Top 10
               
+              console.log(`✅ Filtered to ${outcomes.length} active outcomes (top 10)`)
+              
               if (outcomes.length > 0) {
                 const eventData = {
                   eventSlug: event.slug,
@@ -347,9 +364,19 @@ export default function SmartMarketDetailPage() {
                 }
                 
                 setEventInfo(eventData)
-                console.log(`✅ Multi-outcome event: ${eventData.eventTitle} (${outcomes.length} top outcomes)`)
+                console.log(`✅✅✅ SET EVENT INFO: "${eventData.eventTitle}" with ${outcomes.length} outcomes`)
+                console.log(`   Top 3 outcomes:`)
+                outcomes.slice(0, 3).forEach((o: any, i: number) => {
+                  console.log(`   ${i+1}. ${o.question} - ${(o.price * 100).toFixed(1)}%`)
+                })
+              } else {
+                console.warn(`⚠️  No active outcomes found`)
               }
+            } else {
+              console.warn(`⚠️  Event has no markets`)
             }
+          } else {
+            console.error(`❌ Failed to fetch event info: ${eventRes.status}`)
           }
           
           // Still try to fetch smart trader positions from our API
