@@ -698,10 +698,23 @@ export default function SmartMarketDetailPage() {
           <div className="flex items-center gap-3 mb-4">
             <Activity className="h-6 w-6 text-primary alien-glow" />
             <h2 className="text-2xl font-bold text-primary">CURRENT_ODDS</h2>
-            <span className="flex items-center gap-1 text-xs text-primary/70 font-mono">
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-              LIVE
-            </span>
+            {(() => {
+              // Check if market is settled (100/0 or 0/100)
+              const firstPrice = market.outcomePrices?.[0] ? parseFloat(market.outcomePrices[0]) : 0.5;
+              const isSettled = firstPrice === 1 || firstPrice === 0;
+              
+              return isSettled ? (
+                <span className="flex items-center gap-1 text-xs text-yellow-500 font-mono">
+                  <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
+                  SETTLED
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-xs text-primary/70 font-mono">
+                  <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+                  LIVE
+                </span>
+              );
+            })()}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

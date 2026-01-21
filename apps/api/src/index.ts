@@ -694,10 +694,37 @@ app.get('/api/market-price', async (req, res) => {
     }
 
     const data = (await response.json()) as any;
+    
+    // Parse outcomes and prices
+    let outcomes = ['Yes', 'No'];
+    let outcomePrices = ['0.5', '0.5'];
+    
+    try {
+      if (data.outcomes) {
+        outcomes = typeof data.outcomes === 'string' ? JSON.parse(data.outcomes) : data.outcomes;
+      }
+    } catch (e) {
+      console.warn(`Failed to parse outcomes for ${marketId}`);
+    }
+    
+    try {
+      if (data.outcomePrices) {
+        outcomePrices = typeof data.outcomePrices === 'string' ? JSON.parse(data.outcomePrices) : data.outcomePrices;
+      }
+    } catch (e) {
+      console.warn(`Failed to parse outcomePrices for ${marketId}`);
+    }
+    
+    // If market is closed or settled, prices might be 1/0 - this is correct!
+    // Log for debugging
+    console.log(`Market ${marketId}: ${outcomes[0]} ${(parseFloat(outcomePrices[0]) * 100).toFixed(1)}% | ${outcomes[1]} ${(parseFloat(outcomePrices[1]) * 100).toFixed(1)}% | Closed: ${data.closed}`);
+    
     const result = {
       marketId,
-      outcomes: data.outcomes ? JSON.parse(data.outcomes) : ['Yes', 'No'],
-      outcomePrices: data.outcomePrices ? JSON.parse(data.outcomePrices) : ['0.5', '0.5'],
+      outcomes,
+      outcomePrices,
+      closed: data.closed || false,
+      active: data.active || false,
     };
 
     res.json(result);
