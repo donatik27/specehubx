@@ -189,26 +189,48 @@ async function updatePinnedMarkets(payload: any) {
 // Helper: Find parent event slug for a market
 async function findEventSlug(market: any): Promise<string | null> {
   try {
-    // Try to find event by searching with market details
-    if (market.negRiskMarketID) {
-      // Search in active events (closed=false) and recent closed events
-      const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=500');
-      if (eventsRes.ok) {
-        const events = await eventsRes.json();
-        for (const event of events) {
-          if (event.markets && Array.isArray(event.markets)) {
-            const hasMatch = event.markets.some((m: any) => 
-              m.id === market.id || m.negRiskMarketID === market.negRiskMarketID
-            );
-            if (hasMatch) {
-              logger.info(`✅ Found event "${event.title}" (${event.slug}) for market ${market.id}`);
-              return event.slug;
+    if (!market.negRiskMarketID) return null;
+    
+    // STRATEGY 1: Direct fetch by condition_id (most reliable!)
+    try {
+      const clobRes = await fetch(`https://clob.polymarket.com/markets/${market.id}`);
+      if (clobRes.ok) {
+        const clobData = await clobRes.json();
+        if (clobData.condition_id) {
+          // Fetch event by condition_id
+          const eventRes = await fetch(`https://gamma-api.polymarket.com/events?id=${clobData.condition_id}`);
+          if (eventRes.ok) {
+            const events = await eventRes.json();
+            if (events && events[0]) {
+              logger.info(`✅ Found event "${events[0].title}" (${events[0].slug}) via CLOB API`);
+              return events[0].slug;
             }
           }
         }
       }
+    } catch (e) {
+      logger.debug('CLOB API method failed, trying fallback...');
     }
-    logger.warn(`⚠️  No event found for market ${market.id} (negRiskMarketID: ${market.negRiskMarketID})`);
+    
+    // STRATEGY 2: Search in top 500 active events
+    const eventsRes = await fetch('https://gamma-api.polymarket.com/events?limit=500');
+    if (eventsRes.ok) {
+      const events = await eventsRes.json();
+      for (const event of events) {
+        if (event.markets && Array.isArray(event.markets)) {
+          const hasMatch = event.markets.some((m: any) => 
+            String(m.id) === String(market.id) || 
+            m.negRiskMarketID === market.negRiskMarketID
+          );
+          if (hasMatch) {
+            logger.info(`✅ Found event "${event.title}" (${event.slug}) for market ${market.id}`);
+            return event.slug;
+          }
+        }
+      }
+    }
+    
+    logger.warn(`⚠️  No event found for market ${market.id}`);
   } catch (error) {
     logger.warn({ error, marketId: market.id }, 'Failed to find event slug');
   }
