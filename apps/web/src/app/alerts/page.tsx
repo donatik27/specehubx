@@ -15,23 +15,26 @@ interface Alert {
   severity: 'high' | 'medium' | 'low'
   icon: string
   marketSlug?: string // For VIEW button link
+  marketId?: string // Market ID for redirect API
 }
 
-// Clean outcome suffix from multi-outcome market slugs
-// Example: "elon-musk-tweets-500-519" → "elon-musk-tweets"
-function cleanEventSlug(slug: string): string {
-  // Remove outcome suffix pattern: -XXX-XXX (e.g., -500-519, -200-219)
-  return slug.replace(/-\d{3}-\d{3}$/, '')
-}
-
-// Build Polymarket link with referral
+// Build Polymarket link with referral (same logic as Alpha Markets!)
 function getPolymarketLink(marketSlug?: string): string {
-  if (!marketSlug) return 'https://polymarket.com'
+  if (!marketSlug) return `https://polymarket.com?via=${REFERRAL_CODE}`
   
-  // Clean slug from outcome suffix (for multi-outcome markets)
-  const cleanSlug = cleanEventSlug(marketSlug)
+  // ALWAYS use /event/ URL (Polymarket standard)
+  // For multi-outcome markets: clean outcome suffix (-500-519, etc.)
+  // For regular markets: use slug as-is
+  const hasOutcomePattern = /-\d{3}-\d{3}$/.test(marketSlug)
   
-  return `https://polymarket.com/event/${cleanSlug}?via=${REFERRAL_CODE}`
+  if (hasOutcomePattern) {
+    // Multi-outcome: elon-tweets-500-519 → elon-tweets
+    const cleanSlug = marketSlug.replace(/-\d{3}-\d{3}$/, '')
+    return `https://polymarket.com/event/${cleanSlug}?via=${REFERRAL_CODE}`
+  } else {
+    // Regular market: use slug as-is
+    return `https://polymarket.com/event/${marketSlug}?via=${REFERRAL_CODE}`
+  }
 }
 
 export default function AlertsPage() {

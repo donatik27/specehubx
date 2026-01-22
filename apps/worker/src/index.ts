@@ -4,7 +4,7 @@ import { startWorkers } from './workers';
 import { scheduleJobs } from './scheduler';
 import { queues } from './lib/queue';
 
-// Trigger Railway rebuild v5 - NORMALIZED SCORING 0-1000!
+// Trigger Railway rebuild v6 - NEW X TRADERS (33 added to map!)
 async function main() {
   logger.info('🚀 Starting Polymarket Worker...');
 
