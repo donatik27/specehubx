@@ -15,6 +15,39 @@ export default function HeartbeatMonitor({
 }: HeartbeatMonitorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [heartbeat, setHeartbeat] = useState(0)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const lastBeepIndexRef = useRef(-1) // Track last beep to avoid duplicates
+
+  // Initialize Audio Context (on user interaction)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
+    }
+  }, [])
+
+  // Play beep sound (realistic ECG monitor beep)
+  const playBeep = () => {
+    if (!audioContextRef.current) return
+
+    const ctx = audioContextRef.current
+    const oscillator = ctx.createOscillator()
+    const gainNode = ctx.createGain()
+
+    // ECG monitor beep: short, high-pitched tone
+    oscillator.type = 'sine'
+    oscillator.frequency.setValueAtTime(800, ctx.currentTime) // 800Hz beep
+    
+    // Quick attack/release for sharp beep
+    gainNode.gain.setValueAtTime(0, ctx.currentTime)
+    gainNode.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.01) // Fast attack
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08) // Quick decay
+
+    oscillator.connect(gainNode)
+    gainNode.connect(ctx.destination)
+
+    oscillator.start(ctx.currentTime)
+    oscillator.stop(ctx.currentTime + 0.08) // 80ms beep
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -122,6 +155,16 @@ export default function HeartbeatMonitor({
           ctx.moveTo(x, y)
         } else {
           ctx.lineTo(x, y)
+        }
+
+        // Play beep when R-spike (QRS peak) is at center of screen
+        // R-wave is at index ~32 in ecgWave array
+        if (x === Math.floor(width / 2) && waveIndex >= 32 && waveIndex <= 35) {
+          const beatCycle = Math.floor(offset / ecgWave.length)
+          if (lastBeepIndexRef.current !== beatCycle) {
+            playBeep()
+            lastBeepIndexRef.current = beatCycle
+          }
         }
       }
 
