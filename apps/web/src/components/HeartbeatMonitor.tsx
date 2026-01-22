@@ -16,7 +16,6 @@ export default function HeartbeatMonitor({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [heartbeat, setHeartbeat] = useState(0)
   const audioContextRef = useRef<AudioContext | null>(null)
-  const lastBeepIndexRef = useRef(-1) // Track last beep to avoid duplicates
 
   // Initialize Audio Context (on user interaction)
   useEffect(() => {
@@ -156,16 +155,6 @@ export default function HeartbeatMonitor({
         } else {
           ctx.lineTo(x, y)
         }
-
-        // Play beep when R-spike (QRS peak) is at center of screen
-        // R-wave is at index ~32 in ecgWave array
-        if (x === Math.floor(width / 2) && waveIndex >= 32 && waveIndex <= 35) {
-          const beatCycle = Math.floor(offset / ecgWave.length)
-          if (lastBeepIndexRef.current !== beatCycle) {
-            playBeep()
-            lastBeepIndexRef.current = beatCycle
-          }
-        }
       }
 
       ctx.stroke()
@@ -192,8 +181,11 @@ export default function HeartbeatMonitor({
     return () => clearInterval(interval)
   }, [bpm, color])
 
-  // Flash effect on heartbeat
+  // Flash effect + beep sound on heartbeat
   useEffect(() => {
+    if (heartbeat > 0) {
+      playBeep() // Play beep on every heartbeat! 🔊
+    }
     const timer = setTimeout(() => setHeartbeat(0), 100)
     return () => clearTimeout(timer)
   }, [heartbeat])
