@@ -69,6 +69,9 @@ export default function TraderProfilePage() {
   const [activity, setActivity] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Railway API base URL
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://adorable-grace-production-e919.up.railway.app'
+
   useEffect(() => {
     fetchTraderData()
   }, [address])
@@ -84,10 +87,10 @@ export default function TraderProfilePage() {
         const foundTrader: Trader = await traderRes.json()
         setTrader(foundTrader)
         
-        // Fetch positions and activity in parallel
+        // Fetch positions and activity in parallel from Railway API
         const [positionsRes, activityRes] = await Promise.all([
-          fetch(`/api/trader/${address}/positions`),
-          fetch(`/api/trader/${address}/activity`)
+          fetch(`${API_BASE_URL}/api/trader/${address}/positions`),
+          fetch(`${API_BASE_URL}/api/trader/${address}/activity`)
         ])
         
         if (positionsRes.ok) {
@@ -116,10 +119,10 @@ export default function TraderProfilePage() {
 
       setTrader(foundTrader)
       
-      // Fetch positions and activity for leaderboard traders too
+      // Fetch positions and activity for leaderboard traders too from Railway API
       const [positionsRes, activityRes] = await Promise.all([
-        fetch(`/api/trader/${address}/positions`),
-        fetch(`/api/trader/${address}/activity`)
+        fetch(`${API_BASE_URL}/api/trader/${address}/positions`),
+        fetch(`${API_BASE_URL}/api/trader/${address}/activity`)
       ])
       
       if (positionsRes.ok) {
