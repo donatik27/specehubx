@@ -558,7 +558,7 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
     args: [calls]
   });
   
-  // Parse results - track YES vs NO positions separately
+  // Parse results
   const tradersWithPositions = [];
   let callIndex = 0;
   
@@ -568,34 +568,51 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
         ? JSON.parse(market.outcomePrices) 
         : market.outcomePrices)
     : ['0.5', '0.5'];
-  const yesPrice = parseFloat(outcomePrices[0] || '0.5');
-  const noPrice = parseFloat(outcomePrices[1] || '0.5');
+  
+  // Check if this is a YES/NO market (2 tokens) or multi-outcome (3+ tokens)
+  const isYesNoMarket = tokenIds.length === 2;
   
   for (const trader of traders) {
-    // Read YES and NO balances separately
-    const yesBalance = results[1][callIndex] 
-      ? Number(formatUnits(BigInt(results[1][callIndex] as string), 6)) 
-      : 0;
-    callIndex++;
+    let hasPosition = false;
+    let totalBalance = 0;
+    const balances: number[] = [];
     
-    const noBalance = results[1][callIndex] 
-      ? Number(formatUnits(BigInt(results[1][callIndex] as string), 6)) 
-      : 0;
-    callIndex++;
+    // Read all token balances for this trader
+    for (let i = 0; i < tokenIds.length; i++) {
+      const returnData = results[1][callIndex];
+      const balance = returnData ? Number(formatUnits(BigInt(returnData as string), 6)) : 0;
+      balances.push(balance);
+      totalBalance += balance;
+      if (balance > 0) hasPosition = true;
+      callIndex++;
+    }
     
-    // Determine position side (dominant balance)
-    if (yesBalance > 0 || noBalance > 0) {
-      const side = yesBalance > noBalance ? 'YES' : 'NO';
-      const shares = Math.max(yesBalance, noBalance);
-      const entryPrice = side === 'YES' ? yesPrice : noPrice;
-      
-      tradersWithPositions.push({
-        ...trader,
-        side,           // ✅ YES or NO
-        shares,         // ✅ Number of shares
-        entryPrice,     // ✅ Current price (approximation)
-        balance: yesBalance + noBalance  // Keep total for backwards compatibility
-      });
+    if (hasPosition) {
+      // For YES/NO markets, track position side
+      if (isYesNoMarket) {
+        const yesBalance = balances[0];
+        const noBalance = balances[1];
+        const yesPrice = parseFloat(outcomePrices[0] || '0.5');
+        const noPrice = parseFloat(outcomePrices[1] || '0.5');
+        
+        const side = yesBalance > noBalance ? 'YES' : 'NO';
+        const shares = Math.max(yesBalance, noBalance);
+        const entryPrice = side === 'YES' ? yesPrice : noPrice;
+        
+        tradersWithPositions.push({
+          ...trader,
+          side,           // ✅ YES or NO
+          shares,         // ✅ Number of shares
+          entryPrice,     // ✅ Current price
+          balance: totalBalance
+        });
+      } else {
+        // Multi-outcome market: just track total balance
+        tradersWithPositions.push({
+          ...trader,
+          balance: totalBalance
+        });
+      }
     }
   }
   
