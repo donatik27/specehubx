@@ -308,6 +308,59 @@ app.post('/api/traders-map-enriched', async (req, res) => {
   }
 });
 
+// DEBUG: Check recently discovered markets
+app.get('/api/debug/discovered-markets', async (_req, res) => {
+  try {
+    const recentStats = await prisma.marketSmartStats.findMany({
+      where: {
+        computedAt: {
+          gte: new Date(Date.now() - 2 * 60 * 60 * 1000), // Last 2 hours
+        },
+        isPinned: false,
+      },
+      include: {
+        market: {
+          select: {
+            id: true,
+            question: true,
+            status: true,
+            endDate: true,
+          },
+        },
+      },
+      orderBy: { computedAt: 'desc' },
+    });
+
+    const now = new Date();
+    const analysis = recentStats.map(stat => {
+      const market = stat.market;
+      const endDate = market.endDate ? new Date(market.endDate) : null;
+      const statusOK = market.status === 'OPEN';
+      const endDateOK = !endDate || endDate >= now;
+      
+      return {
+        question: market.question,
+        status: market.status,
+        statusOK,
+        endDate: endDate?.toISOString() || null,
+        endDateOK,
+        passesFilter: statusOK && endDateOK,
+        smartCount: stat.smartCount,
+        computedAt: stat.computedAt.toISOString(),
+      };
+    });
+
+    res.json({
+      total: analysis.length,
+      passing: analysis.filter(a => a.passesFilter).length,
+      blocked: analysis.filter(a => !a.passesFilter).length,
+      markets: analysis,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/smart-markets', async (_req, res) => {
   try {
     const stats = await prisma.marketSmartStats.findMany({
