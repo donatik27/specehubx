@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "pnpm --filter @polymarket/database build && tsc",
-    "start": "cd ../../packages/database && npx prisma migrate deploy && cd ../../apps/api && node dist/index.js"
+    "start": "node dist/index.js",
+    "migrate": "cd ../../packages/database && npx prisma migrate deploy"
   },
   "dependencies": {
     "@polymarket/database": "workspace:*",
