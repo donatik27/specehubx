@@ -359,6 +359,21 @@ async function analyzeMarket(
 
 async function saveMarket(market: any, analysis: MarketAnalysis) {
   
+  // Check if this market was recently analyzed (skip if analyzed in last hour)
+  const recentAnalysis = await prisma.marketSmartStats.findFirst({
+    where: {
+      marketId: market.id,
+      computedAt: {
+        gte: new Date(Date.now() - 60 * 60 * 1000) // Last 1 hour
+      }
+    }
+  });
+  
+  if (recentAnalysis) {
+    logger.info(`      ⏭️  Skipping save - market analyzed ${Math.round((Date.now() - recentAnalysis.computedAt.getTime()) / 1000 / 60)}min ago`);
+    return;
+  }
+  
   // Create/update Market record
   await prisma.market.upsert({
     where: { id: market.id },
@@ -381,7 +396,7 @@ async function saveMarket(market: any, analysis: MarketAnalysis) {
     }
   });
   
-  // Create MarketSmartStats (NO PINNED - just save and sort by score)
+  // Create MarketSmartStats (only if not recently analyzed)
   await prisma.marketSmartStats.create({
     data: {
       marketId: market.id,
