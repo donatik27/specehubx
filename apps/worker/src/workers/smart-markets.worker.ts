@@ -279,69 +279,51 @@ async function discoverNewMarkets(payload: any) {
       select: { marketId: true }
     })).map(m => m.marketId);
     
-    // Fetch ACTIVE markets with high volume (Polymarket API filters)
-    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?limit=200&closed=false&active=true&order=volume&ascending=false');
+    const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?limit=200&closed=false&order=volume&ascending=false');
     const allMarkets = await marketsRes.json();
     
-    // STRICT FILTERS to avoid analyzing dead/resolved markets:
+    // Filter out:
     // 1. Pinned markets (already tracked separately)
-    // 2. Closed/resolved markets (redundant but safe)
-    // 3. Markets ending within 24 hours (too close to resolve)
-    // 4. Markets with 95%+ price (effectively decided)
-    // 5. Markets without endDate (suspicious)
+    // 2. Closed/resolved markets
+    // 3. Markets with 99%+ price (already decided)
+    // 4. Markets with endDate in the past
     const now = Date.now();
-    const oneDayFromNow = now + (24 * 60 * 60 * 1000);
-    
     const markets = allMarkets.filter((m: any) => {
       // Skip pinned markets
       if (pinnedMarketIds.includes(m.id)) return false;
       
-      // Skip closed markets (redundant with API filter but defensive)
+      // Skip closed markets
       if (m.closed) return false;
       
-      // MUST have endDate (skip markets without clear end)
-      if (!m.endDate) return false;
-      
-      // Skip markets ending within 24 hours (too risky, might resolve soon)
-      const endDate = new Date(m.endDate).getTime();
-      if (endDate < oneDayFromNow) {
-        return false;
-      }
-      
-      // Skip markets with extreme prices (95%+ = effectively decided)
-      // Tightened from 99.5% to 95% to catch near-resolved markets
-      if (m.outcomePrices && Array.isArray(m.outcomePrices)) {
-        const prices = m.outcomePrices.map((p: string) => parseFloat(p));
-        const hasExtremePrice = prices.some((p: number) => p >= 0.95 || p <= 0.05);
-        if (hasExtremePrice) {
+      // Skip markets where endDate has passed
+      if (m.endDate) {
+        const endDate = new Date(m.endDate).getTime();
+        if (endDate < now) {
           return false;
         }
       }
       
-      // Skip markets with very low volume (< $10k = not interesting)
-      if (m.volume && m.volume < 10000) {
-        return false;
+      // Skip markets with VERY extreme prices (99.5%+ = clearly resolved)
+      // Allow 90-99% markets as they can still be tradeable
+      if (m.outcomePrices && Array.isArray(m.outcomePrices)) {
+        const prices = m.outcomePrices.map((p: string) => parseFloat(p));
+        const hasExtremePrice = prices.some((p: number) => p >= 0.995 || p <= 0.005);
+        if (hasExtremePrice) {
+          return false;
+        }
       }
       
       return true;
     });
     
     logger.info(`📈 Filtered markets: ${markets.length} active (from ${allMarkets.length} total, ${allMarkets.length - markets.length} filtered out)`);
-    
-    // Detailed filter breakdown
-    const closedCount = allMarkets.filter((m: any) => m.closed).length;
-    const noEndDateCount = allMarkets.filter((m: any) => !m.endDate).length;
-    const endingSoonCount = allMarkets.filter((m: any) => m.endDate && new Date(m.endDate).getTime() < oneDayFromNow).length;
-    const extremePriceCount = allMarkets.filter((m: any) => {
+    logger.info(`   Filters: closed=${allMarkets.filter((m: any) => m.closed).length}, expired=${allMarkets.filter((m: any) => m.endDate && new Date(m.endDate).getTime() < now).length}, extreme_price=${allMarkets.filter((m: any) => {
       if (m.outcomePrices && Array.isArray(m.outcomePrices)) {
         const prices = m.outcomePrices.map((p: string) => parseFloat(p));
-        return prices.some((p: number) => p >= 0.95 || p <= 0.05);
+        return prices.some((p: number) => p >= 0.995 || p <= 0.005);
       }
       return false;
-    }).length;
-    const lowVolumeCount = allMarkets.filter((m: any) => m.volume && m.volume < 10000).length;
-    
-    logger.info(`   🔍 Filters: closed=${closedCount}, no_endDate=${noEndDateCount}, ending_24h=${endingSoonCount}, extreme_price_95%=${extremePriceCount}, low_volume=${lowVolumeCount}`);
+    }).length}`);
     
     const client = createPublicClient({
       chain: polygon,
@@ -478,34 +460,20 @@ async function refreshPinnedSelection(payload: any) {
     const marketsRes = await fetch('https://gamma-api.polymarket.com/markets?limit=100');
     const allMarkets = await marketsRes.json();
     
-    // Select top-5 PINNED markets with STRICT criteria:
-    // 1. Long deadline (endDate > 30 days) - pinned markets should be long-term
+    // Select top-5 based on criteria:
+    // 1. Long deadline (endDate > 14 days)
     // 2. High smartScore
-    // 3. NOT closed
-    // 4. NOT extreme price (< 90%)
+    // 3. Popular categories
     const candidates = allSmartMarkets
       .map(stat => {
         const market = allMarkets.find((m: any) => m.id === stat.marketId);
         if (!market) return null;
         
-        // Skip closed markets
-        if (market.closed) return null;
+        const endDate = market.endDate ? new Date(market.endDate) : null;
+        const daysUntilEnd = endDate ? (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24) : 0;
         
-        // Must have endDate
-        if (!market.endDate) return null;
-        
-        const endDate = new Date(market.endDate);
-        const daysUntilEnd = (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-        
-        // PINNED markets must have at least 30 days (long-term interesting markets)
-        if (daysUntilEnd < 30) return null;
-        
-        // Skip extreme prices (90%+ = not interesting for analysis)
-        if (market.outcomePrices && Array.isArray(market.outcomePrices)) {
-          const prices = market.outcomePrices.map((p: string) => parseFloat(p));
-          const hasExtremePrice = prices.some((p: number) => p >= 0.90 || p <= 0.10);
-          if (hasExtremePrice) return null;
-        }
+        // Must have at least 7 days until end (was 14, too strict!)
+        if (daysUntilEnd < 7) return null;
         
         return {
           stat,
