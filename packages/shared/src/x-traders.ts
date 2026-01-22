@@ -63,7 +63,7 @@ export const X_TRADERS_STATIC: Record<string, { address: string; country?: strin
   "tupac_poly": { address: "0xedc0f2cd1743914c4533368e15489c1a7a3d99f3", country: "United States" },
   "ViterR8": { address: "0x67bb64fac5252df3f61ee2d91a4b1350e40eb6ef", country: "Ukraine" },
   "wkmfa57": { address: "0xddff18c9e86262e62af046d818dda0c3de6f52d6", country: "Hong Kong" },
-  "XTDimasXT": { address: "0x0aa3744338ddf9f39fb3a80bc9c916179d0b64e9" },
+  "XTDimasXT": { address: "0x0aa3744338ddf9f39fb3a80bc9c916179d0b64e9", country: "Europe" },
   "_decap": { address: "0xe25b9180f5687aa85bd94ee309bb72a464320f1b", country: "United Arab Emirates" },
   "aenews": { address: "0x44c1dfe43260c94ed4f1d00de2e1f80fb113ebc1", country: "United States" },
   
@@ -134,8 +134,7 @@ export const X_TRADERS_STATIC: Record<string, { address: string; country?: strin
   "two_gifts_": { address: "0xb1a279adb096d316b1b168993e8ed976d3cd372a", country: "Caribbean" },
   "alesia_kod96360": { address: "0x3b91c0de58925787f14985328d94bd78ceb2e572", country: "Japan" },
   
-  // Added batch 5 - 17 more traders with locations
-  "XTDimasXT": { address: "0x0aa3744338ddf9f39fb3a80bc9c916179d0b64e9", country: "Europe" },
+  // Added batch 5 - 16 more traders with locations (XTDimasXT was duplicate - fixed above)
   "hcjbill": { address: "0x48185887c8dc95de60ee89722f1d0ee7894cbf0b", country: "Hong Kong" },
   "imdatn_": { address: "0x54052b94f549a4e4b73abfec38f820cd259941b2", country: "Spain" },
   "polyfirefly": { address: "0x7b676d5a6379855773d405fcf19b9aa577651b07", country: "India" },
