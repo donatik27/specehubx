@@ -2,6 +2,7 @@ import express from 'express';
 import { prisma } from '@polymarket/database';
 import telegramAlertsRouter from './telegram-alerts';
 
+// Force rebuild - v2
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
