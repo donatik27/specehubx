@@ -534,6 +534,11 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
     if (tokenIds.length === 0) {
       throw new Error('No tokenIds');
     }
+    
+    // 🔍 DEBUG: Log market and token info
+    logger.info(`🔬 Analyzing market: ${market.question.slice(0, 50)}...`);
+    logger.info(`   TokenIds: ${tokenIds.join(', ')} (${tokenIds.length} tokens)`);
+    logger.info(`   Traders to check: ${traders.length}`);
   
   // Build multicall
   const calls = [];
@@ -599,6 +604,9 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
         const shares = Math.max(yesBalance, noBalance);
         const entryPrice = side === 'YES' ? yesPrice : noPrice;
         
+        // 🔍 DEBUG: Log found position
+        logger.info(`   ✅ ${trader.displayName || trader.address.slice(0, 8)}: ${side} ${shares.toFixed(0)} shares @ ${(entryPrice * 100).toFixed(1)}%`);
+        
         tradersWithPositions.push({
           ...trader,
           side,           // ✅ YES or NO
@@ -608,6 +616,8 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
         });
       } else {
         // Multi-outcome market: just track total balance
+        logger.info(`   ✅ ${trader.displayName || trader.address.slice(0, 8)}: ${totalBalance.toFixed(0)} shares (multi-outcome)`);
+        
         tradersWithPositions.push({
           ...trader,
           balance: totalBalance
@@ -623,6 +633,13 @@ async function analyzeMarket(client: any, market: any, traders: any[]) {
     return sum + tierWeight;
   }, 0);
   const smartScore = smartWeighted * Math.log(1 + (market.volume || 0) / 1000000);
+  
+  // 🔍 DEBUG: Summary
+  logger.info(`   📊 Found ${smartCount} traders with positions (returning top 6)`);
+  if (smartCount > 0 && isYesNoMarket) {
+    const sample = tradersWithPositions[0];
+    logger.info(`   📝 Sample data: side=${sample.side}, shares=${sample.shares}, entryPrice=${sample.entryPrice}`);
+  }
   
   return {
     smartCount,
