@@ -153,8 +153,10 @@ async function updatePinnedMarkets(payload: any) {
             question: market.question,
             slug: market.slug || null,
             eventSlug: eventSlug, // ✅ Update eventSlug for existing markets!
+            endDate: market.endDate ? new Date(market.endDate) : null,
             volume: market.volume || null,
-            liquidity: market.liquidity || null
+            liquidity: market.liquidity || null,
+            status: market.closed ? 'CLOSED' : 'OPEN'  // ✅ Update status too!
           }
         });
         
@@ -378,7 +380,9 @@ async function discoverNewMarkets(payload: any) {
                 question: market.question,
                 slug: market.slug || null,
                 eventSlug: eventSlug,
-                volume: market.volume || null
+                endDate: market.endDate ? new Date(market.endDate) : null,
+                volume: market.volume || null,
+                status: market.closed ? 'CLOSED' : 'OPEN'  // ✅ Update status too!
               }
             });
             

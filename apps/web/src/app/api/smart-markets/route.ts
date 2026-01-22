@@ -92,47 +92,54 @@ export async function GET(request: Request) {
       console.log('⚠️  Railway API unavailable, falling back to direct DB query...')
       
       try {
-        // Fetch smart markets directly from DB (replicate Railway API logic)
-        const dbMarkets = await prisma.market.findMany({
+        // Fetch smart markets directly from DB (query MarketSmartStats, not Market!)
+        const stats = await prisma.marketSmartStats.findMany({
           where: {
-            OR: [
-              { pinned: true },
-              { smartScore: { gte: 24 } }
-            ]
-          },
-          take: 20,
-          orderBy: [
-            { pinned: 'desc' },
-            { smartScore: 'desc' }
-          ],
-          include: {
-            smartTraders: {
-              take: 10,
-              orderBy: { totalPnl: 'desc' }
+            computedAt: {
+              gte: new Date(Date.now() - 48 * 60 * 60 * 1000),
+            },
+            market: {
+              status: 'OPEN',
+              endDate: {
+                gte: new Date()
+              }
             }
-          }
+          },
+          orderBy: [{ smartScore: 'desc' }, { smartCount: 'desc' }],
+          take: 20,
+          include: {
+            market: {
+              select: {
+                id: true,
+                question: true,
+                category: true,
+                volume: true,
+                liquidity: true,
+                endDate: true,
+                slug: true,
+                eventSlug: true,
+              },
+            },
+          },
         })
         
         // Transform to match Railway API format
-        markets = dbMarkets.map((m: any) => ({
-          marketId: m.marketId,
-          question: m.question,
-          eventSlug: m.eventSlug || null,
-          eventTitle: null, // Will be fetched from Polymarket if eventSlug exists
-          outcomeCount: null, // Will be fetched from Polymarket if eventSlug exists
-          currentOdds: m.currentOdds || 0,
-          volume: m.volume || 0,
-          liquidity: m.liquidity || 0,
-          category: m.category || 'Uncategorized',
-          smartScore: m.smartScore || 0,
-          pinned: m.pinned || false,
-          smartTraders: m.smartTraders.map((t: any) => ({
-            address: t.address,
-            shares: t.shares,
-            entryPrice: t.entryPrice,
-            position: t.position,
-            totalPnl: t.totalPnl
-          }))
+        markets = stats.map((stat: any) => ({
+          marketId: stat.marketId,
+          question: stat.market.question,
+          category: stat.market.category || 'Market',
+          volume: stat.market.volume ? Number(stat.market.volume) : 0,
+          liquidity: stat.market.liquidity ? Number(stat.market.liquidity) : 0,
+          endDate: stat.market.endDate,
+          smartCount: stat.smartCount,
+          smartWeighted: Number(stat.smartWeighted),
+          smartScore: Number(stat.smartScore),
+          topTraders: stat.topSmartTraders || [],
+          lastUpdate: stat.computedAt,
+          isPinned: stat.isPinned,
+          priority: stat.priority,
+          marketSlug: stat.market.slug,
+          eventSlug: stat.market.eventSlug,
         }))
         
         console.log(`✅ Got ${markets.length} markets from DB fallback`)
