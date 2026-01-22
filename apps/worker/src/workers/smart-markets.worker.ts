@@ -99,10 +99,10 @@ async function updatePinnedMarkets(payload: any) {
       }
     });
     
-    // Limit to TOP-100 traders to avoid RPC overload
+    // Limit to TOP-200 traders for better market coverage
     const smartTraders = allTraders
       .sort((a: any, b: any) => Number(b.realizedPnl) - Number(a.realizedPnl))
-      .slice(0, 100);
+      .slice(0, 200);
     
     logger.info(`✅ Using TOP-${smartTraders.length} traders for pinned markets analysis`);
     
@@ -264,12 +264,12 @@ async function discoverNewMarkets(payload: any) {
     logger.info(`   A-tier: ${allTraders.filter((t: any) => t.tier === 'A').length}`);
     logger.info(`   B-tier: ${allTraders.filter((t: any) => t.tier === 'B').length}`);
     
-    // Limit to TOP-100 traders to avoid RPC overload (100 traders × 2 tokens = 200 calls max)
+    // Limit to TOP-200 traders for better market coverage (200 traders × 2 tokens = 400 calls)
     const smartTraders = allTraders
       .sort((a: any, b: any) => Number(b.realizedPnl) - Number(a.realizedPnl))
-      .slice(0, 100);
+      .slice(0, 200);
     
-    logger.info(`🎯 Using TOP-${smartTraders.length} traders for analysis`);
+    logger.info(`🎯 Using TOP-${smartTraders.length} traders for analysis (increased from 100 for better coverage)`);
     
     // Fetch top markets (excluding already pinned)
     const pinnedMarketIds = (await prisma.marketSmartStats.findMany({
@@ -334,8 +334,8 @@ async function discoverNewMarkets(payload: any) {
     
     let discoveredCount = 0;
     
-    // BATCHING: Process 5 markets at a time to avoid memory issues
-    const BATCH_SIZE = 5;
+    // BATCHING: Process 10 markets at a time (increased from 5 for faster processing)
+    const BATCH_SIZE = 10;
     for (let i = 0; i < markets.length; i += BATCH_SIZE) {
       const batch = markets.slice(i, i + BATCH_SIZE);
       logger.info(`📦 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(markets.length / BATCH_SIZE)} (${batch.length} markets)...`);
@@ -344,8 +344,8 @@ async function discoverNewMarkets(payload: any) {
         try {
           const analysis = await analyzeMarket(client, market, smartTraders);
         
-        // Only save if it has smart traders
-        if (analysis.smartCount > 0) {
+        // Only save if it has at least 2 smart traders (quality threshold)
+        if (analysis.smartCount >= 2) {
           // Check if already exists
           const existing = await prisma.marketSmartStats.findFirst({
             where: {
