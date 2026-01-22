@@ -23,10 +23,19 @@ export default function AlertsPage() {
   const fetchAlerts = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/telegram-alerts?limit=50')
+      
+      // Fetch with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5s timeout
+      
+      const response = await fetch('/api/telegram-alerts?limit=50', {
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
       
       if (!response.ok) {
-        console.warn('Failed to fetch alerts, using demo data')
+        console.warn('API returned error, using demo data')
         setUseDemo(true)
         loadDemoAlerts()
         return
@@ -34,14 +43,20 @@ export default function AlertsPage() {
       
       const data = await response.json()
       
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
         console.warn('No alerts found, using demo data')
         setUseDemo(true)
         loadDemoAlerts()
         return
       }
       
-      setAlerts(data)
+      // Parse timestamps
+      const parsedData = data.map(alert => ({
+        ...alert,
+        timestamp: new Date(alert.timestamp)
+      }))
+      
+      setAlerts(parsedData)
       setUseDemo(false)
     } catch (error) {
       console.error('Failed to fetch alerts:', error)
@@ -132,12 +147,18 @@ export default function AlertsPage() {
   }
 
   useEffect(() => {
-    // Initial fetch
+    // Initial load - start with demo data immediately
+    loadDemoAlerts()
+    setUseDemo(true)
+    
+    // Then try to fetch real data
     fetchAlerts()
     
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 10 seconds (only if not using demo)
     const interval = setInterval(() => {
-      fetchAlerts()
+      if (!useDemo) {
+        fetchAlerts()
+      }
     }, 10000)
     
     return () => clearInterval(interval)
