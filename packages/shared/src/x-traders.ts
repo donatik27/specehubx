@@ -133,6 +133,25 @@ export const X_TRADERS_STATIC: Record<string, { address: string; country?: strin
   "chenhao70918394": { address: "0xefb92699291627fbc395550648815b1241c3e74f", country: "United Kingdom" },
   "two_gifts_": { address: "0xb1a279adb096d316b1b168993e8ed976d3cd372a", country: "Caribbean" },
   "alesia_kod96360": { address: "0x3b91c0de58925787f14985328d94bd78ceb2e572", country: "Japan" },
+  
+  // Added batch 5 - 17 more traders with locations
+  "XTDimasXT": { address: "0x0aa3744338ddf9f39fb3a80bc9c916179d0b64e9", country: "Europe" },
+  "hcjbill": { address: "0x48185887c8dc95de60ee89722f1d0ee7894cbf0b", country: "Hong Kong" },
+  "imdatn_": { address: "0x54052b94f549a4e4b73abfec38f820cd259941b2", country: "Spain" },
+  "polyfirefly": { address: "0x7b676d5a6379855773d405fcf19b9aa577651b07", country: "India" },
+  "ka_wa_wa": { address: "0xcd3a86397374792ea12ace64471470ec525867ca", country: "Canada" },
+  "Joker_Poly": { address: "0x9aeb534c42b58b21673d5e03e9da14fbd15b2729", country: "Canada" },
+  "SilkRoadBTC": { address: "0xdf25bae7c5b03744791867ac39fe2865ad0c3b7f", country: "Georgia" },
+  "okdoli98": { address: "0x471c14910f0eba1b40c163ed6e4b063a8151d89f", country: "Korea" },
+  "AlisaFox56572": { address: "0x011c2281adfe2425c99e4980964a3d3c210b31df", country: "Hong Kong" },
+  "WelfareGrandpaa": { address: "0x3f62acb989dd53789f8453faa0b24060656ae744", country: "Argentina" },
+  "eliteballknowle": { address: "0x7e3321b6863f291019dc04b4dbc1f1b53a411482", country: "Canada" },
+  "polymarketbet": { address: "0xfbfd14dd4bb607373119de95f1d4b21c3b6c0029", country: "Thailand" },
+  "samoHypebears": { address: "0xfaf12d7eba49daad694ea32ff5f425ccf0de795f", country: "Ukraine" },
+  "elNutrichicha": { address: "0xa02e4a5922951cba57d71db258a6ae2ae1d78331", country: "Mexico" },
+  "nkys666": { address: "0xa35b72ededd672675cd02a860b38f0cb936860e9", country: "Spain" },
+  "crydevil_crypto": { address: "0xc288dbd651dbcf41e7aac3b523b7e6edc5023480", country: "West Asia" },
+  "Zacks_Dz": { address: "0xd7951f1ff7880761dcb3d186630d86047dbf6fcd", country: "Hong Kong" },
 };
 
 // Helper to check if address belongs to X trader
