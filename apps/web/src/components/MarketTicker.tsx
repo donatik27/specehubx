@@ -26,30 +26,50 @@ export default function MarketTicker() {
 
   const fetchHotMarkets = async () => {
     try {
-      // Use smart-markets API which has correct eventSlug
-      const response = await fetch('/api/smart-markets')
+      // Use regular markets API for active, high-volume markets
+      const response = await fetch('/api/markets')
       if (!response.ok) throw new Error('Failed to fetch')
       
       const allMarkets = await response.json()
       
-      // Сортуємо по volume і беремо топ-10
-      const hotMarkets: TickerMarket[] = allMarkets
-        .slice(0, 10)
-        .map((m: any) => {
-          const yesPrice = m.outcomePrices?.[0] ? parseFloat(m.outcomePrices[0]) : 0.5
-          // Симулюємо зміну ціни (в майбутньому можна зберігати історію)
-          const priceChange = (Math.random() - 0.5) * 10 // -5% до +5%
-          
-          return {
-            question: m.question,
-            category: m.category || 'Uncategorized',
-            volume: m.volume || 0,
-            yesPrice: yesPrice * 100, // Convert to %
-            priceChange,
-            trending: priceChange > 2 ? 'up' : priceChange < -2 ? 'down' : 'hot',
-            slug: m.eventSlug || m.marketSlug // Use eventSlug from smart-markets API
-          }
+      // Фільтруємо активні маркети і сортуємо по volume
+      const activeMarkets = allMarkets
+        .filter((m: any) => {
+          const isActive = m.status === 'OPEN'
+          const notExpired = !m.endDate || new Date(m.endDate) > new Date()
+          const hasVolume = (m.volume || 0) > 0
+          return isActive && notExpired && hasVolume
         })
+        .sort((a: any, b: any) => (b.volume || 0) - (a.volume || 0))
+        .slice(0, 15) // Top 15 маркетів
+      
+      // Форматуємо для ticker
+      const hotMarkets: TickerMarket[] = activeMarkets.map((m: any) => {
+        // Parse outcome prices
+        let yesPrice = 0.5
+        if (m.outcomePrices) {
+          const prices = Array.isArray(m.outcomePrices) 
+            ? m.outcomePrices 
+            : [m.outcomePrices]
+          yesPrice = parseFloat(prices[0]) || 0.5
+        }
+        
+        // Simulate price change based on current price
+        // Markets near 50% are "hot", extremes show direction
+        const priceChange = yesPrice > 0.7 ? Math.random() * 5 + 2 
+                          : yesPrice < 0.3 ? -(Math.random() * 5 + 2)
+                          : (Math.random() - 0.5) * 4
+        
+        return {
+          question: m.question,
+          category: m.category || 'Uncategorized',
+          volume: m.volume || 0,
+          yesPrice: yesPrice * 100, // Convert to %
+          priceChange,
+          trending: priceChange > 2 ? 'up' : priceChange < -2 ? 'down' : 'hot',
+          slug: m.eventSlug || m.slug
+        }
+      })
       
       setMarkets(hotMarkets)
       setLoading(false)
