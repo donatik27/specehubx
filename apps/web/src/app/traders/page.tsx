@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Users, TrendingUp, TrendingDown, ArrowUpDown, RefreshCw, Calendar } from 'lucide-react'
 import type { TimeInterval } from '@/lib/polymarket-api'
-import AlienIcon from '@/components/AlienIcon'
 
 interface Trader {
   address: string;
@@ -107,7 +106,7 @@ export default function TradersPage() {
         <div className="flex items-center justify-between">
           <div className="relative">
             <div className="flex items-center gap-4 mb-3">
-              <AlienIcon size={48} />
+              <div className="text-4xl">👽</div>
               <h1 className="text-2xl font-bold text-primary alien-glow tracking-wider">TRADER_INTEL</h1>
               {loading && <span className="text-primary animate-pulse">█</span>}
             </div>
@@ -295,9 +294,7 @@ export default function TradersPage() {
                         {trader.tier}
                       </span>
                       {trader.tier === 'S' && trader.xUsername && trader.xUsername.trim() !== '' && (
-                        <span className="animate-pulse" title="Public Influencer">
-                          <AlienIcon size={14} />
-                        </span>
+                        <span className="text-[#FFD700] text-xs animate-pulse" title="Public Influencer">👽</span>
                       )}
                     </div>
                   </td>
