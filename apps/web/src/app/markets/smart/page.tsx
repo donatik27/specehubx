@@ -27,6 +27,32 @@ function formatMoney(amount: number): string {
   }
 }
 
+// Check if this is a multi-outcome event
+function isEvent(market: any): boolean {
+  return Array.isArray(market.topTraders) && 
+         market.topTraders.length > 0 &&
+         market.topTraders[0].marketId !== undefined // Events have marketId in traders array
+}
+
+// Extract short name from outcome question
+function extractShortName(question: string): string {
+  // Remove common prefixes
+  let name = question
+    .replace(/^Will\s+/i, '')
+    .replace(/^Who\s+will\s+/i, '')
+    .replace(/\s+win.*$/i, '')
+    .replace(/\s+be\s+.*$/i, '')
+    .replace(/\s+become.*$/i, '')
+    .trim()
+  
+  // If still too long, take first part
+  if (name.length > 40) {
+    name = name.split(/\s+/).slice(0, 4).join(' ')
+  }
+  
+  return name
+}
+
 export default function SmartMarketsPage() {
   const [pinnedMarkets, setPinnedMarkets] = useState<SmartMarketData[]>([])
   const [dynamicMarkets, setDynamicMarkets] = useState<SmartMarketData[]>([])
@@ -257,46 +283,82 @@ export default function SmartMarketsPage() {
                 </div>
               </div>
 
-              {/* Tier Breakdown & Smart Traders */}
+              {/* EVENT OUTCOMES or TRADER LIST */}
               {market.topTraders && market.topTraders.length > 0 && (
                 <>
-                  {/* Tier composition stats */}
-                  <div className="bg-black/40 pixel-border border-primary/30 p-4 mb-3">
-                    <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider">
-                      📊 TIER_COMPOSITION (S=5pts, A=3pts, B=2pts, C=1pt):
-                    </p>
-                    <div className="flex gap-4">
-                      {['S', 'A', 'B', 'C'].map(tier => {
-                        const count = market.topTraders.filter((t: any) => t.tier === tier).length
-                        const points = count * (tier === 'S' ? 5 : tier === 'A' ? 3 : tier === 'B' ? 2 : 1)
-                        if (count === 0) return null
-                        return (
-                          <div key={tier} className="flex items-center gap-2">
-                            <span className={`px-2 py-1 text-sm font-bold pixel-border ${
-                              tier === 'S' ? 'bg-[#FFD700] text-black' :
-                              tier === 'A' ? 'bg-white text-black' :
-                              tier === 'B' ? 'bg-primary text-black' :
-                              'bg-gray-400 text-black'
-                            }`}>
-                              {tier}
-                            </span>
-                            <span className="text-white font-mono">
-                              x{count} = <span className="text-primary">{points}pts</span>
-                            </span>
+                  {isEvent(market) ? (
+                    // EVENT VIEW: Show top outcomes with trader counts
+                    <div className="bg-black/40 pixel-border border-[#FFD700]/30 p-4">
+                      <p className="text-xs font-mono text-[#FFD700] mb-3 uppercase tracking-wider">
+                        🏆 TOP_OUTCOMES ({market.topTraders.length} total):
+                      </p>
+                      <div className="space-y-2">
+                        {market.topTraders.slice(0, 5).map((outcome: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between bg-black/60 pixel-border border-white/10 p-3">
+                            <div className="flex-1">
+                              <p className="text-sm font-bold text-white">
+                                {extractShortName(outcome.question)}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(outcome.price * 100).toFixed(1)}% • {outcome.traders?.length || 0} traders
+                              </p>
+                            </div>
+                            <div className="flex -space-x-1">
+                              {outcome.traders?.slice(0, 3).map((t: any, i: number) => (
+                                <div 
+                                  key={i}
+                                  className={`w-6 h-6 rounded-full pixel-border flex items-center justify-center text-xs font-bold ${
+                                    t.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' : 
+                                    t.tier === 'A' ? 'bg-white text-black border-white' :
+                                    'bg-primary text-black border-primary'
+                                  }`}
+                                >
+                                  {t.tier}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        )
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      {/* SINGLE MARKET VIEW: Show tier composition */}
+                      <div className="bg-black/40 pixel-border border-primary/30 p-4 mb-3">
+                        <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider">
+                          📊 TIER_COMPOSITION (S=5pts, A=3pts, B=2pts):
+                        </p>
+                        <div className="flex gap-4">
+                          {['S', 'A', 'B'].map(tier => {
+                            const count = market.topTraders.filter((t: any) => t.tier === tier).length
+                            const points = count * (tier === 'S' ? 5 : tier === 'A' ? 3 : 2)
+                            if (count === 0) return null
+                            return (
+                              <div key={tier} className="flex items-center gap-2">
+                                <span className={`px-2 py-1 text-sm font-bold pixel-border ${
+                                  tier === 'S' ? 'bg-[#FFD700] text-black' :
+                                  tier === 'A' ? 'bg-white text-black' :
+                                  'bg-primary text-black'
+                                }`}>
+                                  {tier}
+                                </span>
+                                <span className="text-white font-mono">
+                                  x{count} = <span className="text-primary">{points}pts</span>
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
 
-                  {/* All Smart Traders */}
-                  <div className="bg-black/40 pixel-border border-primary/30 p-4">
-                    <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider">
-                      👽 ALL_SMART_TRADERS_IN_MARKET ({market.topTraders.length}):
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {market.topTraders.map((trader: any) => (
-                        <div 
+                      {/* All Smart Traders */}
+                      <div className="bg-black/40 pixel-border border-primary/30 p-4">
+                        <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider">
+                          👽 ALL_SMART_TRADERS ({market.topTraders.length}):
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {market.topTraders.map((trader: any) => (
+                            <div 
                           key={trader.address}
                           className="flex items-center gap-2 bg-black pixel-border border-white/30 p-2 hover:border-primary transition-all"
                         >
@@ -321,6 +383,8 @@ export default function SmartMarketsPage() {
                       ))}
                     </div>
                   </div>
+                    </>
+                  )}
                 </>
               )}
             </div>
