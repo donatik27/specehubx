@@ -72,12 +72,32 @@ export function Sidebar() {
       </nav>
       
       <div className="p-4 relative z-10">
-        <div className="bg-black p-3 relative overflow-hidden">
+        <div className="bg-black p-3 relative overflow-hidden mb-3">
           <div className="absolute top-0 right-0 text-2xl opacity-20">👽</div>
           <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">System Status</p>
           <p className="text-xs text-white font-mono">PHASE_3 [ACTIVE] ✓</p>
         </div>
-        <p className="text-xs text-primary mt-3 text-center font-mono animate-pulse">&gt; v1.0.0_ALIEN</p>
+        
+        {/* X (Twitter) Link */}
+        <a 
+          href="https://x.com/space_hubx" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 bg-black hover:bg-primary/10 p-3 transition-all group border border-primary/30 hover:border-primary mb-3"
+        >
+          <svg 
+            viewBox="0 0 24 24" 
+            className="h-4 w-4 text-primary group-hover:scale-110 transition-transform"
+            fill="currentColor"
+          >
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+          </svg>
+          <span className="text-xs font-bold text-primary uppercase tracking-wider">
+            @space_hubx
+          </span>
+        </a>
+        
+        <p className="text-xs text-primary text-center font-mono animate-pulse">&gt; v1.0.0_ALIEN</p>
       </div>
     </div>
   )
