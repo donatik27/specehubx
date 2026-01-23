@@ -27,6 +27,7 @@ import { logger } from '../lib/logger';
 
 const CTF_CONTRACT = '0x4d97dcd97ec945f40cf65f87097ace5ea0476045' as `0x${string}`;
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as `0x${string}`;
+const CLOB_API = 'https://clob.polymarket.com';
 
 const CTF_ABI = [{
   inputs: [
@@ -299,6 +300,80 @@ async function discoverAlphaMarkets() {
 }
 
 // ============================================================================
+// FETCH TRADER ENTRY PRICE: Get weighted average from historical trades
+// ============================================================================
+
+async function fetchTraderEntryPrice(
+  marketId: string,
+  traderAddress: string,
+  tokenId: string,
+  currentPrice: number
+): Promise<number> {
+  try {
+    // Fetch historical trades from CLOB API
+    const response = await fetch(
+      `${CLOB_API}/trades?market=${marketId}&maker=${traderAddress}&limit=100`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      return currentPrice; // Fallback to current price
+    }
+    
+    const data = await response.json();
+    const trades = data.data || data || [];
+    
+    if (!trades || trades.length === 0) {
+      return currentPrice; // No trades found, use current price
+    }
+    
+    // Filter trades for this specific token (YES/NO or outcome)
+    const relevantTrades = trades.filter((t: any) => 
+      t.asset_id === tokenId || t.token_id === tokenId
+    );
+    
+    if (relevantTrades.length === 0) {
+      return currentPrice; // No relevant trades
+    }
+    
+    // Calculate weighted average entry price
+    let totalSize = 0;
+    let weightedSum = 0;
+    
+    for (const trade of relevantTrades) {
+      const price = parseFloat(trade.price || '0');
+      const size = parseFloat(trade.size || '0');
+      
+      if (price > 0 && size > 0) {
+        weightedSum += price * size;
+        totalSize += size;
+      }
+    }
+    
+    if (totalSize === 0) {
+      return currentPrice; // No valid trades
+    }
+    
+    const avgEntry = weightedSum / totalSize;
+    
+    // Sanity check: entry price should be between 0 and 1
+    if (avgEntry > 0 && avgEntry <= 1) {
+      return avgEntry;
+    }
+    
+    return currentPrice; // Fallback
+    
+  } catch (error) {
+    logger.warn(`Failed to fetch entry price for ${traderAddress}: ${error}`);
+    return currentPrice; // Fallback to current price on error
+  }
+}
+
+// ============================================================================
 // ANALYZE MARKET: Check on-chain positions
 // ============================================================================
 
@@ -375,7 +450,16 @@ async function analyzeMarket(
         
         const side = yesBalance > noBalance ? 'YES' : 'NO';
         const shares = Math.max(yesBalance, noBalance);
-        const entryPrice = side === 'YES' ? yesPrice : noPrice;
+        const currentPrice = side === 'YES' ? yesPrice : noPrice;
+        const tokenId = side === 'YES' ? clobTokenIds[0] : clobTokenIds[1];
+        
+        // Fetch REAL entry price from historical trades
+        const entryPrice = await fetchTraderEntryPrice(
+          market.id,
+          trader.address,
+          tokenId,
+          currentPrice
+        );
         
         tradersWithPositions.push({
           address: trader.address,
@@ -389,17 +473,26 @@ async function analyzeMarket(
         // For multi-outcome markets (3+ outcomes), find the outcome with highest balance
         const maxBalanceIndex = balances.indexOf(Math.max(...balances));
         const maxBalance = balances[maxBalanceIndex];
-        const outcomePrice = parseFloat(outcomePrices[maxBalanceIndex] || '0.5');
+        const currentPrice = parseFloat(outcomePrices[maxBalanceIndex] || '0.5');
+        const tokenId = clobTokenIds[maxBalanceIndex];
         
         // Only add if they have significant position in ONE outcome
         if (maxBalance > 0.1) {
+          // Fetch REAL entry price from historical trades
+          const entryPrice = await fetchTraderEntryPrice(
+            market.id,
+            trader.address,
+            tokenId,
+            currentPrice
+          );
+          
           tradersWithPositions.push({
             address: trader.address,
             displayName: trader.displayName,
             tier: trader.tier as 'S' | 'A' | 'B',
             side: 'YES', // For multi-outcome, side is always "YES" on their chosen outcome
             shares: maxBalance,
-            entryPrice: outcomePrice
+            entryPrice
           });
         }
       }
