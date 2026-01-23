@@ -914,6 +914,28 @@ async function findPublicTraders(payload: any) {
   }
 }
 
+async function fetchAllTimePnlFromProfile(address: string): Promise<number | null> {
+  try {
+    const pnlRes = await fetch(
+      `https://user-pnl-api.polymarket.com/user-pnl?user_address=${address}&interval=1m&fidelity=1d`
+    );
+
+    if (!pnlRes.ok) {
+      return null;
+    }
+
+    const pnlData = await pnlRes.json();
+    if (Array.isArray(pnlData) && pnlData.length > 0) {
+      const latest = pnlData[pnlData.length - 1];
+      return latest?.p ?? null;
+    }
+
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function syncPublicTraders(payload: any) {
   logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   logger.info('🎯 SYNCING PUBLIC TRADERS (Media X Leaderboard)');
@@ -991,14 +1013,24 @@ async function syncPublicTraders(payload: any) {
       if (!t.proxyWallet) continue;
       
       try {
+        const address = t.proxyWallet.toLowerCase();
         const profilePic = t.profileImage || null;
         const volume = t.volume || 0;
         const marketsTraded = t.markets_traded || 0;
+        let allTimePnl = t.pnl || 0;
+
+        // Pull all-time PnL directly from profile API (most accurate)
+        const profilePnl = await fetchAllTimePnlFromProfile(address);
+        if (typeof profilePnl === 'number' && !Number.isNaN(profilePnl)) {
+          allTimePnl = profilePnl;
+        }
+        // Gentle rate limit for profile PnL API
+        await new Promise(resolve => setTimeout(resolve, 150));
         
         // Calculate win rate (approximation based on PnL and volume)
         let winRate = 0.5; // Default 50%
-        if (volume > 0 && t.pnl) {
-          const estimatedWins = Math.max(0, Math.min(1, 0.5 + (t.pnl / volume) * 0.5));
+        if (volume > 0 && allTimePnl) {
+          const estimatedWins = Math.max(0, Math.min(1, 0.5 + (allTimePnl / volume) * 0.5));
           winRate = estimatedWins;
         }
         
@@ -1007,21 +1039,21 @@ async function syncPublicTraders(payload: any) {
         
         // Calculate NORMALIZED rarity score 0-1000 (same system for all!)
         const hasTwitter = !!(t.xUsername);
-        const rarityScore = calculateRarityScore(t.pnl || 0, volume, marketsTraded, rank, hasTwitter);
+        const rarityScore = calculateRarityScore(allTimePnl || 0, volume, marketsTraded, rank, hasTwitter);
         let tier = 'B';
         if (rank <= 20) tier = 'S'; // Top 20 = S tier
         else if (rank <= 80) tier = 'A'; // Top 80 = A tier
         else tier = 'B'; // Rest = B tier
         
         const traderData = {
-          address: t.proxyWallet.toLowerCase(),
+          address,
           displayName: t.userName || t.xUsername || null,
           profilePicture: profilePic,
           twitterUsername: t.xUsername || null,
           tier: tier,
           rarityScore: rarityScore,
-          realizedPnl: t.pnl || 0,
-          totalPnl: t.pnl || 0,
+          realizedPnl: allTimePnl || 0,
+          totalPnl: allTimePnl || 0,
           winRate: winRate,
           tradeCount: marketsTraded,
           lastActiveAt: new Date(),
