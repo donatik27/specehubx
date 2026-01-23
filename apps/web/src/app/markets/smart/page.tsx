@@ -134,62 +134,61 @@ export default function SmartMarketsPage() {
           </p>
         </div>
 
-        {/* Loading Content - EPIC ALIEN ANIMATION */}
-        <div className="flex items-center justify-center min-h-[500px] relative overflow-hidden">
-          {/* Flying UFOs in background */}
-          <div className="absolute top-1/4 left-0 text-4xl opacity-30 animate-fly" style={{animationDelay: '0s'}}>
-            🛸
-          </div>
-          <div className="absolute top-1/2 left-0 text-3xl opacity-20 animate-fly" style={{animationDelay: '3s'}}>
-            🛸
-          </div>
-          <div className="absolute top-3/4 left-0 text-5xl opacity-25 animate-fly" style={{animationDelay: '6s'}}>
-            🛸
-          </div>
-          
-          {/* Scanning beam effect */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-x-0 h-32 bg-gradient-to-b from-transparent via-primary/10 to-transparent animate-scan"></div>
-          </div>
-          
-          {/* Main alien with glow */}
-          <div className="text-center relative z-10">
-            {/* Rotating UFO above alien */}
-            <div className="text-6xl mb-4 animate-spin-slow inline-block">🛸</div>
-            
-            {/* Main floating alien with glow */}
-            <div className="relative inline-block mb-8">
-              <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full animate-alien-glow"></div>
-              <div className="text-9xl animate-float relative z-10">👽</div>
-            </div>
-            
-            {/* Smaller floating aliens around */}
-            <div className="absolute top-20 -left-10 text-4xl animate-float-slow" style={{animationDelay: '0.5s'}}>
-              👾
-            </div>
-            <div className="absolute top-20 -right-10 text-4xl animate-float-slow" style={{animationDelay: '1s'}}>
-              👾
-            </div>
-            
-            <h2 className="text-2xl font-bold text-primary mb-4 alien-glow animate-pulse">
+        {/* Loading Content - PIXEL ALIEN WALKING */}
+        <div className="flex items-center justify-center min-h-[500px]">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-primary mb-8 alien-glow">
               SEARCHING FOR ALPHA...
             </h2>
-            <p className="text-muted-foreground font-mono text-sm mb-4">
-              &gt; {loadingMessages[loadingMessage]}
-            </p>
             
-            {/* Animated dots with glow */}
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex items-center gap-1 text-primary text-3xl">
+            {/* Walking Alien Animation */}
+            <div className="relative mb-8">
+              <div className="text-8xl alien-walk inline-block">
+                👽
+              </div>
+            </div>
+            
+            {/* Pixel Loading Bar */}
+            <div className="w-96 mx-auto">
+              <div className="mb-2">
+                <p className="text-muted-foreground font-mono text-xs text-left mb-1">
+                  &gt; {loadingMessages[loadingMessage]}
+                </p>
+              </div>
+              
+              {/* Outer pixel border */}
+              <div className="bg-black pixel-border border-primary/50 p-1">
+                {/* Inner loading bar */}
+                <div className="bg-black/80 h-6 relative overflow-hidden">
+                  {/* Animated fill */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-green-400 to-primary animate-loading-bar"></div>
+                  
+                  {/* Pixel pattern overlay */}
+                  <div className="absolute inset-0" style={{
+                    backgroundImage: `repeating-linear-gradient(
+                      90deg,
+                      transparent,
+                      transparent 2px,
+                      rgba(0, 255, 0, 0.1) 2px,
+                      rgba(0, 255, 0, 0.1) 4px
+                    )`
+                  }}></div>
+                  
+                  {/* Loading text */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-black font-bold text-xs font-mono tracking-wider pixel-text">
+                      ANALYZING...
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Animated dots */}
+              <div className="flex items-center justify-center gap-1 text-primary text-xl mt-4">
                 <span className="animate-pulse inline-block" style={{animationDelay: '0ms'}}>●</span>
                 <span className="animate-pulse inline-block" style={{animationDelay: '200ms'}}>●</span>
                 <span className="animate-pulse inline-block" style={{animationDelay: '400ms'}}>●</span>
               </div>
-            </div>
-            
-            {/* Progress indicator */}
-            <div className="mt-6 w-64 h-1 bg-black border border-primary/30 mx-auto overflow-hidden">
-              <div className="h-full bg-primary animate-pulse" style={{width: '60%'}}></div>
             </div>
           </div>
         </div>
