@@ -35,10 +35,10 @@ export default function MarketTicker() {
       // Фільтруємо активні маркети і сортуємо по volume
       const activeMarkets = allMarkets
         .filter((m: any) => {
-          const isActive = m.status === 'OPEN'
+          // Note: /api/markets doesn't return 'status' field, so we only check endDate
           const notExpired = !m.endDate || new Date(m.endDate) > new Date()
-          const hasVolume = (m.volume || 0) > 0
-          return isActive && notExpired && hasVolume
+          const hasVolume = (m.volume || 0) > 10000 // At least $10k volume
+          return notExpired && hasVolume
         })
         .sort((a: any, b: any) => (b.volume || 0) - (a.volume || 0))
         .slice(0, 15) // Top 15 маркетів
