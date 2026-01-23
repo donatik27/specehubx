@@ -385,6 +385,23 @@ async function analyzeMarket(
           shares,
           entryPrice
         });
+      } else {
+        // For multi-outcome markets (3+ outcomes), find the outcome with highest balance
+        const maxBalanceIndex = balances.indexOf(Math.max(...balances));
+        const maxBalance = balances[maxBalanceIndex];
+        const outcomePrice = parseFloat(outcomePrices[maxBalanceIndex] || '0.5');
+        
+        // Only add if they have significant position in ONE outcome
+        if (maxBalance > 0.1) {
+          tradersWithPositions.push({
+            address: trader.address,
+            displayName: trader.displayName,
+            tier: trader.tier as 'S' | 'A' | 'B',
+            side: 'YES', // For multi-outcome, side is always "YES" on their chosen outcome
+            shares: maxBalance,
+            entryPrice: outcomePrice
+          });
+        }
       }
     }
   }
@@ -512,8 +529,17 @@ async function analyzeEvent(
   const outcomes = [];
   let totalTradersSet = new Set<string>();
   
+  // Filter out closed/settled markets
+  const activeMarkets = (eventData.markets || []).filter((m: any) => {
+    const isClosed = m.closed === true || m.closed === 'true';
+    const isExpired = m.endDate && new Date(m.endDate) < new Date();
+    return !isClosed && !isExpired;
+  });
+  
+  logger.info(`   📊 Event has ${eventData.markets?.length || 0} total outcomes, ${activeMarkets.length} active`);
+  
   // Analyze each outcome (market) in the event
-  for (const market of eventData.markets.slice(0, 15)) { // Limit to 15 outcomes
+  for (const market of activeMarkets.slice(0, 15)) { // Limit to 15 outcomes
     try {
       const analysis = await analyzeMarket(client, market, traders);
       

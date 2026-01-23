@@ -1205,7 +1205,7 @@ export default function SmartMarketDetailPage() {
                       </div>
                       <div className="text-xs space-y-0.5 mb-1">
                         <div className="text-muted-foreground">
-                          Entry: {(trader.price * 100).toFixed(1)}%
+                          Entry: {((trader as any).entryPrice ? (trader as any).entryPrice * 100 : trader.price * 100).toFixed(1)}%
                         </div>
                         {(market as any).currentOdds && (
                           <>
@@ -1213,10 +1213,11 @@ export default function SmartMarketDetailPage() {
                               Now: {((market as any).currentOdds * 100).toFixed(1)}%
                             </div>
                             {(() => {
+                              const entryPrice = (trader as any).entryPrice || trader.price;
                               const currentPrice = trader.outcome.toLowerCase() === 'yes' 
                                 ? (market as any).currentOdds 
                                 : (1 - (market as any).currentOdds)
-                              const pnlPercent = ((currentPrice - trader.price) / trader.price * 100)
+                              const pnlPercent = ((currentPrice - entryPrice) / entryPrice * 100)
                               const pnlPositive = pnlPercent > 0
                               return (
                                 <div className={pnlPositive ? 'text-green-400' : 'text-red-400'}>
