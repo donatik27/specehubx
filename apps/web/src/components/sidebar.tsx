@@ -12,6 +12,7 @@ import {
   Globe
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import AlienIcon from './AlienIcon'
 
 const navigation = [
   { name: 'COMMAND_CENTER', href: '/', icon: LayoutDashboard },
@@ -73,7 +74,9 @@ export function Sidebar() {
       
       <div className="p-4 relative z-10">
         <div className="bg-black p-3 relative overflow-hidden mb-3">
-          <div className="absolute top-0 right-0 text-2xl opacity-20">👽</div>
+          <div className="absolute top-0 right-0 opacity-20">
+            <AlienIcon size={32} />
+          </div>
           <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">System Status</p>
           <p className="text-xs text-white font-mono">PHASE_3 [ACTIVE] ✓</p>
         </div>

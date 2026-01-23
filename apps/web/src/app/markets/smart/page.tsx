@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Brain, TrendingUp, RefreshCw, Users, DollarSign } from 'lucide-react'
 import type { SmartMarketData } from '@/lib/smart-markets'
+import AlienIcon from '@/components/AlienIcon'
 
 // Format balance for better readability
 function formatBalance(balance: number): string {
@@ -143,9 +144,7 @@ export default function SmartMarketsPage() {
             
             {/* Walking Alien Animation */}
             <div className="relative mb-8">
-              <div className="text-8xl alien-walk inline-block">
-                👽
-              </div>
+              <AlienIcon size={128} animate={true} />
             </div>
             
             {/* Pixel Loading Bar */}
@@ -394,8 +393,8 @@ export default function SmartMarketsPage() {
 
                       {/* All Smart Traders */}
                       <div className="bg-black/40 pixel-border border-primary/30 p-4">
-                        <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider">
-                          👽 ALL_SMART_TRADERS ({market.topTraders.length}):
+                        <p className="text-xs font-mono text-primary mb-3 uppercase tracking-wider flex items-center gap-2">
+                          <AlienIcon size={16} /> ALL_SMART_TRADERS ({market.topTraders.length}):
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {market.topTraders.map((trader: any) => (
@@ -435,7 +434,9 @@ export default function SmartMarketsPage() {
         {/* SEARCHING FOR MORE ALPHA (loading dynamic) */}
         {loadingDynamic && pinnedMarkets.length > 0 && (
           <div className="bg-card pixel-border border-primary/30 p-12 text-center">
-            <div className="text-6xl mb-4 animate-bounce inline-block">👽</div>
+            <div className="mb-4 inline-block">
+              <AlienIcon size={96} animate={true} />
+            </div>
             <h3 className="text-xl font-bold text-primary mb-2 alien-glow">
               SEARCHING FOR MORE ALPHA...
             </h3>

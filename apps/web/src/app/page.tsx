@@ -13,6 +13,7 @@ import {
   Activity
 } from 'lucide-react'
 import MarketTicker from '@/components/MarketTicker'
+import AlienIcon from '@/components/AlienIcon'
 
 interface Trader {
   address: string
@@ -322,7 +323,9 @@ export default function HomePage() {
           <div className="space-y-3">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-32 text-muted-foreground py-4">
-                <div className="text-4xl alien-walk mb-2">👽</div>
+                <div className="mb-2">
+                  <AlienIcon size={64} animate={true} />
+                </div>
                 <div className="w-full max-w-[200px]">
                   <div className="bg-black pixel-border border-primary/50 p-0.5">
                     <div className="bg-black/80 h-3 relative overflow-hidden">
@@ -392,7 +395,9 @@ export default function HomePage() {
           <div className="space-y-2">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-32 text-muted-foreground py-4">
-                <div className="text-4xl alien-walk mb-2">👽</div>
+                <div className="mb-2">
+                  <AlienIcon size={64} animate={true} />
+                </div>
                 <div className="w-full max-w-[200px]">
                   <div className="bg-black pixel-border border-purple-500/50 p-0.5">
                     <div className="bg-black/80 h-3 relative overflow-hidden">
