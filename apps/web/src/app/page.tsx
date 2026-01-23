@@ -318,11 +318,16 @@ export default function HomePage() {
           
           <div className="space-y-3">
             {loading ? (
-              <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <div className="text-center">
-                  <div className="animate-spin text-2xl mb-2">⏳</div>
-                  <p className="text-sm font-mono">&gt; LOADING...</p>
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground py-4">
+                <div className="text-4xl alien-walk mb-2">👽</div>
+                <div className="w-full max-w-[200px]">
+                  <div className="bg-black pixel-border border-primary/50 p-0.5">
+                    <div className="bg-black/80 h-3 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary via-green-400 to-primary animate-loading-bar"></div>
+                    </div>
+                  </div>
                 </div>
+                <p className="text-xs font-mono mt-2">&gt; LOADING...</p>
               </div>
             ) : topTraders.length > 0 ? (
               topTraders.slice(0, 4).map((trader) => (
@@ -377,11 +382,16 @@ export default function HomePage() {
           
           <div className="space-y-2">
             {loading ? (
-              <div className="flex items-center justify-center h-32 text-muted-foreground">
-                <div className="text-center">
-                  <div className="animate-spin text-2xl mb-2">⏳</div>
-                  <p className="text-sm font-mono">&gt; LOADING...</p>
+              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground py-4">
+                <div className="text-4xl alien-walk mb-2">👽</div>
+                <div className="w-full max-w-[200px]">
+                  <div className="bg-black pixel-border border-purple-500/50 p-0.5">
+                    <div className="bg-black/80 h-3 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-purple-300 to-purple-500 animate-loading-bar"></div>
+                    </div>
+                  </div>
                 </div>
+                <p className="text-xs font-mono mt-2">&gt; LOADING...</p>
               </div>
             ) : topMarkets.length > 0 ? (
               topMarkets.map((market, idx) => (
