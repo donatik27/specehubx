@@ -350,7 +350,11 @@ export default function HomePage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-white truncate text-sm">{trader.displayName}</p>
                     <p className="text-xs text-primary font-mono">
-                      SCORE: {trader.rarityScore > 0 ? `${Math.round(trader.rarityScore / 1000)}k` : 'N/A'}
+                      SCORE: {trader.rarityScore > 0 
+                        ? trader.rarityScore >= 1000 
+                          ? `${Math.round(trader.rarityScore / 1000)}k`
+                          : Math.round(trader.rarityScore).toString()
+                        : 'N/A'}
                     </p>
                   </div>
                   <span className="px-2 py-0.5 bg-[#FFD700] text-black text-xs font-bold pixel-border">
