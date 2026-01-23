@@ -112,8 +112,12 @@ async function discoverAlphaMarkets() {
   logger.info('🚀 STARTING ALPHA MARKETS DISCOVERY (REBUILT VERSION)');
   
   try {
-    // STEP 0: Clean up old duplicates (keep only most recent per market)
-    logger.info('🧹 STEP 0: Cleaning up old duplicates...');
+    // STEP 0A: Clean up OLD markets (>48h)
+    logger.info('🧹 STEP 0A: Cleaning up OLD market stats (>48h)...');
+    await cleanupOldMarkets();
+    
+    // STEP 0B: Clean up duplicates (keep only most recent per market)
+    logger.info('🧹 STEP 0B: Cleaning up duplicates...');
     const allStats = await prisma.marketSmartStats.findMany({
       orderBy: { computedAt: 'desc' }
     });
@@ -634,10 +638,9 @@ export async function cleanupOldMarkets() {
   
   const deleted = await prisma.marketSmartStats.deleteMany({
     where: {
-      computedAt: { lt: cutoff },
-      isPinned: false // Don't delete if somehow pinned
+      computedAt: { lt: cutoff }
     }
   });
   
-  logger.info(`🧹 Cleaned up ${deleted.count} old market stats`);
+  logger.info(`🧹 Cleaned up ${deleted.count} old market stats (>48h)`);
 }
