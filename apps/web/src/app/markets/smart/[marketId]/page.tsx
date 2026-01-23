@@ -655,39 +655,21 @@ export default function SmartMarketDetailPage() {
             </span>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             {multiOutcomePositions.map((outcome, idx) => {
-              const percentage = (outcome.currentPrice * 100).toFixed(1)
+              const priceCents = (outcome.currentPrice * 100).toFixed(1)
               const totalSharesK = (outcome.totalSmartShares / 1000).toFixed(1)
               const shortName = extractOutcomeShortName(outcome.outcomeTitle, multiOutcomePositions)
-              const isTopPick = idx === 0 // First one has most S-tier traders
               const isExpanded = expandedOutcomes.has(idx)
 
               return (
                 <div
                   key={idx}
-                  className={`
-                    bg-black/40 pixel-border p-6 transition-all relative
-                    ${isTopPick 
-                      ? 'border-[#FFD700] shadow-lg shadow-[#FFD700]/20 ring-2 ring-[#FFD700]/30' 
-                      : 'border-[#FFD700]/30'
-                    }
-                  `}
+                  className="bg-black/40 pixel-border border-[#FFD700]/30 p-4 hover:border-[#FFD700] transition-all"
                 >
-                  {/* TOP PICK Badge */}
-                  {isTopPick && (
-                    <div className="absolute -top-3 left-4 bg-[#FFD700] text-black px-3 py-1 text-xs font-bold pixel-border flex items-center gap-1">
-                      <span>🏆</span>
-                      <span>TOP_PICK</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-3">
                     <h3 
-                      className={`
-                        text-lg font-bold transition-colors flex-1 pr-4
-                        ${isTopPick ? 'text-[#FFD700]' : 'text-white group-hover:text-[#FFD700]'}
-                      `}
+                      className="text-base font-bold text-white flex-1 pr-2 uppercase"
                       title={outcome.outcomeTitle}
                     >
                       {shortName}
@@ -695,17 +677,17 @@ export default function SmartMarketDetailPage() {
                     <span className="text-xs text-muted-foreground whitespace-nowrap">#{idx + 1}</span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div className="grid grid-cols-3 gap-3 mb-3">
                     <div>
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {percentage}%
+                      <div className="text-xl font-bold text-white mb-0.5">
+                        {priceCents}¢
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Current Price
                       </div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-[#FFD700] mb-1">
+                      <div className="text-xl font-bold text-[#FFD700] mb-0.5">
                         {outcome.smartTraderCount}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -713,7 +695,7 @@ export default function SmartMarketDetailPage() {
                       </div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-primary mb-1">
+                      <div className="text-xl font-bold text-primary mb-0.5">
                         {totalSharesK}K
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -722,40 +704,33 @@ export default function SmartMarketDetailPage() {
                     </div>
                   </div>
 
-                  {/* Progress bar */}
-                  <div className="w-full bg-black/60 h-2 pixel-border border-white/10 overflow-hidden mb-3">
-                    <div 
-                      className="h-full bg-gradient-to-r from-[#FFD700] to-primary"
-                      style={{ width: `${percentage}%` }}
-                    />
+                  {/* Tier badges */}
+                  <div className="flex items-center gap-1 mb-3">
+                    {outcome.smartPositions.slice(0, 5).map((pos, i) => (
+                      <div
+                        key={i}
+                        className={`w-6 h-6 pixel-border flex items-center justify-center text-xs font-bold ${
+                          pos.tier === 'S' ? 'bg-[#FFD700] text-black' : 'bg-primary text-black'
+                        }`}
+                        title={`${pos.traderName}: ${(pos.shares / 1000).toFixed(1)}K shares`}
+                      >
+                        {pos.tier}
+                      </div>
+                    ))}
+                    {outcome.smartTraderCount > 5 && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        +{outcome.smartTraderCount - 5}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Top traders preview + Toggle button */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex -space-x-2">
-                      {outcome.smartPositions.slice(0, 5).map((pos, i) => (
-                        <div
-                          key={i}
-                          className="w-8 h-8 rounded pixel-border border-[#FFD700] bg-black flex items-center justify-center text-xs font-bold text-[#FFD700]"
-                          title={`${pos.traderName}: ${(pos.shares / 1000).toFixed(1)}K shares`}
-                        >
-                          {pos.tier}
-                        </div>
-                      ))}
-                      {outcome.smartTraderCount > 5 && (
-                        <div className="w-8 h-8 rounded pixel-border border-white/30 bg-black/60 flex items-center justify-center text-xs text-white/60">
-                          +{outcome.smartTraderCount - 5}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => toggleOutcome(idx)}
-                      className="px-4 py-2 pixel-border border-[#FFD700]/50 hover:border-[#FFD700] bg-black/40 hover:bg-[#FFD700]/10 text-[#FFD700] text-xs font-bold transition-all flex items-center gap-2"
-                    >
-                      {isExpanded ? '▲ HIDE' : '▼ SHOW'} TRADERS
-                    </button>
-                  </div>
+                  {/* Toggle button */}
+                  <button
+                    onClick={() => toggleOutcome(idx)}
+                    className="w-full px-3 py-2 pixel-border border-[#FFD700]/30 hover:border-[#FFD700] bg-black/40 hover:bg-[#FFD700]/10 text-[#FFD700] text-xs font-bold transition-all"
+                  >
+                    {isExpanded ? '▲ HIDE TRADERS' : '▼ SHOW TRADERS'}
+                  </button>
                   
                   {/* Expanded Trader List */}
                   {isExpanded && outcome.smartPositions.length > 0 && (
