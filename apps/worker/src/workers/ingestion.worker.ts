@@ -74,7 +74,7 @@ function calculateRarityScore(
 }
 
 async function syncLeaderboard(payload: any) {
-  logger.info('🚀 Syncing leaderboard: TOP-1000 MONTH ONLY');
+  logger.info('🚀 Syncing leaderboard: TOP-1000 MONTH (regular traders)');
   
   try {
     const allTraders: any[] = [];

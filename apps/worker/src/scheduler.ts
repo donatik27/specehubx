@@ -55,6 +55,18 @@ export async function scheduleJobs() {
   );
   logger.info('Scheduled: calculate-rarity-scores (every 30 minutes)');
 
+  // Sync public X/Twitter traders every 30 minutes (all-time PnL)
+  await queues.ingestion.add(
+    'sync-public-traders',
+    { type: 'sync-public-traders' },
+    {
+      repeat: {
+        pattern: '*/30 * * * *', // Every 30 minutes
+      },
+    }
+  );
+  logger.info('Scheduled: sync-public-traders (every 30 minutes)');
+
   // === ALPHA MARKETS JOBS (NO PINNED SYSTEM) ===
   
   // Discover alpha markets every 30 minutes

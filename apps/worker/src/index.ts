@@ -47,13 +47,13 @@ async function main() {
   // );
   // logger.info('✅ [2/3] Markets sync queued (starts in 10 seconds)');
   
-  // 🎯 SYNC PUBLIC TRADERS - DISABLED (using static X traders list now)
-  // await queues.ingestion.add(
-  //   'sync-public-traders-delayed',
-  //   { type: 'sync-public-traders' },
-  //   { delay: 300000, priority: 1 }
-  // );
-  // logger.info('✅ [3/3] SYNC PUBLIC TRADERS queued (starts in 5 minutes)');
+  // 🎯 SYNC PUBLIC TRADERS - X/Twitter traders with all-time PnL
+  await queues.ingestion.add(
+    'sync-public-traders-delayed',
+    { type: 'sync-public-traders' },
+    { delay: 300000, priority: 1 }
+  );
+  logger.info('✅ [3/3] SYNC PUBLIC TRADERS queued (starts in 5 minutes)');
   
   // 🧠 ALPHA MARKETS - Discover smart markets (delayed to save memory)
   await queues.smartMarkets.add(
