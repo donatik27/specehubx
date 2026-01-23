@@ -10,7 +10,8 @@ interface TickerMarket {
   yesPrice: number
   priceChange: number // % зміна
   trending: 'up' | 'down' | 'hot'
-  slug?: string // Polymarket slug for URL
+  slug?: string // Market slug (single outcome)
+  eventSlug?: string // Event slug (multi-outcome)
 }
 
 export default function MarketTicker() {
@@ -67,7 +68,8 @@ export default function MarketTicker() {
           yesPrice: yesPrice * 100, // Convert to %
           priceChange,
           trending: priceChange > 2 ? 'up' : priceChange < -2 ? 'down' : 'hot',
-          slug: m.eventSlug || m.slug
+          slug: m.slug,
+          eventSlug: m.eventSlug
         }
       })
       
@@ -104,10 +106,12 @@ export default function MarketTicker() {
           <div className="ticker-wrapper">
             <div className="ticker-content">
               {duplicatedMarkets.map((market, idx) => {
-                // Generate Polymarket URL
-                const polymarketUrl = market.slug
-                  ? `https://polymarket.com/event/${market.slug}?via=01k`
-                  : `https://polymarket.com/search?q=${encodeURIComponent(market.question)}&referral=01k`
+                // Generate Polymarket URL - EXACTLY SAME LOGIC AS MARKETS PAGE
+                const polymarketUrl = market.eventSlug
+                  ? `https://polymarket.com/event/${market.eventSlug}?via=01k` // Multi-outcome event
+                  : market.slug
+                    ? `https://polymarket.com/market/${market.slug}?via=01k` // Single market
+                    : `https://polymarket.com?via=01k` // Fallback
                 
                 return (
                   <a
