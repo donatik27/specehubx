@@ -121,8 +121,17 @@ export default function MapPage() {
           }
           
           // Convert lat/lng to screen coordinates
-          const lat = Number(pubTrader.latitude)
-          const lng = Number(pubTrader.longitude)
+          let lat = Number(pubTrader.latitude)
+          let lng = Number(pubTrader.longitude)
+          let region = pubTrader.country || 'Unknown'
+
+          // Snap to land-based region if country is known (avoids ocean placements)
+          if (pubTrader.country) {
+            const landLocation = getTraderLocation([{ question: pubTrader.country }])
+            lat = landLocation.lat
+            lng = landLocation.lng
+            region = landLocation.region
+          }
           const x = ((lng + 180) / 360) * 100
           const y = ((90 - lat) / 180) * 100
           
@@ -130,7 +139,7 @@ export default function MapPage() {
             trader,
             lat,
             lng,
-            region: pubTrader.country || 'Unknown',
+            region,
             x,
             y
           }
