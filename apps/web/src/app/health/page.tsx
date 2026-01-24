@@ -11,7 +11,7 @@ interface SystemVitals {
     heartbeat: {
       bpm: number
       volume24h: number
-      volumeChange: string
+      volumeChange: string | null
     }
     markets: {
       active: number
@@ -28,6 +28,9 @@ interface SystemVitals {
       apiResponseTime: number
       dbPingTime: number
       status: string
+    }
+    sync: {
+      leaderboardLastSync: string | null
     }
   }
 }
@@ -75,7 +78,7 @@ export default function HealthPage() {
           <h1 className="text-3xl font-bold text-primary">SYSTEM_VITALS.MONITOR</h1>
         </div>
         <p className="text-muted-foreground text-sm">
-          &gt; REAL-TIME_DIAGNOSTIC_INTERFACE • UPDATED_{new Date().toLocaleTimeString()}
+          &gt; REAL-TIME_DIAGNOSTIC_INTERFACE • UPDATED_{new Date(vitals?.timestamp || Date.now()).toLocaleTimeString()}
         </p>
       </div>
 
@@ -100,8 +103,14 @@ export default function HealthPage() {
               </div>
               <div>
                 <div className="text-primary/50 text-xs mb-1 uppercase tracking-wider">CHANGE_24H</div>
-                <div className="text-green-400 text-3xl font-bold">
-                  {vitals?.vitals.heartbeat.volumeChange || '+0%'}
+                <div className={`text-3xl font-bold ${
+                  vitals?.vitals.heartbeat.volumeChange
+                    ? vitals.vitals.heartbeat.volumeChange.startsWith('-')
+                      ? 'text-red-400'
+                      : 'text-green-400'
+                    : 'text-primary/50'
+                }`}>
+                  {vitals?.vitals.heartbeat.volumeChange || 'N/A'}
                 </div>
               </div>
               <div>
@@ -244,10 +253,25 @@ export default function HealthPage() {
         </div>
       </div>
 
+      {/* Sync Status */}
+      <div className="bg-black border-2 border-primary/30 rounded-sm p-4">
+        <div className="text-primary text-sm mb-2 uppercase tracking-wider">
+          SYNC_STATUS
+        </div>
+        <div className="text-xs text-muted-foreground">
+          LEADERBOARD_LAST_SYNC:{' '}
+          <span className="text-white font-mono">
+            {vitals?.vitals.sync.leaderboardLastSync
+              ? new Date(vitals.vitals.sync.leaderboardLastSync).toLocaleString()
+              : 'N/A'}
+          </span>
+        </div>
+      </div>
+
       {/* Info Note */}
       <div className="mt-6 bg-card pixel-border border-primary/30 p-4">
         <p className="text-xs text-muted-foreground font-mono">
-          ⚡ DIAGNOSTIC_MODE: Metrics update every 5 seconds • BPM calculated from 24h volume ($1M = 1 BPM) • All data sourced from live Polymarket API
+          ⚡ DIAGNOSTIC_MODE: Metrics update every 5 seconds • BPM calculated from 24h volume ($1M = 1 BPM) • Volume change is best-effort from last sample
         </p>
       </div>
     </div>

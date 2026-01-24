@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+let lastVolume24h: number | null = null
+let lastVolumeTimestamp: number | null = null
+
 export async function GET() {
   const startTime = Date.now()
   
@@ -24,30 +27,45 @@ export async function GET() {
       })
 
     // Try to get DB stats, but don't fail if DB is unavailable
-    let tradersCount = 115 // Fallback
-    let marketsCount = 152 // Fallback
+    let tradersCount = 0
+    let marketsCount = 0
     let dbPingTime = 0
+    let dbConnected = false
+    let tierCounts = { sTier: 0, aTier: 0, bTier: 0 }
+    let leaderboardLastSync: string | null = null
 
     try {
       const { prisma } = await import('@polymarket/database')
       
       const dbStartTime = Date.now()
-      const [traders, markets] = await Promise.all([
-        prisma.trader.count({
-          where: {
-            tier: { in: ['S', 'A', 'B'] }
-          }
-        }).catch(() => 115),
-        
-        prisma.market.count({
-          where: {
-            status: 'OPEN'
-          }
-        }).catch(() => 152),
+      const [traders, markets, tiers, leaderboardState] = await Promise.all([
+        prisma.trader.count(),
+        prisma.market.count({ where: { status: 'OPEN' } }),
+        prisma.trader.groupBy({
+          by: ['tier'],
+          _count: { tier: true },
+          where: { tier: { in: ['S', 'A', 'B'] } },
+        }),
+        prisma.ingestionState.findUnique({
+          where: { source_key: { source: 'leaderboard', key: 'global' } },
+          select: { lastTimestamp: true },
+        }),
       ])
-      
+
+      const counts = { sTier: 0, aTier: 0, bTier: 0 }
+      for (const row of tiers) {
+        if (row.tier === 'S') counts.sTier = row._count.tier
+        if (row.tier === 'A') counts.aTier = row._count.tier
+        if (row.tier === 'B') counts.bTier = row._count.tier
+      }
+
       tradersCount = traders
       marketsCount = markets
+      tierCounts = counts
+      leaderboardLastSync = leaderboardState?.lastTimestamp
+        ? leaderboardState.lastTimestamp.toISOString()
+        : null
+      dbConnected = true
       dbPingTime = Date.now() - dbStartTime
     } catch (dbError) {
       console.error('Database unavailable, using fallback values:', dbError)
@@ -60,8 +78,14 @@ export async function GET() {
     // API response time
     const apiResponseTime = Date.now() - startTime
 
-    // Calculate volume change (random for demo, TODO: use historical data)
-    const volumeChange = `+${(Math.random() * 20 + 5).toFixed(1)}%`
+    // Calculate volume change from last sample (best-effort)
+    let volumeChange: string | null = null
+    if (lastVolume24h && lastVolume24h > 0) {
+      const diff = ((polymarketStats.total24hVolume - lastVolume24h) / lastVolume24h) * 100
+      volumeChange = `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%`
+    }
+    lastVolume24h = polymarketStats.total24hVolume
+    lastVolumeTimestamp = Date.now()
 
     return NextResponse.json({
       status: 'healthy',
@@ -73,21 +97,30 @@ export async function GET() {
           volumeChange,
         },
         markets: {
-          active: marketsCount,
-          total: polymarketStats.activeMarkets,
+          active: polymarketStats.activeMarkets,
+          total: marketsCount,
           liquidity: polymarketStats.totalLiquidity,
         },
         traders: {
           total: tradersCount,
-          sTier: Math.floor(tradersCount * 0.6), // ~60% S-tier
-          aTier: Math.floor(tradersCount * 0.3), // ~30% A-tier
-          bTier: Math.floor(tradersCount * 0.1), // ~10% B-tier
+          sTier: tierCounts.sTier,
+          aTier: tierCounts.aTier,
+          bTier: tierCounts.bTier,
         },
         performance: {
           apiResponseTime,
           dbPingTime: Math.max(dbPingTime, 1), // Ensure non-zero
-          status: apiResponseTime < 100 ? 'EXCELLENT' : apiResponseTime < 500 ? 'GOOD' : 'SLOW'
-        }
+          status: dbConnected
+            ? apiResponseTime < 100
+              ? 'EXCELLENT'
+              : apiResponseTime < 500
+                ? 'GOOD'
+                : 'SLOW'
+            : 'DB_OFFLINE',
+        },
+        sync: {
+          leaderboardLastSync,
+        },
       }
     })
   } catch (error) {
@@ -101,7 +134,7 @@ export async function GET() {
         heartbeat: { 
           bpm: 75, 
           volume24h: 2_500_000, 
-          volumeChange: '+12.5%' 
+          volumeChange: null 
         },
         markets: { 
           active: 152, 
@@ -109,16 +142,19 @@ export async function GET() {
           liquidity: 15_000_000 
         },
         traders: { 
-          total: 115, 
-          sTier: 69, 
-          aTier: 35, 
-          bTier: 11 
+          total: 115,
+          sTier: 0,
+          aTier: 0,
+          bTier: 0
         },
         performance: { 
           apiResponseTime: 50, 
           dbPingTime: 12, 
           status: 'GOOD' 
-        }
+        },
+        sync: {
+          leaderboardLastSync: null,
+        },
       }
     })
   }
