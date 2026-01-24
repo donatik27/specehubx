@@ -12,6 +12,7 @@ export interface SmartMarketData {
   topTraders: Array<{
     address: string
     displayName: string
+    profilePicture?: string | null
     tier: string
     rarityScore: number
   }>
@@ -23,6 +24,7 @@ export interface SmartMarketData {
 export interface TraderData {
   address: string
   displayName: string
+  profilePicture?: string | null
   tier: string
   rarityScore: number
 }

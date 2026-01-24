@@ -346,16 +346,25 @@ export default function SmartMarketsPage() {
                             </div>
                             <div className="flex -space-x-1">
                               {outcome.traders?.slice(0, 3).map((t: any, i: number) => (
-                                <div 
-                                  key={i}
-                                  className={`w-6 h-6 rounded-full pixel-border flex items-center justify-center text-xs font-bold ${
-                                    t.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' : 
-                                    t.tier === 'A' ? 'bg-white text-black border-white' :
-                                    'bg-primary text-black border-primary'
-                                  }`}
-                                >
-                                  {t.tier}
-                                </div>
+                                t.profilePicture ? (
+                                  <img
+                                    key={i}
+                                    src={t.profilePicture}
+                                    alt={t.displayName || t.address}
+                                    className="w-6 h-6 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                                  />
+                                ) : (
+                                  <div 
+                                    key={i}
+                                    className={`w-6 h-6 rounded-full pixel-border flex items-center justify-center text-xs font-bold ${
+                                      t.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' : 
+                                      t.tier === 'A' ? 'bg-white text-black border-white' :
+                                      'bg-primary text-black border-primary'
+                                    }`}
+                                  >
+                                    {t.tier}
+                                  </div>
+                                )
                               ))}
                             </div>
                           </div>
@@ -403,6 +412,13 @@ export default function SmartMarketsPage() {
                           key={trader.address}
                           className="flex items-center gap-2 bg-black pixel-border border-white/30 p-2 hover:border-primary transition-all"
                         >
+                          {trader.profilePicture && (
+                            <img
+                              src={trader.profilePicture}
+                              alt={trader.displayName || trader.address}
+                              className="w-6 h-6 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                            />
+                          )}
                           <span className={`px-2 py-0.5 text-xs font-bold pixel-border ${
                             trader.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' :
                             trader.tier === 'A' ? 'bg-white text-black border-white' :

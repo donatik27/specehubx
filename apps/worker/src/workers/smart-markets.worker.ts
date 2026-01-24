@@ -65,6 +65,7 @@ const MULTICALL3_ABI = [{
 interface Trader {
   address: string;
   displayName: string | null;
+  profilePicture: string | null;
   tier: 'S' | 'A' | 'B';
   realizedPnl: any;
 }
@@ -72,6 +73,7 @@ interface Trader {
 interface TraderPosition {
   address: string;
   displayName: string | null;
+  profilePicture: string | null;
   tier: 'S' | 'A' | 'B';
   side: 'YES' | 'NO';
   shares: number;
@@ -124,7 +126,7 @@ async function discoverAlphaMarkets() {
     });
     
     const seen = new Set<string>();
-    const toDelete: number[] = [];
+    const toDelete: string[] = [];
     
     for (const stat of allStats) {
       if (seen.has(stat.marketId)) {
@@ -152,6 +154,7 @@ async function discoverAlphaMarkets() {
       select: {
         address: true,
         displayName: true,
+        profilePicture: true,
         tier: true,
         realizedPnl: true
       },
@@ -451,7 +454,7 @@ async function analyzeMarket(
         const side = yesBalance > noBalance ? 'YES' : 'NO';
         const shares = Math.max(yesBalance, noBalance);
         const currentPrice = side === 'YES' ? yesPrice : noPrice;
-        const tokenId = side === 'YES' ? clobTokenIds[0] : clobTokenIds[1];
+        const tokenId = side === 'YES' ? tokenIds[0] : tokenIds[1];
         
         // Fetch REAL entry price from historical trades
         const entryPrice = await fetchTraderEntryPrice(
@@ -464,6 +467,7 @@ async function analyzeMarket(
         tradersWithPositions.push({
           address: trader.address,
           displayName: trader.displayName,
+          profilePicture: trader.profilePicture || null,
           tier: trader.tier as 'S' | 'A' | 'B',
           side,
           shares,
@@ -474,7 +478,7 @@ async function analyzeMarket(
         const maxBalanceIndex = balances.indexOf(Math.max(...balances));
         const maxBalance = balances[maxBalanceIndex];
         const currentPrice = parseFloat(outcomePrices[maxBalanceIndex] || '0.5');
-        const tokenId = clobTokenIds[maxBalanceIndex];
+        const tokenId = tokenIds[maxBalanceIndex];
         
         // Only add if they have significant position in ONE outcome
         if (maxBalance > 0.1) {
@@ -489,6 +493,7 @@ async function analyzeMarket(
           tradersWithPositions.push({
             address: trader.address,
             displayName: trader.displayName,
+            profilePicture: trader.profilePicture || null,
             tier: trader.tier as 'S' | 'A' | 'B',
             side: 'YES', // For multi-outcome, side is always "YES" on their chosen outcome
             shares: maxBalance,
@@ -570,7 +575,7 @@ async function saveMarket(market: any, analysis: MarketAnalysis) {
       smartWeighted: analysis.smartWeighted,
       smartShare: 0,
       smartScore: analysis.smartScore,
-      topSmartTraders: analysis.topTraders, // TOP-10 with full data
+      topSmartTraders: analysis.topTraders as any, // TOP-10 with full data
       isPinned: false, // No pinned system
       priority: 0,     // No priority needed
       computedAt: new Date()

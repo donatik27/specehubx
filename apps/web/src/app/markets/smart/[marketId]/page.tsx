@@ -1066,12 +1066,21 @@ export default function SmartMarketDetailPage() {
                                 href={`/traders/${trader.address}`}
                                 className="flex items-center justify-between bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
                               >
-                                {/* Tier Badge */}
-                                <div 
-                                  className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg flex-shrink-0"
-                                  style={{ backgroundColor: trader.tier === 'S' ? '#FFD700' : '#00ff00' }}
-                                >
-                                  {trader.tier}
+                                {/* Avatar + Tier */}
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {trader.avatar && (
+                                    <img
+                                      src={trader.avatar}
+                                      alt={trader.displayName}
+                                      className="w-8 h-8 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                                    />
+                                  )}
+                                  <div 
+                                    className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg"
+                                    style={{ backgroundColor: trader.tier === 'S' ? '#FFD700' : '#00ff00' }}
+                                  >
+                                    {trader.tier}
+                                  </div>
                                 </div>
 
                                 {/* Trader Info */}
@@ -1128,12 +1137,21 @@ export default function SmartMarketDetailPage() {
                       href={`/traders/${trader.address}`}
                       className="flex items-center justify-between bg-black/40 pixel-border border-white/20 p-4 hover:border-[#FFD700] transition-all group"
                     >
-                      {/* Left: Tier Badge */}
-                      <div 
-                        className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg flex-shrink-0"
-                        style={{ backgroundColor: tierColor }}
-                      >
-                        {trader.tier}
+                      {/* Left: Avatar + Tier */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {trader.avatar && (
+                          <img
+                            src={trader.avatar}
+                            alt={trader.displayName}
+                            className="w-8 h-8 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                          />
+                        )}
+                        <div 
+                          className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg"
+                          style={{ backgroundColor: tierColor }}
+                        >
+                          {trader.tier}
+                        </div>
                       </div>
 
                       {/* Center: Trader Name + Address */}
