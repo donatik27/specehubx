@@ -187,12 +187,24 @@ export default function HealthPage() {
             {/* Status */}
             <div className="mt-4 pt-4 border-t border-primary/30">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
-                  <span className="text-green-400 text-sm font-bold">
-                    {vitals?.vitals.performance.status || 'HEALTHY'}
-                  </span>
-                </div>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full animate-pulse shadow-lg ${
+                  vitals?.vitals.performance.status === 'DB_OFFLINE'
+                    ? 'bg-red-400 shadow-red-400/50'
+                    : vitals?.vitals.performance.status === 'API_ONLY'
+                      ? 'bg-yellow-400 shadow-yellow-400/50'
+                      : 'bg-green-400 shadow-green-400/50'
+                }`} />
+                <span className={`text-sm font-bold ${
+                  vitals?.vitals.performance.status === 'DB_OFFLINE'
+                    ? 'text-red-400'
+                    : vitals?.vitals.performance.status === 'API_ONLY'
+                      ? 'text-yellow-400'
+                      : 'text-green-400'
+                }`}>
+                  {vitals?.vitals.performance.status || 'HEALTHY'}
+                </span>
+              </div>
                 <div className="text-primary/50 text-[10px]">
                   SYSTEM_OK
                 </div>

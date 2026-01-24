@@ -5,6 +5,8 @@ export const revalidate = 0
 
 let lastVolume24h: number | null = null
 let lastVolumeTimestamp: number | null = null
+let lastTraderStats: { total: number; sTier: number; aTier: number; bTier: number } | null = null
+let lastTraderStatsAt: number | null = null
 
 export async function GET() {
   const startTime = Date.now()
@@ -17,8 +19,8 @@ export async function GET() {
     })
       .then(res => res.json())
       .then((markets: any[]) => {
-        const total24hVolume = markets.reduce((sum, m) => sum + (m.volume24hr || 0), 0)
-        const totalLiquidity = markets.reduce((sum, m) => sum + (m.liquidity || 0), 0)
+        const total24hVolume = markets.reduce((sum, m) => sum + (Number(m.volume24hr) || 0), 0)
+        const totalLiquidity = markets.reduce((sum, m) => sum + (Number(m.liquidity) || 0), 0)
         return { total24hVolume, totalLiquidity, activeMarkets: markets.length }
       })
       .catch((err) => {
@@ -33,6 +35,7 @@ export async function GET() {
     let dbConnected = false
     let tierCounts = { sTier: 0, aTier: 0, bTier: 0 }
     let leaderboardLastSync: string | null = null
+    let usedFallbackApi = false
 
     try {
       const { prisma } = await import('@polymarket/database')
@@ -72,6 +75,42 @@ export async function GET() {
       dbPingTime = 0
     }
 
+    // Fallback: fetch traders from Railway API if DB is unavailable
+    if (!dbConnected && process.env.API_BASE_URL) {
+      try {
+        const now = Date.now()
+        if (lastTraderStats && lastTraderStatsAt && now - lastTraderStatsAt < 60_000) {
+          tradersCount = lastTraderStats.total
+          tierCounts = {
+            sTier: lastTraderStats.sTier,
+            aTier: lastTraderStats.aTier,
+            bTier: lastTraderStats.bTier,
+          }
+          usedFallbackApi = true
+        } else {
+          const tradersRes = await fetch(`${process.env.API_BASE_URL}/api/traders`, {
+            cache: 'no-store',
+          })
+          if (tradersRes.ok) {
+            const traders = await tradersRes.json()
+            const counts = { sTier: 0, aTier: 0, bTier: 0 }
+            for (const trader of traders) {
+              if (trader.tier === 'S') counts.sTier++
+              if (trader.tier === 'A') counts.aTier++
+              if (trader.tier === 'B') counts.bTier++
+            }
+            tradersCount = traders.length
+            tierCounts = counts
+            lastTraderStats = { total: tradersCount, ...counts }
+            lastTraderStatsAt = now
+            usedFallbackApi = true
+          }
+        }
+      } catch (error) {
+        console.error('Fallback API unavailable:', error)
+      }
+    }
+
     // Calculate BPM from volume (1M volume = 1 BPM, more exciting!)
     const bpm = Math.max(60, Math.min(180, polymarketStats.total24hVolume / 1_000_000))
 
@@ -98,7 +137,7 @@ export async function GET() {
         },
         markets: {
           active: polymarketStats.activeMarkets,
-          total: marketsCount,
+          total: marketsCount || polymarketStats.activeMarkets,
           liquidity: polymarketStats.totalLiquidity,
         },
         traders: {
@@ -116,7 +155,9 @@ export async function GET() {
               : apiResponseTime < 500
                 ? 'GOOD'
                 : 'SLOW'
-            : 'DB_OFFLINE',
+            : usedFallbackApi
+              ? 'API_ONLY'
+              : 'DB_OFFLINE',
         },
         sync: {
           leaderboardLastSync,
