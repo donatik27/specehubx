@@ -6,8 +6,8 @@ import { Sidebar } from '@/components/sidebar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Polymarket Smart Money Dashboard',
-  description: 'Track smart money on Polymarket',
+  title: 'SpaceHub',
+  description: 'SpaceHub smart money tracker',
 }
 
 export default function RootLayout({
