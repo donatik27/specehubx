@@ -500,63 +500,127 @@ async function updateManualLocations() {
       return acc;
     }, {} as Record<string, string>);
 
-  const LOCATION_COORDS: Record<string, { lat: number; lon: number }> = {
-    'Europe': { lat: 50.0, lon: 10.0 },
-    'Ireland': { lat: 53.4129, lon: -8.2439 },
-    'Canada': { lat: 56.1304, lon: -106.3468 },
-    'Australasia': { lat: -25.0, lon: 135.0 },
-    'United States': { lat: 37.0902, lon: -95.7129 },
-    'Germany': { lat: 51.1657, lon: 10.4515 },
-    'Brazil': { lat: -14.2350, lon: -51.9253 },
-    'Italy': { lat: 41.8719, lon: 12.5674 },
-    'East Asia & Pacific': { lat: 35.0, lon: 105.0 },
-    'Spain': { lat: 40.4637, lon: -3.7492 },
-    'Australia': { lat: -25.2744, lon: 133.7751 },
-    'Hong Kong': { lat: 22.3193, lon: 114.1694 },
-    'United Kingdom': { lat: 55.3781, lon: -3.4360 },
-    'Korea': { lat: 37.5665, lon: 126.9780 },
-    'South Korea': { lat: 37.5665, lon: 126.9780 },
-    'Japan': { lat: 36.2048, lon: 138.2529 },
-    'Lithuania': { lat: 55.1694, lon: 23.8813 },
-    'Denmark': { lat: 56.2639, lon: 9.5018 },
-    'Thailand': { lat: 15.8700, lon: 100.9925 },
-    'Slovakia': { lat: 48.6690, lon: 19.6990 },
-    'Morocco': { lat: 31.7917, lon: -7.0926 },
-    'Estonia': { lat: 58.5953, lon: 25.0136 },
-    'Turkey': { lat: 38.9637, lon: 35.2433 },
-    'Indonesia': { lat: -0.7893, lon: 113.9213 },
-    'West Asia': { lat: 29.0, lon: 53.0 },
-    'Poland': { lat: 51.9194, lon: 19.1451 },
-    'Austria': { lat: 47.5162, lon: 14.5501 },
-    'North America': { lat: 54.5260, lon: -105.2551 },
-    'Netherlands': { lat: 52.1326, lon: 5.2913 },
-    'Ukraine': { lat: 48.3794, lon: 31.1656 },
-    'Malaysia': { lat: 4.2105, lon: 101.9758 },
-    'Chile': { lat: -35.6751, lon: -71.5430 },
-    'United Arab Emirates': { lat: 23.4241, lon: 53.8478 },
-    'Czech Republic': { lat: 49.8175, lon: 15.4730 },
-    'Ecuador': { lat: -1.8312, lon: -78.1834 },
-    'Uzbekistan': { lat: 41.3775, lon: 64.5853 },
-    'Taiwan': { lat: 23.6978, lon: 120.9605 },
-    'Singapore': { lat: 1.3521, lon: 103.8198 },
-    'France': { lat: 46.2276, lon: 2.2137 },
-    'Argentina': { lat: -38.4161, lon: -63.6167 },
-    'India': { lat: 20.5937, lon: 78.9629 },
-    'Croatia': { lat: 45.1, lon: 15.2 },
-    'South Asia': { lat: 20.0, lon: 77.0 },
-    'Eastern Europe (Non-EU)': { lat: 50.0, lon: 30.0 },
-    'China': { lat: 35.8617, lon: 104.1954 },
-    'Philippines': { lat: 12.8797, lon: 121.7740 },
-    'Norway': { lat: 60.4720, lon: 8.4689 },
-    'Israel': { lat: 31.0461, lon: 34.8516 },
-    'Romania': { lat: 45.9432, lon: 24.9668 },
-    'Vietnam': { lat: 14.0583, lon: 108.2772 },
-    'Greece': { lat: 39.0742, lon: 21.8243 },
-    'South Africa': { lat: -30.5595, lon: 22.9375 },
-    'South America': { lat: -8.7832, lon: -55.4915 },
-    'Iceland': { lat: 64.9631, lon: -19.0208 },
-    'Georgia': { lat: 42.3154, lon: 43.3569 },
-    'Sweden': { lat: 60.1282, lon: 18.6435 },
+  const CITY_COORDS: Record<string, { lat: number; lon: number; maxOffset: number }> = {
+    US_CHICAGO: { lat: 41.8781, lon: -87.6298, maxOffset: 0.25 },
+    US_DALLAS: { lat: 32.7767, lon: -96.7970, maxOffset: 0.25 },
+    US_DENVER: { lat: 39.7392, lon: -104.9903, maxOffset: 0.25 },
+    US_ATLANTA: { lat: 33.7490, lon: -84.3880, maxOffset: 0.25 },
+    US_MINNEAPOLIS: { lat: 44.9778, lon: -93.2650, maxOffset: 0.25 },
+    CA_TORONTO: { lat: 43.6532, lon: -79.3832, maxOffset: 0.2 },
+    CA_MONTREAL: { lat: 45.5017, lon: -73.5673, maxOffset: 0.2 },
+    CA_CALGARY: { lat: 51.0447, lon: -114.0719, maxOffset: 0.2 },
+    BR_SAO_PAULO: { lat: -23.5505, lon: -46.6333, maxOffset: 0.2 },
+    BR_BRASILIA: { lat: -15.7939, lon: -47.8828, maxOffset: 0.2 },
+    AR_CORDOBA: { lat: -31.4201, lon: -64.1888, maxOffset: 0.2 },
+    AR_ROSARIO: { lat: -32.9442, lon: -60.6505, maxOffset: 0.12 },
+    CL_SANTIAGO: { lat: -33.4489, lon: -70.6693, maxOffset: 0.15 },
+    MX_MEXICO_CITY: { lat: 19.4326, lon: -99.1332, maxOffset: 0.2 },
+    MX_GUADALAJARA: { lat: 20.6597, lon: -103.3496, maxOffset: 0.2 },
+    UK_BIRMINGHAM: { lat: 52.4862, lon: -1.8904, maxOffset: 0.15 },
+    UK_MANCHESTER: { lat: 53.4808, lon: -2.2426, maxOffset: 0.15 },
+    IE_ATHLONE: { lat: 53.4239, lon: -7.9407, maxOffset: 0.12 },
+    ES_MADRID: { lat: 40.4168, lon: -3.7038, maxOffset: 0.15 },
+    ES_ZARAGOZA: { lat: 41.6488, lon: -0.8891, maxOffset: 0.12 },
+    FR_PARIS: { lat: 48.8566, lon: 2.3522, maxOffset: 0.15 },
+    FR_LYON: { lat: 45.7640, lon: 4.8357, maxOffset: 0.15 },
+    DE_BERLIN: { lat: 52.5200, lon: 13.4050, maxOffset: 0.15 },
+    DE_MUNICH: { lat: 48.1351, lon: 11.5820, maxOffset: 0.15 },
+    IT_ROME: { lat: 41.9028, lon: 12.4964, maxOffset: 0.15 },
+    IT_MILAN: { lat: 45.4642, lon: 9.1900, maxOffset: 0.15 },
+    NL_UTRECHT: { lat: 52.0907, lon: 5.1214, maxOffset: 0.1 },
+    SE_UPPSALA: { lat: 59.8586, lon: 17.6389, maxOffset: 0.1 },
+    DK_AARHUS: { lat: 56.1629, lon: 10.2039, maxOffset: 0.06 },
+    AT_VIENNA: { lat: 48.2082, lon: 16.3738, maxOffset: 0.12 },
+    PL_WARSAW: { lat: 52.2297, lon: 21.0122, maxOffset: 0.12 },
+    CZ_PRAGUE: { lat: 50.0755, lon: 14.4378, maxOffset: 0.12 },
+    UA_KYIV: { lat: 50.4501, lon: 30.5234, maxOffset: 0.12 },
+    LT_VILNIUS: { lat: 54.6872, lon: 25.2797, maxOffset: 0.12 },
+    EE_TALLINN: { lat: 59.4370, lon: 24.7536, maxOffset: 0.08 },
+    HR_ZAGREB: { lat: 45.8150, lon: 15.9819, maxOffset: 0.12 },
+    RO_BUCHAREST: { lat: 44.4268, lon: 26.1025, maxOffset: 0.12 },
+    GR_LARISSA: { lat: 39.6390, lon: 22.4191, maxOffset: 0.1 },
+    TR_ANKARA: { lat: 39.9334, lon: 32.8597, maxOffset: 0.12 },
+    MA_RABAT: { lat: 34.0209, lon: -6.8416, maxOffset: 0.08 },
+    AE_ABU_DHABI: { lat: 24.4539, lon: 54.3773, maxOffset: 0.05 },
+    IL_JERUSALEM: { lat: 31.7683, lon: 35.2137, maxOffset: 0.08 },
+    GE_TBILISI: { lat: 41.7151, lon: 44.8271, maxOffset: 0.12 },
+    UZ_TASHKENT: { lat: 41.2995, lon: 69.2401, maxOffset: 0.12 },
+    ZA_JOHANNESBURG: { lat: -26.2041, lon: 28.0473, maxOffset: 0.15 },
+    IS_REYKJAVIK: { lat: 64.1466, lon: -21.9426, maxOffset: 0.02 },
+    HK_SHENZHEN: { lat: 22.5431, lon: 114.0579, maxOffset: 0.06 },
+    HK_GUANGZHOU: { lat: 23.1291, lon: 113.2644, maxOffset: 0.06 },
+    TW_TAIPEI: { lat: 25.0330, lon: 121.5654, maxOffset: 0.02 },
+    JP_TOKYO: { lat: 35.6762, lon: 139.6503, maxOffset: 0.02 },
+    JP_NAGOYA: { lat: 35.1815, lon: 136.9066, maxOffset: 0.12 },
+    KR_SEOUL: { lat: 37.5665, lon: 126.9780, maxOffset: 0.03 },
+    KR_BUSAN: { lat: 35.1796, lon: 129.0756, maxOffset: 0.03 },
+    VN_HANOI: { lat: 21.0278, lon: 105.8342, maxOffset: 0.08 },
+    TH_BANGKOK: { lat: 13.7563, lon: 100.5018, maxOffset: 0.05 },
+    ID_BANDUNG: { lat: -6.9175, lon: 107.6191, maxOffset: 0.1 },
+    MY_KUALA_LUMPUR: { lat: 3.1390, lon: 101.6869, maxOffset: 0.05 },
+    PH_QUEZON: { lat: 14.6760, lon: 121.0437, maxOffset: 0.05 },
+    IN_DELHI: { lat: 28.6139, lon: 77.2090, maxOffset: 0.15 },
+    IN_PUNE: { lat: 18.5204, lon: 73.8567, maxOffset: 0.12 },
+    IN_BANGALORE: { lat: 12.9716, lon: 77.5946, maxOffset: 0.15 },
+    CAR_SANTO_DOMINGO: { lat: 18.4861, lon: -69.9312, maxOffset: 0.02 },
+    EC_QUITO: { lat: -0.1807, lon: -78.4678, maxOffset: 0.08 },
+    AU_CANBERRA: { lat: -35.2809, lon: 149.1300, maxOffset: 0.15 },
+    AU_MELBOURNE: { lat: -37.8136, lon: 144.9631, maxOffset: 0.05 },
+  };
+
+  const COUNTRY_CITY_POOLS: Record<string, string[]> = {
+    'United States': ['US_CHICAGO', 'US_DALLAS', 'US_DENVER', 'US_ATLANTA', 'US_MINNEAPOLIS'],
+    'Canada': ['CA_TORONTO', 'CA_MONTREAL', 'CA_CALGARY'],
+    'Brazil': ['BR_SAO_PAULO', 'BR_BRASILIA'],
+    'Argentina': ['AR_CORDOBA', 'AR_ROSARIO'],
+    'Chile': ['CL_SANTIAGO'],
+    'Mexico': ['MX_MEXICO_CITY', 'MX_GUADALAJARA'],
+    'United Kingdom': ['UK_BIRMINGHAM', 'UK_MANCHESTER'],
+    'Ireland': ['IE_ATHLONE'],
+    'Spain': ['ES_MADRID', 'ES_ZARAGOZA'],
+    'France': ['FR_PARIS', 'FR_LYON'],
+    'Germany': ['DE_BERLIN', 'DE_MUNICH'],
+    'Italy': ['IT_ROME', 'IT_MILAN'],
+    'Netherlands': ['NL_UTRECHT'],
+    'Sweden': ['SE_UPPSALA'],
+    'Denmark': ['DK_AARHUS'],
+    'Austria': ['AT_VIENNA'],
+    'Poland': ['PL_WARSAW'],
+    'Czech Republic': ['CZ_PRAGUE'],
+    'Ukraine': ['UA_KYIV'],
+    'Lithuania': ['LT_VILNIUS'],
+    'Estonia': ['EE_TALLINN'],
+    'Croatia': ['HR_ZAGREB'],
+    'Romania': ['RO_BUCHAREST'],
+    'Greece': ['GR_LARISSA'],
+    'Turkey': ['TR_ANKARA'],
+    'Morocco': ['MA_RABAT'],
+    'United Arab Emirates': ['AE_ABU_DHABI'],
+    'Israel': ['IL_JERUSALEM'],
+    'Georgia': ['GE_TBILISI'],
+    'Uzbekistan': ['UZ_TASHKENT'],
+    'South Africa': ['ZA_JOHANNESBURG'],
+    'Iceland': ['IS_REYKJAVIK'],
+    'Hong Kong': ['HK_SHENZHEN', 'HK_GUANGZHOU'],
+    'Taiwan': ['TW_TAIPEI'],
+    'Japan': ['JP_TOKYO', 'JP_NAGOYA'],
+    'Korea': ['KR_SEOUL', 'KR_BUSAN'],
+    'South Korea': ['KR_SEOUL', 'KR_BUSAN'],
+    'Vietnam': ['VN_HANOI'],
+    'Thailand': ['TH_BANGKOK'],
+    'Indonesia': ['ID_BANDUNG'],
+    'Malaysia': ['MY_KUALA_LUMPUR'],
+    'Philippines': ['PH_QUEZON'],
+    'India': ['IN_DELHI', 'IN_PUNE', 'IN_BANGALORE'],
+    'Caribbean': ['CAR_SANTO_DOMINGO'],
+    'Ecuador': ['EC_QUITO'],
+    'Australasia': ['AU_CANBERRA', 'AU_MELBOURNE'],
+    'Australia': ['AU_CANBERRA', 'AU_MELBOURNE'],
+    'Europe': ['DE_BERLIN', 'FR_PARIS', 'IT_ROME', 'ES_MADRID', 'AT_VIENNA'],
+    'East Asia & Pacific': ['JP_TOKYO', 'KR_SEOUL', 'TW_TAIPEI', 'HK_SHENZHEN'],
+    'South Asia': ['IN_DELHI', 'IN_PUNE', 'IN_BANGALORE'],
+    'North America': ['US_CHICAGO', 'US_DALLAS', 'CA_TORONTO'],
+    'South America': ['BR_SAO_PAULO', 'AR_ROSARIO', 'CL_SANTIAGO'],
   };
 
   try {
@@ -570,33 +634,75 @@ async function updateManualLocations() {
       return hash;
     };
 
-    let updated = 0;
-    for (const [twitterUsername, country] of Object.entries(tradersWithCountry)) {
-      const coords = LOCATION_COORDS[country];
-      if (!coords) {
-        logger.warn({ twitterUsername, country }, 'Country coords not found');
+    const getGridOffset = (index: number, total: number, maxOffset: number) => {
+      if (total <= 1 || maxOffset <= 0) {
+        return { latOffset: 0, lonOffset: 0 };
+      }
+
+      const gridSize = Math.ceil(Math.sqrt(total));
+      const row = Math.floor(index / gridSize);
+      const col = index % gridSize;
+      const span = maxOffset * 2;
+      const step = gridSize > 1 ? span / (gridSize - 1) : 0;
+      const center = (gridSize - 1) / 2;
+
+      return {
+        latOffset: (row - center) * step,
+        lonOffset: (col - center) * step,
+      };
+    };
+
+    // Deterministic city assignment + per-city spread (avoids overlap in dense regions)
+    const assignedCity: Record<string, string> = {};
+    const assignedIndex: Record<string, number> = {};
+    const cityBuckets: Record<string, string[]> = {};
+
+    const sortedUsers = Object.keys(tradersWithCountry).sort((a, b) => a.localeCompare(b));
+    for (const twitterUsername of sortedUsers) {
+      const country = tradersWithCountry[twitterUsername];
+      const cityPool = COUNTRY_CITY_POOLS[country];
+      if (!cityPool || cityPool.length === 0) {
         continue;
       }
 
-      // Deterministic jitter: stable per trader, no random movement
-      // Count traders in this country
-      const tradersInCountry = Object.values(tradersWithCountry).filter(c => c === country).length;
-      
-      // Calculate offset based on trader density
-      let offsetMultiplier = 2; // default ±1°
-      if (tradersInCountry >= 10) offsetMultiplier = 12; // ±6° for 10+ traders
-      else if (tradersInCountry >= 5) offsetMultiplier = 8; // ±4° for 5-9 traders
-      else if (tradersInCountry >= 3) offsetMultiplier = 5; // ±2.5° for 3-4 traders
-      
       const seed = hashString(twitterUsername.toLowerCase());
-      const latOffset = (((seed % 1000) / 1000) - 0.5) * offsetMultiplier;
-      const lonOffset = (((Math.floor(seed / 1000) % 1000) / 1000) - 0.5) * offsetMultiplier;
+      const cityKey = cityPool[seed % cityPool.length];
+      const bucketKey = `${country}::${cityKey}`;
+
+      if (!cityBuckets[bucketKey]) {
+        cityBuckets[bucketKey] = [];
+      }
+
+      assignedCity[twitterUsername] = cityKey;
+      assignedIndex[twitterUsername] = cityBuckets[bucketKey].length;
+      cityBuckets[bucketKey].push(twitterUsername);
+    }
+
+    let updated = 0;
+    for (const [twitterUsername, country] of Object.entries(tradersWithCountry)) {
+      const cityKey = assignedCity[twitterUsername];
+      if (!cityKey) {
+        logger.warn({ twitterUsername, country }, 'City pool not found');
+        continue;
+      }
+
+      const bucketKey = `${country}::${cityKey}`;
+      const bucket = cityBuckets[bucketKey] || [];
+      const indexInBucket = assignedIndex[twitterUsername] ?? 0;
+      const city = CITY_COORDS[cityKey];
+      if (!city) {
+        logger.warn({ twitterUsername, country, cityKey }, 'City coords not found');
+        continue;
+      }
+
+      // Deterministic grid spread: avoids overlap while staying on land
+      const { latOffset, lonOffset } = getGridOffset(indexInBucket, bucket.length, city.maxOffset);
 
       const result = await prisma.trader.updateMany({
         where: { twitterUsername },
         data: {
-          latitude: coords.lat + latOffset,
-          longitude: coords.lon + lonOffset,
+          latitude: city.lat + latOffset,
+          longitude: city.lon + lonOffset,
           country: country,
           tier: 'S', // Manual traders are S-tier
         },
