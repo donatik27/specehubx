@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Home, Users, Target, Globe, Bell, Activity, TrendingUp } from 'lucide-react'
 
@@ -12,6 +12,7 @@ interface SiteNode {
   icon: React.ReactNode
   status: 'LIVE' | 'BETA' | 'SOON'
   position: { row: number; col: number }
+  color?: string
 }
 
 const NODES: SiteNode[] = [
@@ -20,63 +21,70 @@ const NODES: SiteNode[] = [
     title: 'COMMAND_CENTER',
     description: 'Real-time dashboard with trader stats',
     route: '/',
-    icon: <Home className="w-6 h-6" />,
+    icon: <Home className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 0, col: 2 }
+    position: { row: 0, col: 2 },
+    color: 'from-green-500/20 to-green-500/5'
   },
   {
     id: 'traders',
     title: 'TRADER_INTEL',
     description: 'Top performers by PnL & score',
     route: '/traders',
-    icon: <Users className="w-6 h-6" />,
+    icon: <Users className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 0 }
+    position: { row: 1, col: 0 },
+    color: 'from-blue-500/20 to-blue-500/5'
   },
   {
     id: 'alpha',
     title: 'ALPHA_MARKETS',
     description: 'Where smart money is positioned',
     route: '/markets/smart',
-    icon: <Target className="w-6 h-6" />,
+    icon: <Target className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 2 }
+    position: { row: 1, col: 2 },
+    color: 'from-purple-500/20 to-purple-500/5'
   },
   {
     id: 'radar',
     title: 'TRADER_RADAR',
     description: '3D globe with trader locations',
     route: '/map',
-    icon: <Globe className="w-6 h-6" />,
+    icon: <Globe className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 3 }
+    position: { row: 1, col: 3 },
+    color: 'from-cyan-500/20 to-cyan-500/5'
   },
   {
     id: 'alerts',
     title: 'ALERTS',
     description: 'Telegram notifications for trades',
     route: '/alerts',
-    icon: <Bell className="w-6 h-6" />,
+    icon: <Bell className="w-4 h-4" />,
     status: 'BETA',
-    position: { row: 1, col: 4 }
+    position: { row: 1, col: 4 },
+    color: 'from-yellow-500/20 to-yellow-500/5'
   },
   {
     id: 'markets',
     title: 'MARKETS',
     description: 'Browse all prediction markets',
     route: '/markets',
-    icon: <TrendingUp className="w-6 h-6" />,
+    icon: <TrendingUp className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 2, col: 2 }
+    position: { row: 2, col: 2 },
+    color: 'from-pink-500/20 to-pink-500/5'
   },
   {
     id: 'diagnostics',
     title: 'DIAGNOSTICS',
     description: 'System health & data freshness',
     route: '/health',
-    icon: <Activity className="w-6 h-6" />,
+    icon: <Activity className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 3, col: 2 }
+    position: { row: 3, col: 2 },
+    color: 'from-orange-500/20 to-orange-500/5'
   }
 ]
 
@@ -93,6 +101,8 @@ const CONNECTIONS = [
 
 export default function SiteMapNeural() {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({})
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Get connected nodes for glow effect
   const getConnectedNodes = (nodeId: string): string[] => {
@@ -105,6 +115,38 @@ export default function SiteMapNeural() {
   }
 
   const connectedNodes = hoveredNode ? getConnectedNodes(hoveredNode) : []
+
+  // Calculate node positions dynamically
+  useEffect(() => {
+    const updatePositions = () => {
+      if (!containerRef.current) return
+      
+      const positions: Record<string, { x: number; y: number }> = {}
+      NODES.forEach(node => {
+        const element = document.getElementById(`node-${node.id}`)
+        if (element) {
+          const rect = element.getBoundingClientRect()
+          const containerRect = containerRef.current!.getBoundingClientRect()
+          positions[node.id] = {
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.top - containerRect.top + rect.height / 2
+          }
+        }
+      })
+      setNodePositions(positions)
+    }
+
+    updatePositions()
+    window.addEventListener('resize', updatePositions)
+    
+    // Update after render
+    const timer = setTimeout(updatePositions, 100)
+    
+    return () => {
+      window.removeEventListener('resize', updatePositions)
+      clearTimeout(timer)
+    }
+  }, [])
 
   return (
     <div className="mb-12 relative">
@@ -124,7 +166,7 @@ export default function SiteMapNeural() {
       </div>
 
       {/* Neural Network Grid */}
-      <div className="relative bg-card/30 backdrop-blur-sm rounded-lg border border-primary/20 p-8 overflow-hidden">
+      <div ref={containerRef} className="relative bg-card/30 backdrop-blur-sm rounded-lg border border-primary/20 p-8 overflow-hidden">
         {/* Background grid effect */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
@@ -170,15 +212,9 @@ export default function SiteMapNeural() {
           </defs>
 
           {CONNECTIONS.map((conn, i) => {
-            const fromNode = NODES.find(n => n.id === conn.from)
-            const toNode = NODES.find(n => n.id === conn.to)
-            if (!fromNode || !toNode) return null
-
-            // Calculate positions (approximate, will adjust based on actual layout)
-            const fromX = 50 + (fromNode.position.col - 2) * 200
-            const fromY = 80 + fromNode.position.row * 150
-            const toX = 50 + (toNode.position.col - 2) * 200
-            const toY = 80 + toNode.position.row * 150
+            const fromPos = nodePositions[conn.from]
+            const toPos = nodePositions[conn.to]
+            if (!fromPos || !toPos) return null
 
             const isHighlighted = hoveredNode && (
               connectedNodes.includes(conn.from) && connectedNodes.includes(conn.to)
@@ -188,28 +224,45 @@ export default function SiteMapNeural() {
               <g key={`${conn.from}-${conn.to}`}>
                 {/* Connection line */}
                 <line
-                  x1={`${fromX}px`}
-                  y1={`${fromY}px`}
-                  x2={`${toX}px`}
-                  y2={`${toY}px`}
-                  stroke={isHighlighted ? 'rgb(var(--primary))' : 'url(#lineGradient)'}
-                  strokeWidth={isHighlighted ? "3" : "2"}
+                  x1={fromPos.x}
+                  y1={fromPos.y}
+                  x2={toPos.x}
+                  y2={toPos.y}
+                  stroke={isHighlighted ? 'rgba(0,255,0,1)' : 'rgba(0,255,0,0.2)'}
+                  strokeWidth={isHighlighted ? "3" : "1"}
                   className="transition-all duration-300"
                   style={{
-                    filter: isHighlighted ? 'url(#glow)' : 'none',
-                    opacity: isHighlighted ? 1 : 0.3
+                    filter: isHighlighted ? 'url(#glow) drop-shadow(0 0 8px rgba(0,255,0,0.8))' : 'none',
                   }}
                 />
                 
-                {/* Animated particle */}
+                {/* Animated particles */}
                 {isHighlighted && (
-                  <circle r="4" fill="rgb(var(--primary))">
-                    <animateMotion
-                      dur="2s"
-                      repeatCount="indefinite"
-                      path={`M ${fromX} ${fromY} L ${toX} ${toY}`}
-                    />
-                  </circle>
+                  <>
+                    <circle r="3" fill="rgba(0,255,0,1)" filter="url(#glow)">
+                      <animateMotion
+                        dur="1.5s"
+                        repeatCount="indefinite"
+                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                      />
+                    </circle>
+                    <circle r="2" fill="rgba(0,255,0,0.8)" filter="url(#glow)">
+                      <animateMotion
+                        dur="1.5s"
+                        repeatCount="indefinite"
+                        begin="0.5s"
+                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                      />
+                    </circle>
+                    <circle r="2" fill="rgba(0,255,0,0.8)" filter="url(#glow)">
+                      <animateMotion
+                        dur="1.5s"
+                        repeatCount="indefinite"
+                        begin="1s"
+                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                      />
+                    </circle>
+                  </>
                 )}
               </g>
             )
@@ -226,6 +279,7 @@ export default function SiteMapNeural() {
               <Link
                 key={node.id}
                 href={node.route}
+                id={`node-${node.id}`}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}
                 className={`
@@ -245,15 +299,14 @@ export default function SiteMapNeural() {
                 <div
                   className={`
                     relative overflow-hidden
-                    bg-gradient-to-br from-card/80 to-card/40
-                    backdrop-blur-sm
+                    bg-gradient-to-br ${node.color} backdrop-blur-sm
                     border-2 rounded-lg p-4
                     transition-all duration-300
                     ${isHighlighted 
-                      ? 'border-primary shadow-[0_0_20px_rgba(var(--primary),0.5)] scale-105' 
-                      : 'border-primary/30 hover:border-primary/60'
+                      ? 'border-primary shadow-[0_0_30px_rgba(0,255,0,0.6),0_0_60px_rgba(0,255,0,0.3)] scale-110' 
+                      : 'border-primary/30 hover:border-primary/60 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]'
                     }
-                    ${isCenter ? 'ring-2 ring-primary/50' : ''}
+                    ${isCenter ? 'ring-2 ring-primary/70 shadow-[0_0_25px_rgba(0,255,0,0.4)]' : ''}
                   `}
                 >
                   {/* Scanline effect */}
@@ -266,10 +319,13 @@ export default function SiteMapNeural() {
                     {/* Icon + Status */}
                     <div className="flex items-start justify-between mb-3">
                       <div className={`
-                        p-2 rounded-md
-                        ${isHighlighted ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary/70'}
+                        p-1.5 rounded-md
+                        ${isHighlighted 
+                          ? 'bg-primary/30 text-primary shadow-[0_0_15px_rgba(0,255,0,0.6)]' 
+                          : 'bg-primary/10 text-primary/70'
+                        }
                         transition-all duration-300
-                        group-hover:scale-110
+                        group-hover:scale-125 group-hover:rotate-6
                       `}>
                         {node.icon}
                       </div>
