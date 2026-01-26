@@ -195,12 +195,13 @@ export default function SiteMapNeural() {
           <svg className="w-6 h-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
-          <h2 className="text-2xl font-bold text-primary font-mono">
-            🚇 SPACEHUB_METRO_MAP
+          <h2 className="text-2xl font-bold text-primary font-mono flex items-center gap-2">
+            <span className="text-3xl animate-pulse">👽</span>
+            ALIEN_NAVIGATION_SYSTEM
           </h2>
         </div>
         <p className="text-muted-foreground text-sm font-mono">
-          &gt; NAVIGATE_THROUGH_ECOSYSTEM // FOLLOW_THE_LINES
+          &gt; MISSION_CONTROL // FOLLOW_YOUR_PATH_TO_SUCCESS
         </p>
       </div>
 
@@ -248,6 +249,29 @@ export default function SiteMapNeural() {
                 <animate attributeName="offset" values="0;1" dur="2s" repeatCount="indefinite" />
               </stop>
             </linearGradient>
+
+            {/* Alien mascot at START */}
+            <g id="alien-mascot" transform="translate(20, 20)">
+              <circle cx="15" cy="15" r="12" fill="rgba(0,255,0,0.2)" />
+              <ellipse cx="15" cy="12" rx="10" ry="13" fill="rgba(0,255,0,0.4)" />
+              <circle cx="11" cy="10" r="3" fill="rgba(0,255,0,1)">
+                <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="19" cy="10" r="3" fill="rgba(0,255,0,1)">
+                <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <path d="M 10 17 Q 15 19 20 17" stroke="rgba(0,255,0,1)" strokeWidth="1.5" fill="none" />
+              <ellipse cx="8" cy="8" rx="2" ry="4" fill="rgba(0,255,0,0.6)" transform="rotate(-20 8 8)" />
+              <ellipse cx="22" cy="8" rx="2" ry="4" fill="rgba(0,255,0,0.6)" transform="rotate(20 22 8)" />
+              <animateTransform
+                attributeName="transform"
+                attributeType="XML"
+                type="translate"
+                values="20,20; 20,18; 20,20"
+                dur="2s"
+                repeatCount="indefinite"
+              />
+            </g>
           </defs>
 
           {METRO_LINES.map((line) => 
@@ -263,7 +287,7 @@ export default function SiteMapNeural() {
 
               return (
                 <g key={`${line.name}-${conn.from}-${conn.to}`}>
-                  {/* Connection line */}
+                  {/* Connection line with dashed animation */}
                   <line
                     x1={fromPos.x}
                     y1={fromPos.y}
@@ -271,11 +295,22 @@ export default function SiteMapNeural() {
                     y2={toPos.y}
                     stroke={isHighlighted ? line.color : line.colorDim}
                     strokeWidth={isHighlighted ? "4" : "2"}
+                    strokeDasharray={isHighlighted ? "10 5" : "5 5"}
                     className="transition-all duration-300"
                     style={{
-                      filter: isHighlighted ? `url(#glow) drop-shadow(0 0 10px ${line.color})` : 'none',
+                      filter: isHighlighted ? `url(#glow) drop-shadow(0 0 15px ${line.color}) drop-shadow(0 0 25px ${line.color})` : 'none',
                     }}
-                  />
+                  >
+                    {isHighlighted && (
+                      <animate
+                        attributeName="stroke-dashoffset"
+                        from="0"
+                        to="30"
+                        dur="0.8s"
+                        repeatCount="indefinite"
+                      />
+                    )}
+                  </line>
                   
                   {/* Animated particles */}
                   {isHighlighted && (
@@ -311,23 +346,29 @@ export default function SiteMapNeural() {
           )}
         </svg>
 
-        {/* Metro Map Legend */}
-        <div className="relative z-10 mb-6 flex flex-wrap gap-4 text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(0,255,0,0.8)]" />
-            <span className="text-green-400">DIRECT LINE</span>
+        {/* Mission Paths Legend */}
+        <div className="relative z-10 mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">🛸</span>
+            <span className="text-xs font-mono text-primary">MISSION_PATHS:</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-            <span className="text-blue-400">INTEL LINE</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-1 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-            <span className="text-cyan-400">RADAR LINE</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-1 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)]" />
-            <span className="text-yellow-400">ALERTS LINE</span>
+          <div className="flex flex-wrap gap-4 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(0,255,0,0.8)] animate-pulse" />
+              <span className="text-green-400">🚀 DIRECT_PATH</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)] animate-pulse" />
+              <span className="text-blue-400">🧠 INTEL_PATH</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)] animate-pulse" />
+              <span className="text-cyan-400">🌍 RADAR_PATH</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)] animate-pulse" />
+              <span className="text-yellow-400">⚡ ALERT_PATH</span>
+            </div>
           </div>
         </div>
 
@@ -446,10 +487,40 @@ export default function SiteMapNeural() {
           })}
         </div>
 
+        {/* Polymarket Integration Card */}
+        <div className="relative z-10 mt-8 mb-6">
+          <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 border-2 border-purple-500/30 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">📊</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-purple-400 font-mono">POLYMARKET_INTEGRATION</h3>
+                  <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/50">OFFICIAL</span>
+                </div>
+                <p className="text-sm text-muted-foreground font-mono mb-3">
+                  SpaceHub tracks smart money on <span className="text-purple-400 font-bold">Polymarket</span> - the world's largest prediction market. 
+                  See where top traders are positioning, analyze trends, and make informed decisions.
+                </p>
+                <a 
+                  href="https://polymarket.com/" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 hover:border-purple-500 rounded-md text-sm font-mono text-purple-300 hover:text-purple-200 transition-all duration-300 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
+                >
+                  <span>🚀 VISIT_POLYMARKET</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Bottom hint */}
-        <div className="relative z-10 mt-8 text-center">
+        <div className="relative z-10 text-center">
           <p className="text-xs text-muted-foreground font-mono">
-            <span className="text-primary">🎯 TIP:</span> Hover over stations to highlight metro lines
+            <span className="text-primary">👽 TIP:</span> Hover over stations to activate mission paths
           </p>
         </div>
       </div>
