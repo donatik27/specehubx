@@ -582,7 +582,7 @@ export default function SmartMarketsPage() {
                             }
                           </span>
                           <span className="text-xs font-mono text-primary">
-                            ({formatBalance(trader.balance || 0)})
+                            ({Math.round(trader.rarityScore / 1000)}k)
                           </span>
                         </div>
                       ))}
