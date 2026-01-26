@@ -13,6 +13,7 @@ import {
   Activity
 } from 'lucide-react'
 import MarketTicker from '@/components/MarketTicker'
+import SiteMapNeural from '@/components/SiteMapNeural'
 
 interface Trader {
   address: string
@@ -440,6 +441,9 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Neural Network Site Map */}
+      <SiteMapNeural />
 
       {/* Development Roadmap */}
       <div className="mt-8 mb-12 bg-card pixel-border border-primary/40 p-6">

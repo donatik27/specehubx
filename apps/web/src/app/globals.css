@@ -283,5 +283,44 @@
       -2px -2px 0 rgba(255, 255, 255, 0.2),
       2px 2px 0 rgba(0, 0, 0, 0.8);
   }
+  
+  /* Neural network scanline effect */
+  @keyframes neural-scanline {
+    0% {
+      transform: translateY(-100%);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.5;
+    }
+    90% {
+      opacity: 0.3;
+    }
+    100% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+  
+  .neural-scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0, 255, 0, 0.1) 45%,
+      rgba(0, 255, 0, 0.3) 50%,
+      rgba(0, 255, 0, 0.1) 55%,
+      transparent 100%
+    );
+    animation: neural-scanline 3s ease-in-out infinite;
+    pointer-events: none;
+  }
 }
 
