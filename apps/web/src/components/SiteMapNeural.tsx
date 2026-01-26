@@ -18,52 +18,52 @@ interface SiteNode {
 const NODES: SiteNode[] = [
   {
     id: 'home',
-    title: 'COMMAND_CENTER',
-    description: 'Real-time dashboard with trader stats',
+    title: 'START',
+    description: 'Your command center dashboard',
     route: '/',
     icon: <Home className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 0, col: 2 },
+    position: { row: 2, col: 0 },
     color: 'from-green-500/20 to-green-500/5'
   },
   {
     id: 'traders',
-    title: 'TRADER_INTEL',
-    description: 'Top performers by PnL & score',
+    title: 'TRADERS',
+    description: 'Top performers leaderboard',
     route: '/traders',
     icon: <Users className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 0 },
+    position: { row: 0, col: 2 },
     color: 'from-blue-500/20 to-blue-500/5'
   },
   {
     id: 'alpha',
-    title: 'ALPHA_MARKETS',
-    description: 'Where smart money is positioned',
+    title: 'ALPHA',
+    description: 'Smart money positions',
     route: '/markets/smart',
     icon: <Target className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 2 },
-    color: 'from-purple-500/20 to-purple-500/5'
+    position: { row: 0, col: 3 },
+    color: 'from-blue-500/20 to-blue-500/5'
   },
   {
     id: 'radar',
-    title: 'TRADER_RADAR',
-    description: '3D globe with trader locations',
+    title: 'RADAR',
+    description: '3D trader locations',
     route: '/map',
     icon: <Globe className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 1, col: 3 },
+    position: { row: 2, col: 2 },
     color: 'from-cyan-500/20 to-cyan-500/5'
   },
   {
     id: 'alerts',
     title: 'ALERTS',
-    description: 'Telegram notifications for trades',
+    description: 'Telegram notifications',
     route: '/alerts',
     icon: <Bell className="w-4 h-4" />,
     status: 'BETA',
-    position: { row: 1, col: 4 },
+    position: { row: 4, col: 2 },
     color: 'from-yellow-500/20 to-yellow-500/5'
   },
   {
@@ -73,30 +73,59 @@ const NODES: SiteNode[] = [
     route: '/markets',
     icon: <TrendingUp className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 2, col: 2 },
+    position: { row: 2, col: 4 },
     color: 'from-pink-500/20 to-pink-500/5'
   },
   {
     id: 'diagnostics',
-    title: 'DIAGNOSTICS',
-    description: 'System health & data freshness',
+    title: 'MONITOR',
+    description: 'System health & status',
     route: '/health',
     icon: <Activity className="w-4 h-4" />,
     status: 'LIVE',
-    position: { row: 3, col: 2 },
+    position: { row: 2, col: 5 },
     color: 'from-orange-500/20 to-orange-500/5'
   }
 ]
 
-const CONNECTIONS = [
-  { from: 'home', to: 'traders' },
-  { from: 'home', to: 'alpha' },
-  { from: 'home', to: 'radar' },
-  { from: 'home', to: 'alerts' },
-  { from: 'traders', to: 'markets' },
-  { from: 'alpha', to: 'markets' },
-  { from: 'radar', to: 'markets' },
-  { from: 'markets', to: 'diagnostics' }
+const METRO_LINES = [
+  {
+    name: 'green',
+    color: 'rgba(0,255,0,1)',
+    colorDim: 'rgba(0,255,0,0.2)',
+    connections: [
+      { from: 'home', to: 'markets' },
+      { from: 'markets', to: 'diagnostics' }
+    ]
+  },
+  {
+    name: 'blue',
+    color: 'rgba(59,130,246,1)',
+    colorDim: 'rgba(59,130,246,0.2)',
+    connections: [
+      { from: 'home', to: 'traders' },
+      { from: 'traders', to: 'alpha' },
+      { from: 'alpha', to: 'markets' }
+    ]
+  },
+  {
+    name: 'cyan',
+    color: 'rgba(6,182,212,1)',
+    colorDim: 'rgba(6,182,212,0.2)',
+    connections: [
+      { from: 'home', to: 'radar' },
+      { from: 'radar', to: 'markets' }
+    ]
+  },
+  {
+    name: 'yellow',
+    color: 'rgba(234,179,8,1)',
+    colorDim: 'rgba(234,179,8,0.2)',
+    connections: [
+      { from: 'home', to: 'alerts' },
+      { from: 'alerts', to: 'diagnostics' }
+    ]
+  }
 ]
 
 export default function SiteMapNeural() {
@@ -104,17 +133,27 @@ export default function SiteMapNeural() {
   const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({})
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Get connected nodes for glow effect
-  const getConnectedNodes = (nodeId: string): string[] => {
+  // Get connected nodes and metro line for glow effect
+  const getConnectedNodesAndLine = (nodeId: string): { nodes: string[]; line: string | null } => {
     const connected = new Set([nodeId])
-    CONNECTIONS.forEach(conn => {
-      if (conn.from === nodeId) connected.add(conn.to)
-      if (conn.to === nodeId) connected.add(conn.from)
+    let activeLine: string | null = null
+    
+    METRO_LINES.forEach(line => {
+      line.connections.forEach(conn => {
+        if (conn.from === nodeId || conn.to === nodeId) {
+          connected.add(conn.from)
+          connected.add(conn.to)
+          activeLine = line.name
+        }
+      })
     })
-    return Array.from(connected)
+    
+    return { nodes: Array.from(connected), line: activeLine }
   }
 
-  const connectedNodes = hoveredNode ? getConnectedNodes(hoveredNode) : []
+  const connectedInfo = hoveredNode ? getConnectedNodesAndLine(hoveredNode) : { nodes: [], line: null }
+  const connectedNodes = connectedInfo.nodes
+  const activeMetroLine = connectedInfo.line
 
   // Calculate node positions dynamically
   useEffect(() => {
@@ -157,11 +196,11 @@ export default function SiteMapNeural() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           <h2 className="text-2xl font-bold text-primary font-mono">
-            🧠 NEURAL_NETWORK_MAP
+            🚇 SPACEHUB_METRO_MAP
           </h2>
         </div>
         <p className="text-muted-foreground text-sm font-mono">
-          &gt; NAVIGATE_THROUGH_SPACEHUB_ECOSYSTEM
+          &gt; NAVIGATE_THROUGH_ECOSYSTEM // FOLLOW_THE_LINES
         </p>
       </div>
 
@@ -211,66 +250,89 @@ export default function SiteMapNeural() {
             </linearGradient>
           </defs>
 
-          {CONNECTIONS.map((conn, i) => {
-            const fromPos = nodePositions[conn.from]
-            const toPos = nodePositions[conn.to]
-            if (!fromPos || !toPos) return null
+          {METRO_LINES.map((line) => 
+            line.connections.map((conn, i) => {
+              const fromPos = nodePositions[conn.from]
+              const toPos = nodePositions[conn.to]
+              if (!fromPos || !toPos) return null
 
-            const isHighlighted = hoveredNode && (
-              connectedNodes.includes(conn.from) && connectedNodes.includes(conn.to)
-            )
+              const isLineActive = activeMetroLine === line.name
+              const isHighlighted = hoveredNode && (
+                connectedNodes.includes(conn.from) && connectedNodes.includes(conn.to)
+              )
 
-            return (
-              <g key={`${conn.from}-${conn.to}`}>
-                {/* Connection line */}
-                <line
-                  x1={fromPos.x}
-                  y1={fromPos.y}
-                  x2={toPos.x}
-                  y2={toPos.y}
-                  stroke={isHighlighted ? 'rgba(0,255,0,1)' : 'rgba(0,255,0,0.2)'}
-                  strokeWidth={isHighlighted ? "3" : "1"}
-                  className="transition-all duration-300"
-                  style={{
-                    filter: isHighlighted ? 'url(#glow) drop-shadow(0 0 8px rgba(0,255,0,0.8))' : 'none',
-                  }}
-                />
-                
-                {/* Animated particles */}
-                {isHighlighted && (
-                  <>
-                    <circle r="3" fill="rgba(0,255,0,1)" filter="url(#glow)">
-                      <animateMotion
-                        dur="1.5s"
-                        repeatCount="indefinite"
-                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
-                      />
-                    </circle>
-                    <circle r="2" fill="rgba(0,255,0,0.8)" filter="url(#glow)">
-                      <animateMotion
-                        dur="1.5s"
-                        repeatCount="indefinite"
-                        begin="0.5s"
-                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
-                      />
-                    </circle>
-                    <circle r="2" fill="rgba(0,255,0,0.8)" filter="url(#glow)">
-                      <animateMotion
-                        dur="1.5s"
-                        repeatCount="indefinite"
-                        begin="1s"
-                        path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
-                      />
-                    </circle>
-                  </>
-                )}
-              </g>
-            )
-          })}
+              return (
+                <g key={`${line.name}-${conn.from}-${conn.to}`}>
+                  {/* Connection line */}
+                  <line
+                    x1={fromPos.x}
+                    y1={fromPos.y}
+                    x2={toPos.x}
+                    y2={toPos.y}
+                    stroke={isHighlighted ? line.color : line.colorDim}
+                    strokeWidth={isHighlighted ? "4" : "2"}
+                    className="transition-all duration-300"
+                    style={{
+                      filter: isHighlighted ? `url(#glow) drop-shadow(0 0 10px ${line.color})` : 'none',
+                    }}
+                  />
+                  
+                  {/* Animated particles */}
+                  {isHighlighted && (
+                    <>
+                      <circle r="4" fill={line.color} filter="url(#glow)">
+                        <animateMotion
+                          dur="1.2s"
+                          repeatCount="indefinite"
+                          path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                        />
+                      </circle>
+                      <circle r="3" fill={line.color} filter="url(#glow)">
+                        <animateMotion
+                          dur="1.2s"
+                          repeatCount="indefinite"
+                          begin="0.4s"
+                          path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                        />
+                      </circle>
+                      <circle r="3" fill={line.color} filter="url(#glow)">
+                        <animateMotion
+                          dur="1.2s"
+                          repeatCount="indefinite"
+                          begin="0.8s"
+                          path={`M ${fromPos.x} ${fromPos.y} L ${toPos.x} ${toPos.y}`}
+                        />
+                      </circle>
+                    </>
+                  )}
+                </g>
+              )
+            })
+          )}
         </svg>
 
+        {/* Metro Map Legend */}
+        <div className="relative z-10 mb-6 flex flex-wrap gap-4 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-1 bg-green-500 rounded-full shadow-[0_0_8px_rgba(0,255,0,0.8)]" />
+            <span className="text-green-400">DIRECT LINE</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-1 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+            <span className="text-blue-400">INTEL LINE</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-1 bg-cyan-500 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+            <span className="text-cyan-400">RADAR LINE</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-1 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)]" />
+            <span className="text-yellow-400">ALERTS LINE</span>
+          </div>
+        </div>
+
         {/* Nodes Grid */}
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-5 gap-6" style={{ minHeight: '500px' }}>
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-6 gap-6" style={{ minHeight: '400px' }}>
           {NODES.map((node) => {
             const isHighlighted = connectedNodes.includes(node.id)
             const isCenter = node.id === 'home'
@@ -284,13 +346,13 @@ export default function SiteMapNeural() {
                 onMouseLeave={() => setHoveredNode(null)}
                 className={`
                   relative group
-                  ${isCenter ? 'md:col-start-3' : ''}
-                  ${node.id === 'traders' ? 'md:col-start-1' : ''}
-                  ${node.id === 'alpha' ? 'md:col-start-3' : ''}
-                  ${node.id === 'radar' ? 'md:col-start-4' : ''}
-                  ${node.id === 'alerts' ? 'md:col-start-5' : ''}
-                  ${node.id === 'markets' ? 'md:col-start-3' : ''}
-                  ${node.id === 'diagnostics' ? 'md:col-start-3' : ''}
+                  ${node.id === 'home' ? 'md:col-start-1' : ''}
+                  ${node.id === 'traders' ? 'md:col-start-3' : ''}
+                  ${node.id === 'alpha' ? 'md:col-start-4' : ''}
+                  ${node.id === 'radar' ? 'md:col-start-3' : ''}
+                  ${node.id === 'alerts' ? 'md:col-start-3' : ''}
+                  ${node.id === 'markets' ? 'md:col-start-5' : ''}
+                  ${node.id === 'diagnostics' ? 'md:col-start-6' : ''}
                 `}
                 style={{
                   gridRow: node.position.row + 1
@@ -387,7 +449,7 @@ export default function SiteMapNeural() {
         {/* Bottom hint */}
         <div className="relative z-10 mt-8 text-center">
           <p className="text-xs text-muted-foreground font-mono">
-            <span className="text-primary">TIP:</span> Hover over nodes to see connections
+            <span className="text-primary">🎯 TIP:</span> Hover over stations to highlight metro lines
           </p>
         </div>
       </div>
