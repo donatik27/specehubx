@@ -77,14 +77,14 @@ const NODES: SiteNode[] = [
     color: 'from-pink-500/20 to-pink-500/5'
   },
   {
-    id: 'diagnostics',
-    title: 'MONITOR',
-    description: 'System health & status',
-    route: '/health',
-    icon: <Activity className="w-4 h-4" />,
+    id: 'polymarket',
+    title: 'POLYMARKET',
+    description: 'Place your bets here',
+    route: 'https://polymarket.com?via=01k',
+    icon: <TrendingUp className="w-4 h-4" />,
     status: 'LIVE',
     position: { row: 2, col: 5 },
-    color: 'from-orange-500/20 to-orange-500/5'
+    color: 'from-blue-600/20 to-blue-600/5'
   }
 ]
 
@@ -95,7 +95,7 @@ const METRO_LINES = [
     colorDim: 'rgba(0,255,0,0.2)',
     connections: [
       { from: 'home', to: 'markets' },
-      { from: 'markets', to: 'diagnostics' }
+      { from: 'markets', to: 'polymarket' }
     ]
   },
   {
@@ -123,7 +123,7 @@ const METRO_LINES = [
     colorDim: 'rgba(234,179,8,0.2)',
     connections: [
       { from: 'home', to: 'alerts' },
-      { from: 'alerts', to: 'diagnostics' }
+      { from: 'alerts', to: 'polymarket' }
     ]
   }
 ]
@@ -207,6 +207,54 @@ export default function SiteMapNeural() {
 
       {/* Neural Network Grid */}
       <div ref={containerRef} className="relative bg-card/30 backdrop-blur-sm rounded-lg border border-primary/20 p-8 overflow-hidden">
+        {/* Alien Navigator - Top Right */}
+        <div className="absolute top-4 right-4 z-30">
+          <div className="w-20 h-24" style={{ 
+            animation: 'bounce 3s ease-in-out infinite'
+          }}>
+            <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_0_15px_rgba(0,255,0,0.8)]">
+              {/* Compass */}
+              <circle cx="50" cy="80" r="16" fill="rgba(0,50,0,0.4)" stroke="rgba(0,255,0,0.8)" strokeWidth="2" />
+              <circle cx="50" cy="80" r="12" fill="rgba(0,100,0,0.3)" />
+              <line x1="50" y1="68" x2="50" y2="92" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
+              <line x1="38" y1="80" x2="62" y2="80" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
+              <polygon points="50,70 48,76 52,76" fill="rgba(0,255,0,1)">
+                <animateTransform attributeName="transform" type="rotate" from="0 50 80" to="360 50 80" dur="4s" repeatCount="indefinite" />
+              </polygon>
+              
+              {/* Alien head */}
+              <ellipse cx="50" cy="32" rx="20" ry="26" fill="rgb(0,255,0)" opacity="0.9" />
+              <ellipse cx="50" cy="30" rx="18" ry="24" fill="rgb(50,255,50)" />
+              
+              {/* Eyes */}
+              <ellipse cx="43" cy="28" rx="7" ry="10" fill="rgba(0,0,0,0.95)" />
+              <ellipse cx="57" cy="28" rx="7" ry="10" fill="rgba(0,0,0,0.95)" />
+              <ellipse cx="45" cy="25" rx="2.5" ry="4" fill="rgba(255,255,255,0.9)">
+                <animate attributeName="opacity" values="1;0.2;1" dur="3s" repeatCount="indefinite" />
+              </ellipse>
+              <ellipse cx="59" cy="25" rx="2.5" ry="4" fill="rgba(255,255,255,0.9)">
+                <animate attributeName="opacity" values="1;0.2;1" dur="3s" repeatCount="indefinite" />
+              </ellipse>
+              
+              {/* Smile */}
+              <path d="M 42 42 Q 50 46 58 42" stroke="rgba(0,0,0,0.8)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+              
+              {/* Antennas */}
+              <line x1="36" y1="10" x2="32" y2="2" stroke="rgba(0,255,0,0.9)" strokeWidth="2.5" strokeLinecap="round" />
+              <line x1="64" y1="10" x2="68" y2="2" stroke="rgba(0,255,0,0.9)" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx="32" cy="2" r="3.5" fill="rgba(0,255,0,1)">
+                <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite" />
+              </circle>
+              <circle cx="68" cy="2" r="3.5" fill="rgba(0,255,0,1)">
+                <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite" />
+              </circle>
+              
+              {/* Body */}
+              <ellipse cx="50" cy="52" rx="14" ry="7" fill="rgb(0,255,0)" opacity="0.8" />
+            </svg>
+          </div>
+        </div>
+
         {/* Background grid effect */}
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
@@ -250,8 +298,8 @@ export default function SiteMapNeural() {
               </stop>
             </linearGradient>
 
-            {/* Alien mascot at START */}
-            <g id="alien-mascot" transform="translate(20, 20)">
+            {/* Alien mascot in top-right corner */}
+            <g id="alien-mascot" transform="translate(95%, 20) scale(1.5)">
               <circle cx="15" cy="15" r="12" fill="rgba(0,255,0,0.2)" />
               <ellipse cx="15" cy="12" rx="10" ry="13" fill="rgba(0,255,0,0.4)" />
               <circle cx="11" cy="10" r="3" fill="rgba(0,255,0,1)">
@@ -377,11 +425,21 @@ export default function SiteMapNeural() {
           {NODES.map((node) => {
             const isHighlighted = connectedNodes.includes(node.id)
             const isCenter = node.id === 'home'
+            const isExternal = node.id === 'polymarket'
+            
+            const Component = isExternal ? 'a' : Link
+            const linkProps = isExternal ? {
+              href: node.route,
+              target: '_blank',
+              rel: 'noopener noreferrer'
+            } : {
+              href: node.route
+            }
             
             return (
-              <Link
+              <Component
                 key={node.id}
-                href={node.route}
+                {...linkProps}
                 id={`node-${node.id}`}
                 onMouseEnter={() => setHoveredNode(node.id)}
                 onMouseLeave={() => setHoveredNode(null)}
@@ -393,7 +451,7 @@ export default function SiteMapNeural() {
                   ${node.id === 'radar' ? 'md:col-start-3' : ''}
                   ${node.id === 'alerts' ? 'md:col-start-3' : ''}
                   ${node.id === 'markets' ? 'md:col-start-5' : ''}
-                  ${node.id === 'diagnostics' ? 'md:col-start-6' : ''}
+                  ${node.id === 'polymarket' ? 'md:col-start-6' : ''}
                 `}
                 style={{
                   gridRow: node.position.row + 1
@@ -482,13 +540,71 @@ export default function SiteMapNeural() {
                     }}
                   />
                 </div>
-              </Link>
+              </Component>
             )
           })}
         </div>
 
-        {/* Polymarket Integration Card */}
-        <div className="relative z-10 mt-8 mb-6">
+      {/* Alien Navigator Mascot - Top Right */}
+      <div className="absolute top-4 right-4 z-20">
+        <div className="relative w-24 h-24 animate-bounce" style={{ animationDuration: '3s' }}>
+          <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_0_15px_rgba(0,255,0,0.8)]">
+            {/* Compass behind alien */}
+            <circle cx="50" cy="75" r="18" fill="rgba(0,255,0,0.2)" stroke="rgba(0,255,0,0.6)" strokeWidth="2" />
+            <path d="M 50 60 L 50 90 M 35 75 L 65 75" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
+            <polygon points="50,62 48,70 52,70" fill="rgba(0,255,0,1)">
+              <animateTransform
+                attributeName="transform"
+                type="rotate"
+                from="0 50 75"
+                to="360 50 75"
+                dur="4s"
+                repeatCount="indefinite"
+              />
+            </polygon>
+            
+            {/* Alien head */}
+            <ellipse cx="50" cy="35" rx="22" ry="28" fill="url(#alienGradient)" />
+            
+            {/* Eyes */}
+            <ellipse cx="42" cy="32" rx="6" ry="9" fill="rgba(0,0,0,0.9)" />
+            <ellipse cx="58" cy="32" rx="6" ry="9" fill="rgba(0,0,0,0.9)" />
+            <ellipse cx="44" cy="30" rx="2" ry="3" fill="rgba(255,255,255,0.8)">
+              <animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" />
+            </ellipse>
+            <ellipse cx="60" cy="30" rx="2" ry="3" fill="rgba(255,255,255,0.8)">
+              <animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" />
+            </ellipse>
+            
+            {/* Smile */}
+            <path d="M 42 45 Q 50 48 58 45" stroke="rgba(0,0,0,0.7)" strokeWidth="2" fill="none" strokeLinecap="round" />
+            
+            {/* Antennas */}
+            <line x1="38" y1="12" x2="35" y2="5" stroke="rgba(0,255,0,0.8)" strokeWidth="2" strokeLinecap="round" />
+            <line x1="62" y1="12" x2="65" y2="5" stroke="rgba(0,255,0,0.8)" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="35" cy="5" r="3" fill="rgba(0,255,0,1)">
+              <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="65" cy="5" r="3" fill="rgba(0,255,0,1)">
+              <animate attributeName="opacity" values="1;0.5;1" dur="1.5s" repeatCount="indefinite" />
+            </circle>
+            
+            {/* Body */}
+            <ellipse cx="50" cy="55" rx="15" ry="8" fill="url(#alienGradient)" opacity="0.9" />
+            
+            <defs>
+              <linearGradient id="alienGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: 'rgb(100,255,100)', stopOpacity: 1 }} />
+                <stop offset="50%" style={{ stopColor: 'rgb(0,255,0)', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: 'rgb(0,200,0)', stopOpacity: 1 }} />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+      </div>
+
+      {/* Polymarket Integration Card */}
+      <div className="relative z-10 mt-8 mb-6">
           <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 border-2 border-purple-500/30 rounded-lg p-6">
             <div className="flex items-start gap-4">
               <div className="text-4xl">📊</div>
