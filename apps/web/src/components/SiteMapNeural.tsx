@@ -380,7 +380,6 @@ export default function SiteMapNeural() {
             const isExternal = node.id === 'polymarket'
             
             const linkProps = {
-              key: node.id,
               id: `node-${node.id}`,
               onMouseEnter: () => setHoveredNode(node.id),
               onMouseLeave: () => setHoveredNode(null),
@@ -407,7 +406,7 @@ export default function SiteMapNeural() {
             }
             
             return (
-              <LinkComponent {...linkProps} {...extraProps}>
+              <LinkComponent {...linkProps} {...extraProps} key={node.id}>
                 <div
                   className={`
                     relative overflow-hidden
