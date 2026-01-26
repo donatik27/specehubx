@@ -542,14 +542,14 @@ async function updateManualLocations() {
   };
 
   const CITY_COORDS: Record<string, { lat: number; lon: number; maxOffset: number }> = {
-    US_CHICAGO: { lat: 41.8781, lon: -87.6298, maxOffset: 0.8 },
-    US_DALLAS: { lat: 32.7767, lon: -96.7970, maxOffset: 0.8 },
-    US_DENVER: { lat: 39.7392, lon: -104.9903, maxOffset: 0.8 },
-    US_ATLANTA: { lat: 33.7490, lon: -84.3880, maxOffset: 0.8 },
-    US_MINNEAPOLIS: { lat: 44.9778, lon: -93.2650, maxOffset: 0.8 },
-    CA_TORONTO: { lat: 43.6532, lon: -79.3832, maxOffset: 0.2 },
-    CA_MONTREAL: { lat: 45.5017, lon: -73.5673, maxOffset: 0.2 },
-    CA_CALGARY: { lat: 51.0447, lon: -114.0719, maxOffset: 0.2 },
+    US_CHICAGO: { lat: 41.8781, lon: -87.6298, maxOffset: 2.5 },
+    US_DALLAS: { lat: 32.7767, lon: -96.7970, maxOffset: 2.5 },
+    US_DENVER: { lat: 39.7392, lon: -104.9903, maxOffset: 2.5 },
+    US_ATLANTA: { lat: 33.7490, lon: -84.3880, maxOffset: 2.5 },
+    US_MINNEAPOLIS: { lat: 44.9778, lon: -93.2650, maxOffset: 2.5 },
+    CA_TORONTO: { lat: 43.6532, lon: -79.3832, maxOffset: 2.0 },
+    CA_MONTREAL: { lat: 45.5017, lon: -73.5673, maxOffset: 2.0 },
+    CA_CALGARY: { lat: 51.0447, lon: -114.0719, maxOffset: 2.0 },
     BR_SAO_PAULO: { lat: -23.5505, lon: -46.6333, maxOffset: 0.2 },
     BR_BRASILIA: { lat: -15.7939, lon: -47.8828, maxOffset: 0.2 },
     AR_CORDOBA: { lat: -31.4201, lon: -64.1888, maxOffset: 0.2 },
@@ -557,17 +557,17 @@ async function updateManualLocations() {
     CL_SANTIAGO: { lat: -33.4489, lon: -70.6693, maxOffset: 0.15 },
     MX_MEXICO_CITY: { lat: 19.4326, lon: -99.1332, maxOffset: 0.2 },
     MX_GUADALAJARA: { lat: 20.6597, lon: -103.3496, maxOffset: 0.2 },
-    UK_BIRMINGHAM: { lat: 52.4862, lon: -1.8904, maxOffset: 0.5 },
-    UK_MANCHESTER: { lat: 53.4808, lon: -2.2426, maxOffset: 0.5 },
+    UK_BIRMINGHAM: { lat: 52.4862, lon: -1.8904, maxOffset: 1.5 },
+    UK_MANCHESTER: { lat: 53.4808, lon: -2.2426, maxOffset: 1.5 },
     IE_ATHLONE: { lat: 53.4239, lon: -7.9407, maxOffset: 0.12 },
     ES_MADRID: { lat: 40.4168, lon: -3.7038, maxOffset: 0.15 },
     ES_ZARAGOZA: { lat: 41.6488, lon: -0.8891, maxOffset: 0.12 },
-    FR_PARIS: { lat: 48.8566, lon: 2.3522, maxOffset: 0.5 },
-    FR_LYON: { lat: 45.7640, lon: 4.8357, maxOffset: 0.5 },
-    DE_BERLIN: { lat: 52.5200, lon: 13.4050, maxOffset: 0.5 },
-    DE_MUNICH: { lat: 48.1351, lon: 11.5820, maxOffset: 0.5 },
-    IT_ROME: { lat: 41.9028, lon: 12.4964, maxOffset: 0.5 },
-    IT_MILAN: { lat: 45.4642, lon: 9.1900, maxOffset: 0.5 },
+    FR_PARIS: { lat: 48.8566, lon: 2.3522, maxOffset: 1.8 },
+    FR_LYON: { lat: 45.7640, lon: 4.8357, maxOffset: 1.8 },
+    DE_BERLIN: { lat: 52.5200, lon: 13.4050, maxOffset: 1.8 },
+    DE_MUNICH: { lat: 48.1351, lon: 11.5820, maxOffset: 1.8 },
+    IT_ROME: { lat: 41.9028, lon: 12.4964, maxOffset: 1.8 },
+    IT_MILAN: { lat: 45.4642, lon: 9.1900, maxOffset: 1.8 },
     NL_UTRECHT: { lat: 52.0907, lon: 5.1214, maxOffset: 0.1 },
     SE_UPPSALA: { lat: 59.8586, lon: 17.6389, maxOffset: 0.1 },
     DK_AARHUS: { lat: 56.1629, lon: 10.2039, maxOffset: 0.06 },
@@ -588,13 +588,13 @@ async function updateManualLocations() {
     UZ_TASHKENT: { lat: 41.2995, lon: 69.2401, maxOffset: 0.12 },
     ZA_JOHANNESBURG: { lat: -26.2041, lon: 28.0473, maxOffset: 0.15 },
     IS_REYKJAVIK: { lat: 64.1466, lon: -21.9426, maxOffset: 0.02 },
-    HK_SHENZHEN: { lat: 22.5431, lon: 114.0579, maxOffset: 0.6 },
-    HK_GUANGZHOU: { lat: 23.1291, lon: 113.2644, maxOffset: 0.6 },
-    TW_TAIPEI: { lat: 25.0330, lon: 121.5654, maxOffset: 0.4 },
-    JP_TOKYO: { lat: 35.6762, lon: 139.6503, maxOffset: 0.5 },
-    JP_NAGOYA: { lat: 35.1815, lon: 136.9066, maxOffset: 0.4 },
-    KR_SEOUL: { lat: 37.5665, lon: 126.9780, maxOffset: 0.5 },
-    KR_BUSAN: { lat: 35.1796, lon: 129.0756, maxOffset: 0.4 },
+    HK_SHENZHEN: { lat: 22.5431, lon: 114.0579, maxOffset: 2.0 },
+    HK_GUANGZHOU: { lat: 23.1291, lon: 113.2644, maxOffset: 2.0 },
+    TW_TAIPEI: { lat: 25.0330, lon: 121.5654, maxOffset: 1.5 },
+    JP_TOKYO: { lat: 35.6762, lon: 139.6503, maxOffset: 2.0 },
+    JP_NAGOYA: { lat: 35.1815, lon: 136.9066, maxOffset: 1.5 },
+    KR_SEOUL: { lat: 37.5665, lon: 126.9780, maxOffset: 2.0 },
+    KR_BUSAN: { lat: 35.1796, lon: 129.0756, maxOffset: 1.5 },
     VN_HANOI: { lat: 21.0278, lon: 105.8342, maxOffset: 0.08 },
     TH_BANGKOK: { lat: 13.7563, lon: 100.5018, maxOffset: 0.05 },
     ID_BANDUNG: { lat: -6.9175, lon: 107.6191, maxOffset: 0.1 },
@@ -758,8 +758,8 @@ async function updateManualLocations() {
         const bucket = cityBuckets[bucketKey] || [];
         const indexInBucket = assignedIndex[twitterUsername] ?? 0;
         
-        // Apply grid spacing with 1.5 degree max offset for fallback countries (wider spread)
-        const offset = getGridOffset(indexInBucket, bucket.length, 1.5);
+        // Apply grid spacing with 3.0 degree max offset for fallback countries (very wide spread)
+        const offset = getGridOffset(indexInBucket, bucket.length, 3.0);
         const lat = centroid.lat + offset.latOffset;
         const lon = centroid.lon + offset.lonOffset;
         
