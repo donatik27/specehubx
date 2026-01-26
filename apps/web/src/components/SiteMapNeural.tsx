@@ -537,15 +537,15 @@ export default function SiteMapNeural() {
 
         {/* Polymarket Integration Card */}
         <div className="relative z-10 mt-8 mb-6">
-          {/* Alien Guide standing on top of the card */}
+          {/* Alien Guide standing on the card */}
           <div className="absolute -top-24 right-8 z-30">
-            <div className="relative w-32 h-48 animate-bounce" style={{ animationDuration: '3s' }}>
+            <div className="relative w-32 h-48">
               <Image 
                 src="/alien-guide.png" 
                 alt="Alien Navigator Guide"
                 width={128}
                 height={192}
-                className="drop-shadow-[0_0_25px_rgba(0,255,0,0.7)] hover:scale-110 transition-transform duration-300"
+                className="drop-shadow-[0_0_25px_rgba(0,255,0,0.7)]"
                 priority
               />
             </div>
