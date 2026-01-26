@@ -133,7 +133,7 @@ export default function MapPage() {
             const seed = pubTrader.address
               .toLowerCase()
               .split('')
-              .reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+              .reduce((sum: number, ch: string) => sum + ch.charCodeAt(0), 0)
             const angle = (seed % 360) * (Math.PI / 180)
             const offset = 0.6 + ((seed % 100) / 100) * 0.8 // 0.6 - 1.4 deg
 
