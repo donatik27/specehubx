@@ -207,53 +207,6 @@ export default function SiteMapNeural() {
 
       {/* Neural Network Grid */}
       <div ref={containerRef} className="relative bg-card/30 backdrop-blur-sm rounded-lg border border-primary/20 p-8 overflow-hidden">
-        {/* Alien Navigator - Top Right */}
-        <div className="absolute top-4 right-4 z-30">
-          <div className="w-20 h-24" style={{ 
-            animation: 'bounce 3s ease-in-out infinite'
-          }}>
-            <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_0_15px_rgba(0,255,0,0.8)]">
-              {/* Compass */}
-              <circle cx="50" cy="80" r="16" fill="rgba(0,50,0,0.4)" stroke="rgba(0,255,0,0.8)" strokeWidth="2" />
-              <circle cx="50" cy="80" r="12" fill="rgba(0,100,0,0.3)" />
-              <line x1="50" y1="68" x2="50" y2="92" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
-              <line x1="38" y1="80" x2="62" y2="80" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
-              <polygon points="50,70 48,76 52,76" fill="rgba(0,255,0,1)">
-                <animateTransform attributeName="transform" type="rotate" from="0 50 80" to="360 50 80" dur="4s" repeatCount="indefinite" />
-              </polygon>
-              
-              {/* Alien head */}
-              <ellipse cx="50" cy="32" rx="20" ry="26" fill="rgb(0,255,0)" opacity="0.9" />
-              <ellipse cx="50" cy="30" rx="18" ry="24" fill="rgb(50,255,50)" />
-              
-              {/* Eyes */}
-              <ellipse cx="43" cy="28" rx="7" ry="10" fill="rgba(0,0,0,0.95)" />
-              <ellipse cx="57" cy="28" rx="7" ry="10" fill="rgba(0,0,0,0.95)" />
-              <ellipse cx="45" cy="25" rx="2.5" ry="4" fill="rgba(255,255,255,0.9)">
-                <animate attributeName="opacity" values="1;0.2;1" dur="3s" repeatCount="indefinite" />
-              </ellipse>
-              <ellipse cx="59" cy="25" rx="2.5" ry="4" fill="rgba(255,255,255,0.9)">
-                <animate attributeName="opacity" values="1;0.2;1" dur="3s" repeatCount="indefinite" />
-              </ellipse>
-              
-              {/* Smile */}
-              <path d="M 42 42 Q 50 46 58 42" stroke="rgba(0,0,0,0.8)" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-              
-              {/* Antennas */}
-              <line x1="36" y1="10" x2="32" y2="2" stroke="rgba(0,255,0,0.9)" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="64" y1="10" x2="68" y2="2" stroke="rgba(0,255,0,0.9)" strokeWidth="2.5" strokeLinecap="round" />
-              <circle cx="32" cy="2" r="3.5" fill="rgba(0,255,0,1)">
-                <animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="68" cy="2" r="3.5" fill="rgba(0,255,0,1)">
-                <animate attributeName="opacity" values="1;0.4;1" dur="1.2s" repeatCount="indefinite" />
-              </circle>
-              
-              {/* Body */}
-              <ellipse cx="50" cy="52" rx="14" ry="7" fill="rgb(0,255,0)" opacity="0.8" />
-            </svg>
-          </div>
-        </div>
 
         {/* Background grid effect */}
         <div className="absolute inset-0 opacity-5">
@@ -638,6 +591,15 @@ export default function SiteMapNeural() {
           <p className="text-xs text-muted-foreground font-mono">
             <span className="text-primary">👽 TIP:</span> Hover over stations to activate mission paths
           </p>
+        </div>
+
+        {/* Alien Guide - Bottom Right Corner */}
+        <div className="absolute bottom-4 right-4 z-20">
+          <img 
+            src="/alien-guide.png" 
+            alt="Alien Navigator Guide"
+            className="w-32 h-auto drop-shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-110 transition-transform duration-300"
+          />
         </div>
       </div>
     </div>
