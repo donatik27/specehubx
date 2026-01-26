@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Home, Users, Target, Globe, Bell, Activity, TrendingUp } from 'lucide-react'
 
 interface SiteNode {
@@ -537,13 +538,17 @@ export default function SiteMapNeural() {
         {/* Polymarket Integration Card */}
         <div className="relative z-10 mt-8 mb-6">
           {/* Alien Guide standing on top of the card */}
-          <div className="absolute -top-20 right-8 z-30">
-            <img 
-              src="/alien-guide.png" 
-              alt="Alien Navigator Guide"
-              className="w-28 h-auto drop-shadow-[0_0_25px_rgba(0,255,0,0.7)] hover:scale-110 transition-transform duration-300 animate-bounce"
-              style={{ animationDuration: '3s' }}
-            />
+          <div className="absolute -top-24 right-8 z-30">
+            <div className="relative w-32 h-48 animate-bounce" style={{ animationDuration: '3s' }}>
+              <Image 
+                src="/alien-guide.png" 
+                alt="Alien Navigator Guide"
+                width={128}
+                height={192}
+                className="drop-shadow-[0_0_25px_rgba(0,255,0,0.7)] hover:scale-110 transition-transform duration-300"
+                priority
+              />
+            </div>
           </div>
           
           <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 border-2 border-purple-500/30 rounded-lg p-6">
