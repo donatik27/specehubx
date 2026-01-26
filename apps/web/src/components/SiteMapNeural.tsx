@@ -506,7 +506,7 @@ export default function SiteMapNeural() {
                   See where top traders are positioning, analyze trends, and make informed decisions.
                 </p>
                 <a 
-                  href="https://polymarket.com/" 
+                  href="https://polymarket.com?via=01k" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 hover:border-purple-500 rounded-md text-sm font-mono text-purple-300 hover:text-purple-200 transition-all duration-300 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
