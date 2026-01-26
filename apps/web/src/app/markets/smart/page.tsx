@@ -567,14 +567,22 @@ export default function SmartMarketsPage() {
                           key={trader.address}
                           className="flex items-center gap-2 bg-black pixel-border border-white/30 p-2 hover:border-primary transition-all"
                         >
-                          <span className={`px-2 py-0.5 text-xs font-bold pixel-border ${
-                            trader.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' :
-                            trader.tier === 'A' ? 'bg-white text-black border-white' :
-                            trader.tier === 'B' ? 'bg-primary text-black border-primary' :
-                            'bg-gray-400 text-black border-gray-400'
-                          }`}>
-                            {trader.tier}
-                          </span>
+                          {trader.profilePicture ? (
+                            <img
+                              src={trader.profilePicture}
+                              alt={trader.displayName}
+                              className="w-7 h-7 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                            />
+                          ) : (
+                            <span className={`w-7 h-7 flex items-center justify-center text-xs font-bold pixel-border rounded-full ${
+                              trader.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' :
+                              trader.tier === 'A' ? 'bg-white text-black border-white' :
+                              trader.tier === 'B' ? 'bg-primary text-black border-primary' :
+                              'bg-gray-400 text-black border-gray-400'
+                            }`}>
+                              {trader.tier}
+                            </span>
+                          )}
                           <span className="text-sm font-mono text-white">
                             {trader.displayName.length > 12 
                               ? `${trader.displayName.slice(0, 8)}...` 
@@ -582,7 +590,7 @@ export default function SmartMarketsPage() {
                             }
                           </span>
                           <span className="text-xs font-mono text-primary">
-                            ({Math.round(trader.rarityScore)})
+                            ({trader.rarityScore ? Math.round(trader.rarityScore) : 0})
                           </span>
                         </div>
                       ))}
