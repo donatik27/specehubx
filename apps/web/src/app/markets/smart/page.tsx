@@ -16,6 +16,25 @@ function formatBalance(balance: number): string {
   }
 }
 
+function getTraderDisplayScore(trader: any): string {
+  const parseNumber = (value: unknown): number | null => {
+    if (value === null || value === undefined) return null
+    const num = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(num) ? num : null
+  }
+
+  const rarityScore = parseNumber(trader?.rarityScore)
+  const shares = parseNumber(trader?.shares)
+  const amount = parseNumber(trader?.amount)
+  const entryPrice = parseNumber(trader?.entryPrice)
+
+  const rawScore = rarityScore ?? shares ?? (amount && entryPrice && entryPrice > 0 ? amount / entryPrice : null) ?? 0
+
+  if (!Number.isFinite(rawScore)) return '0'
+  if (rawScore >= 1000) return formatBalance(rawScore)
+  return Math.round(rawScore).toString()
+}
+
 // Format volume/liquidity for display
 function formatMoney(amount: number): string {
   if (amount >= 1000000) {
@@ -412,21 +431,22 @@ export default function SmartMarketsPage() {
                           key={trader.address}
                           className="flex items-center gap-2 bg-black pixel-border border-white/30 p-2 hover:border-primary transition-all"
                         >
-                          {trader.profilePicture && (
+                          {trader.profilePicture ? (
                             <img
                               src={trader.profilePicture}
                               alt={trader.displayName || trader.address}
                               className="w-6 h-6 rounded-full pixel-border border-primary/60 object-cover bg-black"
                             />
+                          ) : (
+                            <span className={`w-6 h-6 rounded-full pixel-border flex items-center justify-center text-xs font-bold ${
+                              trader.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' :
+                              trader.tier === 'A' ? 'bg-white text-black border-white' :
+                              trader.tier === 'B' ? 'bg-primary text-black border-primary' :
+                              'bg-gray-400 text-black border-gray-400'
+                            }`}>
+                              {trader.tier}
+                            </span>
                           )}
-                          <span className={`px-2 py-0.5 text-xs font-bold pixel-border ${
-                            trader.tier === 'S' ? 'bg-[#FFD700] text-black border-[#FFD700]' :
-                            trader.tier === 'A' ? 'bg-white text-black border-white' :
-                            trader.tier === 'B' ? 'bg-primary text-black border-primary' :
-                            'bg-gray-400 text-black border-gray-400'
-                          }`}>
-                            {trader.tier}
-                          </span>
                           <span className="text-sm font-mono text-white">
                             {trader.displayName.length > 12 
                               ? `${trader.displayName.slice(0, 8)}...` 
@@ -434,7 +454,7 @@ export default function SmartMarketsPage() {
                             }
                           </span>
                           <span className="text-xs font-mono text-primary">
-                            {Math.round(trader.rarityScore / 1000)}k
+                            {getTraderDisplayScore(trader)}
                           </span>
                         </div>
                       ))}
@@ -590,7 +610,7 @@ export default function SmartMarketsPage() {
                             }
                           </span>
                           <span className="text-xs font-mono text-primary">
-                            ({trader.rarityScore ? Math.round(trader.rarityScore) : 0})
+                            ({getTraderDisplayScore(trader)})
                           </span>
                         </div>
                       ))}

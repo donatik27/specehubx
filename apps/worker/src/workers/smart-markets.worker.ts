@@ -68,6 +68,7 @@ interface Trader {
   profilePicture: string | null;
   tier: 'S' | 'A' | 'B';
   realizedPnl: any;
+  rarityScore: number;
 }
 
 interface TraderPosition {
@@ -78,6 +79,7 @@ interface TraderPosition {
   side: 'YES' | 'NO';
   shares: number;
   entryPrice: number;
+  rarityScore: number;
 }
 
 interface MarketAnalysis {
@@ -156,7 +158,8 @@ async function discoverAlphaMarkets() {
         displayName: true,
         profilePicture: true,
         tier: true,
-        realizedPnl: true
+        realizedPnl: true,
+        rarityScore: true
       },
       orderBy: {
         realizedPnl: 'desc'
@@ -471,7 +474,8 @@ async function analyzeMarket(
           tier: trader.tier as 'S' | 'A' | 'B',
           side,
           shares,
-          entryPrice
+          entryPrice,
+          rarityScore: Number(trader.rarityScore || 0)
         });
       } else {
         // For multi-outcome markets (3+ outcomes), find the outcome with highest balance
@@ -497,7 +501,8 @@ async function analyzeMarket(
             tier: trader.tier as 'S' | 'A' | 'B',
             side: 'YES', // For multi-outcome, side is always "YES" on their chosen outcome
             shares: maxBalance,
-            entryPrice
+            entryPrice,
+            rarityScore: Number(trader.rarityScore || 0)
           });
         }
       }
