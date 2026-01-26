@@ -562,6 +562,14 @@ async function updateManualLocations() {
   try {
     logger.info(`🔄 Updating ${Object.keys(tradersWithCountry).length} manually added traders with geolocation...`);
     
+    const hashString = (value: string) => {
+      let hash = 0;
+      for (let i = 0; i < value.length; i += 1) {
+        hash = (hash * 31 + value.charCodeAt(i)) % 1000000;
+      }
+      return hash;
+    };
+
     let updated = 0;
     for (const [twitterUsername, country] of Object.entries(tradersWithCountry)) {
       const coords = LOCATION_COORDS[country];
@@ -570,7 +578,7 @@ async function updateManualLocations() {
         continue;
       }
 
-      // Smart jitter: bigger offset for popular countries
+      // Deterministic jitter: stable per trader, no random movement
       // Count traders in this country
       const tradersInCountry = Object.values(tradersWithCountry).filter(c => c === country).length;
       
@@ -580,8 +588,9 @@ async function updateManualLocations() {
       else if (tradersInCountry >= 5) offsetMultiplier = 8; // ±4° for 5-9 traders
       else if (tradersInCountry >= 3) offsetMultiplier = 5; // ±2.5° for 3-4 traders
       
-      const latOffset = (Math.random() - 0.5) * offsetMultiplier;
-      const lonOffset = (Math.random() - 0.5) * offsetMultiplier;
+      const seed = hashString(twitterUsername.toLowerCase());
+      const latOffset = (((seed % 1000) / 1000) - 0.5) * offsetMultiplier;
+      const lonOffset = (((Math.floor(seed / 1000) % 1000) / 1000) - 0.5) * offsetMultiplier;
 
       const result = await prisma.trader.updateMany({
         where: { twitterUsername },

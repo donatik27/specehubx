@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { Globe, RefreshCw, Users, Trophy, Target } from 'lucide-react'
-import { getTraderLocation } from '@/lib/trader-geolocation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
@@ -121,26 +120,9 @@ export default function MapPage() {
           }
           
           // Convert lat/lng to screen coordinates
-          let lat = Number(pubTrader.latitude)
-          let lng = Number(pubTrader.longitude)
-          let region = pubTrader.country || 'Unknown'
-
-          // Snap to land-based region if country is known (avoids ocean placements)
-          if (pubTrader.country) {
-            const landLocation = getTraderLocation([{ question: pubTrader.country }])
-
-            // Deterministic spread so traders don't overlap
-            const seed = pubTrader.address
-              .toLowerCase()
-              .split('')
-              .reduce((sum: number, ch: string) => sum + ch.charCodeAt(0), 0)
-            const angle = (seed % 360) * (Math.PI / 180)
-            const offset = 0.6 + ((seed % 100) / 100) * 0.8 // 0.6 - 1.4 deg
-
-            lat = landLocation.lat + Math.cos(angle) * offset
-            lng = landLocation.lng + Math.sin(angle) * offset
-            region = landLocation.region
-          }
+          const lat = Number(pubTrader.latitude)
+          const lng = Number(pubTrader.longitude)
+          const region = pubTrader.country || 'Unknown'
           const x = ((lng + 180) / 360) * 100
           const y = ((90 - lat) / 180) * 100
           
