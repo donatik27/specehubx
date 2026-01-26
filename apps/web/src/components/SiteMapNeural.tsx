@@ -498,7 +498,7 @@ export default function SiteMapNeural() {
                   <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/50">OFFICIAL</span>
                 </div>
                 <p className="text-sm text-muted-foreground font-mono mb-3">
-                  SpaceHub tracks smart money on <span className="text-purple-400 font-bold">Polymarket</span> - the world's largest prediction market. 
+                  SpaceHub tracks smart money on <span className="text-purple-400 font-bold">Polymarket</span> - the world&apos;s largest prediction market. 
                   See where top traders are positioning, analyze trends, and make informed decisions.
                 </p>
                 <a 
