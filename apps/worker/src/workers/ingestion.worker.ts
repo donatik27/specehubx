@@ -675,21 +675,28 @@ async function updateManualLocations() {
       return hash;
     };
 
-    const getGridOffset = (index: number, total: number, maxOffset: number) => {
-      if (total <= 1 || maxOffset <= 0) {
+    // Random offset generator (deterministic based on username)
+    const getRandomOffset = (username: string, index: number, maxOffset: number) => {
+      if (maxOffset <= 0) {
         return { latOffset: 0, lonOffset: 0 };
       }
 
-      const gridSize = Math.ceil(Math.sqrt(total));
-      const row = Math.floor(index / gridSize);
-      const col = index % gridSize;
-      const span = maxOffset * 2;
-      const step = gridSize > 1 ? span / (gridSize - 1) : 0;
-      const center = (gridSize - 1) / 2;
+      // Use username hash + index for deterministic randomness
+      const seed1 = hashString(username + ':lat:' + index);
+      const seed2 = hashString(username + ':lon:' + index);
+      
+      // Generate pseudo-random angle and distance
+      const angle = (seed1 % 360) * (Math.PI / 180);
+      const distance = ((seed2 % 1000) / 1000) * maxOffset; // 0 to maxOffset
+      
+      // Add some extra randomness for natural clustering
+      const jitterSeed = hashString(username + ':jitter');
+      const jitter = ((jitterSeed % 100) / 100) * 0.3; // 0-30% extra variation
+      const finalDistance = distance * (1 + jitter);
 
       return {
-        latOffset: (row - center) * step,
-        lonOffset: (col - center) * step,
+        latOffset: finalDistance * Math.cos(angle),
+        lonOffset: finalDistance * Math.sin(angle),
       };
     };
 
@@ -758,8 +765,8 @@ async function updateManualLocations() {
         const bucket = cityBuckets[bucketKey] || [];
         const indexInBucket = assignedIndex[twitterUsername] ?? 0;
         
-        // Apply grid spacing with 3.0 degree max offset for fallback countries (very wide spread)
-        const offset = getGridOffset(indexInBucket, bucket.length, 3.0);
+        // Apply random scatter with 3.0 degree max radius for fallback countries
+        const offset = getRandomOffset(twitterUsername, indexInBucket, 3.0);
         const lat = centroid.lat + offset.latOffset;
         const lon = centroid.lon + offset.lonOffset;
         
@@ -787,8 +794,8 @@ async function updateManualLocations() {
         continue;
       }
 
-      // Deterministic grid spread: avoids overlap while staying on land
-      const { latOffset, lonOffset } = getGridOffset(indexInBucket, bucket.length, city.maxOffset);
+      // Deterministic random scatter: natural chaotic distribution
+      const { latOffset, lonOffset } = getRandomOffset(twitterUsername, indexInBucket, city.maxOffset);
 
       const result = await prisma.trader.updateMany({
         where: { twitterUsername },
