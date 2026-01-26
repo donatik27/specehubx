@@ -476,68 +476,10 @@ export default function SiteMapNeural() {
           })}
         </div>
 
-      {/* Alien Navigator Mascot - Top Right */}
-      <div className="absolute top-4 right-4 z-20">
-        <div className="relative w-24 h-24 animate-bounce" style={{ animationDuration: '3s' }}>
-          <svg viewBox="0 0 100 120" className="w-full h-full drop-shadow-[0_0_15px_rgba(0,255,0,0.8)]">
-            {/* Compass behind alien */}
-            <circle cx="50" cy="75" r="18" fill="rgba(0,255,0,0.2)" stroke="rgba(0,255,0,0.6)" strokeWidth="2" />
-            <path d="M 50 60 L 50 90 M 35 75 L 65 75" stroke="rgba(0,255,0,0.8)" strokeWidth="1.5" />
-            <polygon points="50,62 48,70 52,70" fill="rgba(0,255,0,1)">
-              <animateTransform
-                attributeName="transform"
-                type="rotate"
-                from="0 50 75"
-                to="360 50 75"
-                dur="4s"
-                repeatCount="indefinite"
-              />
-            </polygon>
-            
-            {/* Alien head */}
-            <ellipse cx="50" cy="35" rx="22" ry="28" fill="url(#alienGradient)" />
-            
-            {/* Eyes */}
-            <ellipse cx="42" cy="32" rx="6" ry="9" fill="rgba(0,0,0,0.9)" />
-            <ellipse cx="58" cy="32" rx="6" ry="9" fill="rgba(0,0,0,0.9)" />
-            <ellipse cx="44" cy="30" rx="2" ry="3" fill="rgba(255,255,255,0.8)">
-              <animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" />
-            </ellipse>
-            <ellipse cx="60" cy="30" rx="2" ry="3" fill="rgba(255,255,255,0.8)">
-              <animate attributeName="opacity" values="1;0.3;1" dur="3s" repeatCount="indefinite" />
-            </ellipse>
-            
-            {/* Smile */}
-            <path d="M 42 45 Q 50 48 58 45" stroke="rgba(0,0,0,0.7)" strokeWidth="2" fill="none" strokeLinecap="round" />
-            
-            {/* Antennas */}
-            <line x1="38" y1="12" x2="35" y2="5" stroke="rgba(0,255,0,0.8)" strokeWidth="2" strokeLinecap="round" />
-            <line x1="62" y1="12" x2="65" y2="5" stroke="rgba(0,255,0,0.8)" strokeWidth="2" strokeLinecap="round" />
-            <circle cx="35" cy="5" r="3" fill="rgba(0,255,0,1)">
-              <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="65" cy="5" r="3" fill="rgba(0,255,0,1)">
-              <animate attributeName="opacity" values="1;0.5;1" dur="1.5s" repeatCount="indefinite" />
-            </circle>
-            
-            {/* Body */}
-            <ellipse cx="50" cy="55" rx="15" ry="8" fill="url(#alienGradient)" opacity="0.9" />
-            
-            <defs>
-              <linearGradient id="alienGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" style={{ stopColor: 'rgb(100,255,100)', stopOpacity: 1 }} />
-                <stop offset="50%" style={{ stopColor: 'rgb(0,255,0)', stopOpacity: 1 }} />
-                <stop offset="100%" style={{ stopColor: 'rgb(0,200,0)', stopOpacity: 1 }} />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      </div>
-
         {/* Polymarket Integration Card */}
         <div className="relative z-10 mt-8 mb-6">
-          {/* Alien Guide standing on the card */}
-          <div className="absolute -top-48 right-8 z-30">
+          {/* Alien Guide standing above the card */}
+          <div className="absolute -top-80 right-4 z-30">
             <div className="relative w-64 h-96">
               <Image 
                 src="/alien-guide.png" 
