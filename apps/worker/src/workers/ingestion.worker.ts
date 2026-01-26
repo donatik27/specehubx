@@ -500,6 +500,47 @@ async function updateManualLocations() {
       return acc;
     }, {} as Record<string, string>);
 
+  // Fallback: Country centroids for countries not in CITY_COORDS
+  const COUNTRY_CENTROIDS: Record<string, { lat: number; lon: number }> = {
+    'Europe': { lat: 50.0, lon: 10.0 },
+    'Ireland': { lat: 53.4129, lon: -8.2439 },
+    'Canada': { lat: 56.1304, lon: -106.3468 },
+    'Australasia': { lat: -25.0, lon: 135.0 },
+    'United States': { lat: 37.0902, lon: -95.7129 },
+    'Germany': { lat: 51.1657, lon: 10.4515 },
+    'Brazil': { lat: -14.2350, lon: -51.9253 },
+    'Italy': { lat: 41.8719, lon: 12.5674 },
+    'East Asia & Pacific': { lat: 35.0, lon: 105.0 },
+    'Spain': { lat: 40.4637, lon: -3.7492 },
+    'Australia': { lat: -25.2744, lon: 133.7751 },
+    'Hong Kong': { lat: 22.3193, lon: 114.1694 },
+    'United Kingdom': { lat: 55.3781, lon: -3.4360 },
+    'Korea': { lat: 37.5665, lon: 126.9780 },
+    'South Korea': { lat: 37.5665, lon: 126.9780 },
+    'Japan': { lat: 36.2048, lon: 138.2529 },
+    'Lithuania': { lat: 55.1694, lon: 23.8813 },
+    'Denmark': { lat: 56.2639, lon: 9.5018 },
+    'Sweden': { lat: 60.1282, lon: 18.6435 },
+    'France': { lat: 46.2276, lon: 2.2137 },
+    'Netherlands': { lat: 52.1326, lon: 5.2913 },
+    'Poland': { lat: 51.9194, lon: 19.1451 },
+    'Argentina': { lat: -38.4161, lon: -63.6167 },
+    'Mexico': { lat: 23.6345, lon: -102.5528 },
+    'Turkey': { lat: 38.9637, lon: 35.2433 },
+    'South Africa': { lat: -30.5595, lon: 22.9375 },
+    'India': { lat: 20.5937, lon: 78.9629 },
+    'Vietnam': { lat: 14.0583, lon: 108.2772 },
+    'Thailand': { lat: 15.8700, lon: 100.9925 },
+    'Singapore': { lat: 1.3521, lon: 103.8198 },
+    'Taiwan': { lat: 23.6978, lon: 120.9605 },
+    'Philippines': { lat: 12.8797, lon: 121.7740 },
+    'Indonesia': { lat: -0.7893, lon: 113.9213 },
+    'Malaysia': { lat: 4.2105, lon: 101.9758 },
+    'South Asia': { lat: 20.5937, lon: 78.9629 },
+    'North America': { lat: 54.5260, lon: -105.2551 },
+    'South America': { lat: -8.7832, lon: -55.4915 },
+  };
+
   const CITY_COORDS: Record<string, { lat: number; lon: number; maxOffset: number }> = {
     US_CHICAGO: { lat: 41.8781, lon: -87.6298, maxOffset: 0.25 },
     US_DALLAS: { lat: 32.7767, lon: -96.7970, maxOffset: 0.25 },
@@ -661,8 +702,35 @@ async function updateManualLocations() {
     for (const twitterUsername of sortedUsers) {
       const country = tradersWithCountry[twitterUsername];
       const cityPool = COUNTRY_CITY_POOLS[country];
+      
+      // If country not in CITY_COORDS pools, use COUNTRY_CENTROIDS fallback (old system)
       if (!cityPool || cityPool.length === 0) {
-        continue;
+        const centroid = COUNTRY_CENTROIDS[country];
+        if (centroid) {
+          // Use old system: country centroid + small deterministic offset
+          const seed = hashString(twitterUsername.toLowerCase());
+          const angle = (seed % 360) * (Math.PI / 180);
+          const distance = ((seed % 100) / 100) * 0.5; // Max 0.5 degrees offset
+          
+          const lat = centroid.lat + distance * Math.cos(angle);
+          const lon = centroid.lon + distance * Math.sin(angle);
+          
+          await prisma.trader.updateMany({
+            where: { twitterUsername },
+            data: {
+              latitude: lat,
+              longitude: lon,
+              country: country,
+            },
+          });
+          
+          logger.info({ twitterUsername, country, lat, lon }, `✓ Updated using country centroid (fallback)`);
+          continue; // Skip to next trader
+        } else {
+          // Ultimate fallback - skip trader with warning
+          logger.warn({ country, twitterUsername }, `⚠️ Country not found in any coordinate system, skipping`);
+          continue;
+        }
       }
 
       const seed = hashString(twitterUsername.toLowerCase());
