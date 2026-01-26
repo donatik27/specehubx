@@ -231,8 +231,8 @@
     animation: fly-across 10s linear infinite;
   }
   
-  /* Walking alien animation */
-  @keyframes alien-walk {
+  /* Walking alien animation - DISABLED */
+  /* @keyframes alien-walk {
     0%, 100% {
       transform: translateY(0px) scaleX(1);
     }
@@ -250,7 +250,7 @@
   .alien-walk {
     animation: alien-walk 0.6s steps(4) infinite;
     display: inline-block;
-  }
+  } */
   
   /* Loading bar animation */
   @keyframes loading-bar {

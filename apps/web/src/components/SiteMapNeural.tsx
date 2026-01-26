@@ -197,7 +197,6 @@ export default function SiteMapNeural() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           <h2 className="text-2xl font-bold text-primary font-mono flex items-center gap-2">
-            <span className="text-3xl animate-pulse">👽</span>
             ALIEN_NAVIGATION_SYSTEM
           </h2>
         </div>
@@ -538,14 +537,14 @@ export default function SiteMapNeural() {
         {/* Polymarket Integration Card */}
         <div className="relative z-10 mt-8 mb-6">
           {/* Alien Guide standing on the card */}
-          <div className="absolute -top-24 right-8 z-30">
-            <div className="relative w-32 h-48">
+          <div className="absolute -top-48 right-8 z-30">
+            <div className="relative w-64 h-96">
               <Image 
                 src="/alien-guide.png" 
                 alt="Alien Navigator Guide"
-                width={128}
-                height={192}
-                className="drop-shadow-[0_0_25px_rgba(0,255,0,0.7)]"
+                width={256}
+                height={384}
+                className="drop-shadow-[0_0_35px_rgba(0,255,0,0.8)]"
                 priority
               />
             </div>
@@ -582,7 +581,7 @@ export default function SiteMapNeural() {
         {/* Bottom hint */}
         <div className="relative z-10 text-center">
           <p className="text-xs text-muted-foreground font-mono">
-            <span className="text-primary">👽 TIP:</span> Hover over stations to activate mission paths
+            <span className="text-primary">💡 TIP:</span> Hover over stations to activate mission paths
           </p>
         </div>
 
