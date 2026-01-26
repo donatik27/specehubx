@@ -251,28 +251,6 @@ export default function SiteMapNeural() {
               </stop>
             </linearGradient>
 
-            {/* Alien mascot in top-right corner */}
-            <g id="alien-mascot" transform="translate(95%, 20) scale(1.5)">
-              <circle cx="15" cy="15" r="12" fill="rgba(0,255,0,0.2)" />
-              <ellipse cx="15" cy="12" rx="10" ry="13" fill="rgba(0,255,0,0.4)" />
-              <circle cx="11" cy="10" r="3" fill="rgba(0,255,0,1)">
-                <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
-              </circle>
-              <circle cx="19" cy="10" r="3" fill="rgba(0,255,0,1)">
-                <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite" />
-              </circle>
-              <path d="M 10 17 Q 15 19 20 17" stroke="rgba(0,255,0,1)" strokeWidth="1.5" fill="none" />
-              <ellipse cx="8" cy="8" rx="2" ry="4" fill="rgba(0,255,0,0.6)" transform="rotate(-20 8 8)" />
-              <ellipse cx="22" cy="8" rx="2" ry="4" fill="rgba(0,255,0,0.6)" transform="rotate(20 22 8)" />
-              <animateTransform
-                attributeName="transform"
-                attributeType="XML"
-                type="translate"
-                values="20,20; 20,18; 20,20"
-                dur="2s"
-                repeatCount="indefinite"
-              />
-            </g>
           </defs>
 
           {METRO_LINES.map((line) => 
@@ -556,8 +534,18 @@ export default function SiteMapNeural() {
         </div>
       </div>
 
-      {/* Polymarket Integration Card */}
-      <div className="relative z-10 mt-8 mb-6">
+        {/* Polymarket Integration Card */}
+        <div className="relative z-10 mt-8 mb-6">
+          {/* Alien Guide standing on top of the card */}
+          <div className="absolute -top-20 right-8 z-30">
+            <img 
+              src="/alien-guide.png" 
+              alt="Alien Navigator Guide"
+              className="w-28 h-auto drop-shadow-[0_0_25px_rgba(0,255,0,0.7)] hover:scale-110 transition-transform duration-300 animate-bounce"
+              style={{ animationDuration: '3s' }}
+            />
+          </div>
+          
           <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10 border-2 border-purple-500/30 rounded-lg p-6">
             <div className="flex items-start gap-4">
               <div className="text-4xl">📊</div>
@@ -593,14 +581,6 @@ export default function SiteMapNeural() {
           </p>
         </div>
 
-        {/* Alien Guide - Bottom Right Corner */}
-        <div className="absolute bottom-4 right-4 z-20">
-          <img 
-            src="/alien-guide.png" 
-            alt="Alien Navigator Guide"
-            className="w-32 h-auto drop-shadow-[0_0_20px_rgba(0,255,0,0.6)] hover:scale-110 transition-transform duration-300"
-          />
-        </div>
       </div>
     </div>
   )
