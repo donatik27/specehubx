@@ -693,46 +693,41 @@ async function updateManualLocations() {
       };
     };
 
-    // Deterministic city assignment + per-city spread (avoids overlap in dense regions)
+    // Deterministic city assignment + per-city/country spread (avoids overlap in dense regions)
     const assignedCity: Record<string, string> = {};
     const assignedIndex: Record<string, number> = {};
     const cityBuckets: Record<string, string[]> = {};
+    const useFallback: Record<string, boolean> = {}; // Track which traders use fallback
 
+    // STEP 1: Group all traders into buckets (including fallback countries)
     const sortedUsers = Object.keys(tradersWithCountry).sort((a, b) => a.localeCompare(b));
     for (const twitterUsername of sortedUsers) {
       const country = tradersWithCountry[twitterUsername];
       const cityPool = COUNTRY_CITY_POOLS[country];
       
-      // If country not in CITY_COORDS pools, use COUNTRY_CENTROIDS fallback (old system)
+      // If country not in CITY_COORDS pools, use COUNTRY_CENTROIDS as fallback location
       if (!cityPool || cityPool.length === 0) {
         const centroid = COUNTRY_CENTROIDS[country];
         if (centroid) {
-          // Use old system: country centroid + small deterministic offset
-          const seed = hashString(twitterUsername.toLowerCase());
-          const angle = (seed % 360) * (Math.PI / 180);
-          const distance = ((seed % 100) / 100) * 0.5; // Max 0.5 degrees offset
+          // Mark as fallback and use country as "city" key
+          useFallback[twitterUsername] = true;
+          const bucketKey = `FALLBACK::${country}`;
           
-          const lat = centroid.lat + distance * Math.cos(angle);
-          const lon = centroid.lon + distance * Math.sin(angle);
+          if (!cityBuckets[bucketKey]) {
+            cityBuckets[bucketKey] = [];
+          }
           
-          await prisma.trader.updateMany({
-            where: { twitterUsername },
-            data: {
-              latitude: lat,
-              longitude: lon,
-              country: country,
-            },
-          });
-          
-          logger.info({ twitterUsername, country, lat, lon }, `✓ Updated using country centroid (fallback)`);
-          continue; // Skip to next trader
+          assignedCity[twitterUsername] = country; // Use country name as city key
+          assignedIndex[twitterUsername] = cityBuckets[bucketKey].length;
+          cityBuckets[bucketKey].push(twitterUsername);
         } else {
           // Ultimate fallback - skip trader with warning
           logger.warn({ country, twitterUsername }, `⚠️ Country not found in any coordinate system, skipping`);
-          continue;
         }
+        continue;
       }
 
+      // Regular CITY_COORDS system
       const seed = hashString(twitterUsername.toLowerCase());
       const cityKey = cityPool[seed % cityPool.length];
       const bucketKey = `${country}::${cityKey}`;
@@ -746,14 +741,43 @@ async function updateManualLocations() {
       cityBuckets[bucketKey].push(twitterUsername);
     }
 
+    // STEP 2: Apply grid spacing to all traders (both regular and fallback)
     let updated = 0;
     for (const [twitterUsername, country] of Object.entries(tradersWithCountry)) {
       const cityKey = assignedCity[twitterUsername];
       if (!cityKey) {
-        logger.warn({ twitterUsername, country }, 'City pool not found');
+        continue; // Already logged warning above
+      }
+
+      // Check if this trader uses fallback
+      if (useFallback[twitterUsername]) {
+        const centroid = COUNTRY_CENTROIDS[country];
+        if (!centroid) continue;
+        
+        const bucketKey = `FALLBACK::${country}`;
+        const bucket = cityBuckets[bucketKey] || [];
+        const indexInBucket = assignedIndex[twitterUsername] ?? 0;
+        
+        // Apply grid spacing with 0.5 degree max offset for fallback countries
+        const offset = getGridOffset(indexInBucket, bucket.length, 0.5);
+        const lat = centroid.lat + offset.latOffset;
+        const lon = centroid.lon + offset.lonOffset;
+        
+        await prisma.trader.updateMany({
+          where: { twitterUsername },
+          data: {
+            latitude: lat,
+            longitude: lon,
+            country: country,
+          },
+        });
+        
+        updated++;
+        logger.info({ twitterUsername, country, lat, lon, gridIndex: indexInBucket, totalInBucket: bucket.length }, `✓ Fallback with grid`);
         continue;
       }
 
+      // Regular CITY_COORDS system
       const bucketKey = `${country}::${cityKey}`;
       const bucket = cityBuckets[bucketKey] || [];
       const indexInBucket = assignedIndex[twitterUsername] ?? 0;
