@@ -77,14 +77,14 @@ const NODES: SiteNode[] = [
     color: 'from-pink-500/20 to-pink-500/5'
   },
   {
-    id: 'diagnostics',
-    title: 'MONITOR',
-    description: 'System health & status',
-    route: '/health',
-    icon: <Activity className="w-4 h-4" />,
+    id: 'polymarket',
+    title: 'POLYMARKET',
+    description: 'World\'s largest prediction market',
+    route: 'https://polymarket.com?via=01k',
+    icon: <TrendingUp className="w-4 h-4" />,
     status: 'LIVE',
     position: { row: 2, col: 5 },
-    color: 'from-orange-500/20 to-orange-500/5'
+    color: 'from-blue-600/20 to-blue-600/5'
   }
 ]
 
@@ -95,7 +95,7 @@ const METRO_LINES = [
     colorDim: 'rgba(0,255,0,0.2)',
     connections: [
       { from: 'home', to: 'markets' },
-      { from: 'markets', to: 'diagnostics' }
+      { from: 'markets', to: 'polymarket' }
     ]
   },
   {
@@ -123,7 +123,7 @@ const METRO_LINES = [
     colorDim: 'rgba(234,179,8,0.2)',
     connections: [
       { from: 'home', to: 'alerts' },
-      { from: 'alerts', to: 'diagnostics' }
+      { from: 'alerts', to: 'polymarket' }
     ]
   }
 ]
@@ -377,15 +377,14 @@ export default function SiteMapNeural() {
           {NODES.map((node) => {
             const isHighlighted = connectedNodes.includes(node.id)
             const isCenter = node.id === 'home'
+            const isExternal = node.id === 'polymarket'
             
-            return (
-              <Link
-                key={node.id}
-                href={node.route}
-                id={`node-${node.id}`}
-                onMouseEnter={() => setHoveredNode(node.id)}
-                onMouseLeave={() => setHoveredNode(null)}
-                className={`
+            const linkProps = {
+              key: node.id,
+              id: `node-${node.id}`,
+              onMouseEnter: () => setHoveredNode(node.id),
+              onMouseLeave: () => setHoveredNode(null),
+              className: `
                   relative group
                   ${node.id === 'home' ? 'md:col-start-1' : ''}
                   ${node.id === 'traders' ? 'md:col-start-3' : ''}
@@ -393,12 +392,22 @@ export default function SiteMapNeural() {
                   ${node.id === 'radar' ? 'md:col-start-3' : ''}
                   ${node.id === 'alerts' ? 'md:col-start-3' : ''}
                   ${node.id === 'markets' ? 'md:col-start-5' : ''}
-                  ${node.id === 'diagnostics' ? 'md:col-start-6' : ''}
-                `}
-                style={{
-                  gridRow: node.position.row + 1
-                }}
-              >
+                  ${node.id === 'polymarket' ? 'md:col-start-6' : ''}
+                `,
+              style: { gridRow: node.position.row + 1 }
+            }
+            
+            const LinkComponent = isExternal ? 'a' : Link
+            const extraProps = isExternal ? {
+              href: node.route,
+              target: '_blank',
+              rel: 'noopener noreferrer'
+            } : {
+              href: node.route
+            }
+            
+            return (
+              <LinkComponent {...linkProps} {...extraProps}>
                 <div
                   className={`
                     relative overflow-hidden
@@ -482,7 +491,7 @@ export default function SiteMapNeural() {
                     }}
                   />
                 </div>
-              </Link>
+              </LinkComponent>
             )
           })}
         </div>
@@ -502,7 +511,7 @@ export default function SiteMapNeural() {
                   See where top traders are positioning, analyze trends, and make informed decisions.
                 </p>
                 <a 
-                  href="https://polymarket.com/" 
+                  href="https://polymarket.com?via=01k" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/50 hover:border-purple-500 rounded-md text-sm font-mono text-purple-300 hover:text-purple-200 transition-all duration-300 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]"
