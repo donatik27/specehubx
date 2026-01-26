@@ -155,6 +155,7 @@ export default function SiteMapNeural() {
   const connectedInfo = hoveredNode ? getConnectedNodesAndLine(hoveredNode) : { nodes: [], line: null }
   const connectedNodes = connectedInfo.nodes
   const activeMetroLine = connectedInfo.line
+  const isGlobalGlow = hoveredNode === 'home'
 
   // Calculate node positions dynamically
   useEffect(() => {
@@ -260,9 +261,9 @@ export default function SiteMapNeural() {
               if (!fromPos || !toPos) return null
 
               const isLineActive = activeMetroLine === line.name
-              const isHighlighted = hoveredNode && (
+              const isHighlighted = isGlobalGlow || (hoveredNode && (
                 connectedNodes.includes(conn.from) && connectedNodes.includes(conn.to)
-              )
+              ))
 
               return (
                 <g key={`${line.name}-${conn.from}-${conn.to}`}>
