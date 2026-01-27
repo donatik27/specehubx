@@ -78,6 +78,15 @@ export function Sidebar() {
           <p className="text-xs text-white font-mono">PHASE_3 [ACTIVE] ✓</p>
         </div>
         
+        {/* TEST: Trading Coming Soon Badge */}
+        <div className="bg-gradient-to-r from-purple-500/20 to-primary/20 p-3 mb-3 pixel-border border-primary/40 relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary/5 animate-pulse"></div>
+          <div className="relative z-10 text-center">
+            <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wider">🚀 Coming Soon</p>
+            <p className="text-xs text-white font-mono">TRADING_SYSTEM</p>
+          </div>
+        </div>
+        
         {/* X (Twitter) Link */}
         <a 
           href="https://x.com/space_hubx" 
