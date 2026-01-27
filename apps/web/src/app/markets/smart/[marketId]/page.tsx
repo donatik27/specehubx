@@ -877,6 +877,7 @@ export default function SmartMarketDetailPage() {
             marketId={market.id}
             yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
             noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+            yesTokenId={market.tokens?.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId}
           />
         </div>
       )}

@@ -14,26 +14,84 @@ interface PriceChartProps {
   marketId: string
   yesPrice: number
   noPrice: number
+  yesTokenId?: string
 }
 
-export function PriceChart({ marketId, yesPrice, noPrice }: PriceChartProps) {
+export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceChartProps) {
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
   const [timeRange, setTimeRange] = useState<'1H' | '6H' | '1D' | '1W' | 'ALL'>('1D')
+  const [loading, setLoading] = useState(false)
+  const [useRealData, setUseRealData] = useState(true)
 
   useEffect(() => {
-    // Initialize with current price
-    const now = Date.now()
-    const initialPoint: PricePoint = {
-      timestamp: now,
-      price: yesPrice,
-      time: new Date(now).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    const fetchPriceHistory = async () => {
+      // If no tokenId, use mock data
+      if (!yesTokenId || !useRealData) {
+        const mockHistory = generateMockHistory(yesPrice, timeRange)
+        const now = Date.now()
+        const currentPoint: PricePoint = {
+          timestamp: now,
+          price: yesPrice,
+          time: new Date(now).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        }
+        setPriceHistory([...mockHistory, currentPoint])
+        return
+      }
+
+      try {
+        setLoading(true)
+        
+        // Map timeRange to fidelity (candle interval)
+        const fidelityMap = {
+          '1H': '1',    // 1 minute candles
+          '6H': '5',    // 5 minute candles
+          '1D': '60',   // 1 hour candles
+          '1W': '1440', // 1 day candles
+          'ALL': '1440' // 1 day candles
+        }
+        const fidelity = fidelityMap[timeRange]
+
+        // Calculate start timestamp based on range
+        const now = Date.now()
+        const startTsMap = {
+          '1H': now - 60 * 60 * 1000,
+          '6H': now - 6 * 60 * 60 * 1000,
+          '1D': now - 24 * 60 * 60 * 1000,
+          '1W': now - 7 * 24 * 60 * 60 * 1000,
+          'ALL': now - 30 * 24 * 60 * 60 * 1000 // 30 days
+        }
+        const startTs = Math.floor(startTsMap[timeRange] / 1000)
+
+        const response = await fetch(
+          `/api/price-history?tokenId=${yesTokenId}&fidelity=${fidelity}&startTs=${startTs}`
+        )
+
+        if (!response.ok) {
+          console.warn('Failed to fetch real price history, using mock data')
+          setUseRealData(false)
+          return
+        }
+
+        const data = await response.json()
+        
+        if (data.history && data.history.length > 0) {
+          setPriceHistory(data.history)
+          console.log(`✅ Loaded ${data.history.length} real price points`)
+        } else {
+          // Fallback to mock if no data
+          setUseRealData(false)
+        }
+
+      } catch (error) {
+        console.error('Error fetching price history:', error)
+        setUseRealData(false)
+      } finally {
+        setLoading(false)
+      }
     }
-    
-    // Generate mock historical data (for now)
-    // TODO: Replace with real API call to fetch historical prices
-    const mockHistory = generateMockHistory(yesPrice, timeRange)
-    setPriceHistory([...mockHistory, initialPoint])
-  }, [marketId, timeRange])
+
+    fetchPriceHistory()
+  }, [marketId, yesTokenId, timeRange])
 
   // Update chart with live prices
   useEffect(() => {
@@ -140,8 +198,20 @@ export function PriceChart({ marketId, yesPrice, noPrice }: PriceChartProps) {
       </div>
 
       {/* Volume Info */}
-      <div className="mt-3 text-xs text-muted-foreground font-mono">
-        {volumeDisplay}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="text-xs text-muted-foreground font-mono">
+          {volumeDisplay}
+        </div>
+        {!useRealData && (
+          <div className="text-xs text-yellow-500 font-mono">
+            ⚠️ Simulated data
+          </div>
+        )}
+        {loading && (
+          <div className="text-xs text-primary font-mono animate-pulse">
+            Loading...
+          </div>
+        )}
       </div>
     </div>
   )
