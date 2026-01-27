@@ -670,18 +670,46 @@ export default function SmartMarketDetailPage() {
       ) : null}
 
       {/* Trading Panel - Only show if feature is enabled */}
-      {ENABLE_TRADING && !eventInfo && market && market.tokens && (
-        <div className="mb-6">
-          <TradingPanel
-            marketId={market.id}
-            question={market.question}
-            yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
-            noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-            yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
-            noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
-          />
-        </div>
-      )}
+      {(() => {
+        // Debug info
+        console.log('🔍 Trading Panel Debug:', {
+          ENABLE_TRADING,
+          hasEventInfo: !!eventInfo,
+          hasMarket: !!market,
+          hasTokens: !!market?.tokens,
+          tokensCount: market?.tokens?.length,
+          tokens: market?.tokens
+        })
+        
+        // Show debug message if trading disabled
+        if (!ENABLE_TRADING) {
+          return (
+            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
+              <p className="text-yellow-500 font-mono text-sm">
+                ⚠️ Trading disabled. Set NEXT_PUBLIC_ENABLE_TRADING=true in Vercel
+              </p>
+            </div>
+          )
+        }
+        
+        // Show trading panel if conditions met
+        if (!eventInfo && market && market.tokens) {
+          return (
+            <div className="mb-6">
+              <TradingPanel
+                marketId={market.id}
+                question={market.question}
+                yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+                noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+                yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
+                noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
+              />
+            </div>
+          )
+        }
+        
+        return null
+      })()}
 
       {/* Smart Money Outcomes - Multi-Outcome Markets */}
       {multiOutcomePositions.length > 0 ? (
