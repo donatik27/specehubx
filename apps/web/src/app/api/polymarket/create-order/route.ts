@@ -69,32 +69,52 @@ export async function POST(req: NextRequest) {
     const path = '/order'
     const message = `${timestamp}${method}${path}${JSON.stringify(orderPayload)}`
     const messageBytes = decodeUTF8(message)
-    
-    // Decode secret - try HEX first (64 chars), then base64
-    let secretBytes: Buffer
-    if (secret.length === 64 && /^[0-9a-fA-F]+$/.test(secret)) {
-      // HEX format (64 hex chars = 32 bytes)
-      secretBytes = Buffer.from(secret, 'hex')
-      console.log('🔑 Using HEX secret format')
-    } else {
-      // BASE64 format
-      secretBytes = Buffer.from(secret, 'base64')
-      console.log('🔑 Using BASE64 secret format')
+
+    const normalizeBase64 = (value: string) => {
+      const padded = value.trim().replace(/-/g, '+').replace(/_/g, '/')
+      const padLength = (4 - (padded.length % 4)) % 4
+      return padded + '='.repeat(padLength)
     }
-    
-    if (secretBytes.length !== 32) {
-      console.error('❌ Secret length:', secretBytes.length, 'Expected: 32')
+
+    const decodeSecretKey = (value: string) => {
+      const trimmed = value.trim()
+
+      if (/^[0-9a-fA-F]+$/.test(trimmed)) {
+        // HEX format: 64 chars (32 bytes) or 128 chars (64 bytes)
+        if (trimmed.length === 64 || trimmed.length === 128) {
+          return Buffer.from(trimmed, 'hex')
+        }
+      }
+
+      // BASE64 or BASE64URL format
+      const normalized = normalizeBase64(trimmed)
+      return Buffer.from(normalized, 'base64')
+    }
+
+    const secretBytes = decodeSecretKey(secret)
+    let signingKey: Uint8Array
+
+    if (secretBytes.length === 64) {
+      // Full Ed25519 secret key (64 bytes)
+      signingKey = secretBytes
+      console.log('🔑 Using 64-byte Ed25519 secret key')
+    } else if (secretBytes.length === 32) {
+      // Seed (32 bytes) -> derive full secret key
+      signingKey = nacl.sign.keyPair.fromSeed(secretBytes).secretKey
+      console.log('🔑 Using 32-byte seed (derived secret key)')
+    } else {
+      console.error('❌ Secret length:', secretBytes.length, 'Expected: 32 or 64')
       return NextResponse.json(
-        { 
+        {
           error: 'Invalid secret format',
-          details: `Secret decoded to ${secretBytes.length} bytes, expected 32`,
-          hint: 'Secret should be 64-char hex string or base64 string'
+          details: `Secret decoded to ${secretBytes.length} bytes, expected 32 or 64`,
+          hint: 'Secret should be base64/base64url or hex (64 or 128 chars)',
         },
         { status: 500 }
       )
     }
-    
-    const signature = nacl.sign.detached(messageBytes, secretBytes)
+
+    const signature = nacl.sign.detached(messageBytes, signingKey)
     const signatureBase64 = encodeBase64(signature)
 
     // Send order to Polymarket CLOB
