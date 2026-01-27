@@ -60,7 +60,7 @@ export function TradingPanel({
   const potentialWin = shares * (1 - currentPrice)
 
   const handleTrade = async () => {
-    if (!isConnected || !address) {
+    if (!isConnected || !address || !walletClient) {
       alert('Please connect your wallet first!')
       return
     }
@@ -72,30 +72,36 @@ export function TradingPanel({
 
     setLoading(true)
     try {
-      // Call backend API to place order
-      const response = await fetch('/api/trade/place-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          marketId,
-          side,
-          amount: parseFloat(amount),
-          price: currentPrice,
-          userAddress: address,
-          tokenId: side === 'YES' ? yesTokenId : noTokenId,
-        })
+      // Import Polymarket trading functions
+      const { placePolymarketOrder } = await import('@/lib/polymarket-trading')
+      
+      // Create ethers signer from wagmi wallet client
+      const provider = new ethers.providers.Web3Provider(walletClient as any)
+      const signer = provider.getSigner()
+
+      // Get token ID
+      const tokenID = side === 'YES' ? yesTokenId : noTokenId
+      if (!tokenID) {
+        throw new Error('Token ID not available for this market')
+      }
+
+      // Place real order on Polymarket!
+      // This will trigger MetaMask popup for signature
+      const result = await placePolymarketOrder(signer, {
+        tokenID,
+        price: currentPrice,
+        side: side === 'BUY' ? 'BUY' : 'SELL',
+        size: parseFloat(amount),
       })
 
-      const data = await response.json()
-
-      if (data.success) {
-        alert(`✅ Order placed successfully!\n\nOrder ID: ${data.orderId}\nSide: ${side}\nAmount: $${amount}`)
+      if (result.success) {
+        alert(`✅ Order placed successfully on Polymarket!\n\nOrder ID: ${result.orderID}\nSide: ${side}\nAmount: $${amount}\n\nView on: polymarket.com/portfolio`)
       } else {
-        throw new Error(data.error || 'Order placement failed')
+        throw new Error(result.error || 'Order placement failed')
       }
     } catch (error: any) {
       console.error('Trade failed:', error)
-      alert(`❌ Trade failed: ${error.message}`)
+      alert(`❌ Trade failed: ${error.message}\n\nPlease check:\n- USDC balance sufficient\n- Polygon network selected\n- Try refreshing the page`)
     } finally {
       setLoading(false)
     }

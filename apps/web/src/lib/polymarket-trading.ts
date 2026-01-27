@@ -1,0 +1,112 @@
+/**
+ * Polymarket Trading Client
+ * Based on official documentation: https://docs.polymarket.com/developers/CLOB/quickstart
+ */
+
+import { ClobClient, OrderType, Side } from '@polymarket/clob-client'
+import { ethers } from 'ethers'
+
+const CLOB_URL = 'https://clob.polymarket.com'
+const CHAIN_ID = 137 // Polygon
+
+export interface CreateOrderParams {
+  tokenID: string
+  price: number // 0.01 - 0.99
+  side: 'BUY' | 'SELL'
+  size: number // Amount in USDC
+  tickSize?: string
+  negRisk?: boolean
+}
+
+export interface OrderResponse {
+  success: boolean
+  orderID?: string
+  status?: string
+  error?: string
+}
+
+/**
+ * Create Polymarket CLOB Client with user's wallet
+ */
+export function createPolymarketClient(signer: ethers.Signer) {
+  return new ClobClient(
+    CLOB_URL,
+    CHAIN_ID,
+    signer
+  )
+}
+
+/**
+ * Place order on Polymarket
+ * 
+ * This will:
+ * 1. Create order with user's parameters
+ * 2. Sign order with user's wallet (MetaMask popup!)
+ * 3. Submit to Polymarket CLOB API
+ * 4. Return real order ID from Polymarket
+ */
+export async function placePolymarketOrder(
+  signer: ethers.Signer,
+  params: CreateOrderParams
+): Promise<OrderResponse> {
+  try {
+    const client = createPolymarketClient(signer)
+
+    // Convert side to SDK enum
+    const side = params.side === 'BUY' ? Side.BUY : Side.SELL
+
+    // Create and post order
+    const response = await client.createAndPostOrder(
+      {
+        tokenID: params.tokenID,
+        price: params.price,
+        side,
+        size: params.size,
+      },
+      {
+        tickSize: params.tickSize || '0.01',
+        negRisk: params.negRisk || false,
+      },
+      OrderType.GTC // Good-Til-Cancelled
+    )
+
+    return {
+      success: true,
+      orderID: response.orderID,
+      status: response.status,
+    }
+  } catch (error: any) {
+    console.error('Polymarket order error:', error)
+    return {
+      success: false,
+      error: error.message || 'Order placement failed',
+    }
+  }
+}
+
+/**
+ * Get user's active orders
+ */
+export async function getActiveOrders(signer: ethers.Signer) {
+  try {
+    const client = createPolymarketClient(signer)
+    const address = await signer.getAddress()
+    return await client.getOrders({ maker: address })
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    return []
+  }
+}
+
+/**
+ * Cancel order
+ */
+export async function cancelOrder(signer: ethers.Signer, orderID: string) {
+  try {
+    const client = createPolymarketClient(signer)
+    return await client.cancelOrder({ orderID })
+  } catch (error: any) {
+    console.error('Error canceling order:', error)
+    throw new Error(error.message || 'Cancel failed')
+  }
+}
