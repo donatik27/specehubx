@@ -319,25 +319,12 @@ export default function SmartMarketDetailPage() {
           return false
         }
 
-        // 1) Try our proxy (no CORS)
+        // Use server proxy (no CORS)
         const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`, { cache: 'no-store' })
         if (polyMarketRes.ok) {
           const polyMarket = await polyMarketRes.json()
-          if (loadTokens(polyMarket, 'proxy')) {
-            // done
-          } else {
-            console.warn('⚠️ No tokens found in proxy response, trying direct Gamma API...')
-          }
-        }
-
-        // 2) Fallback to direct Gamma API (if proxy missing tokens)
-        if (!foundMarket.tokens || foundMarket.tokens.length === 0) {
-          const directRes = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`, { cache: 'no-store' })
-          if (directRes.ok) {
-            const directMarket = await directRes.json()
-            if (!loadTokens(directMarket, 'direct')) {
-              console.warn('⚠️ No tokens found in market response')
-            }
+          if (!loadTokens(polyMarket, 'proxy')) {
+            console.warn('⚠️ No tokens found in proxy response')
           }
         }
       } catch (e) {

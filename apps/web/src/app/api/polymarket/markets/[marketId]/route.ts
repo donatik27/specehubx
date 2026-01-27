@@ -24,7 +24,32 @@ export async function GET(
     }
     
     const data = await response.json()
-    return NextResponse.json(data)
+
+    // Normalize tokens for binary markets using clobTokenIds
+    if (!Array.isArray(data.tokens) && Array.isArray(data.clobTokenIds)) {
+      let outcomes = data.outcomes
+      if (typeof outcomes === 'string') {
+        try {
+          outcomes = JSON.parse(outcomes)
+        } catch {
+          outcomes = null
+        }
+      }
+      if (!Array.isArray(outcomes)) {
+        outcomes = ['Yes', 'No']
+      }
+
+      data.tokens = data.clobTokenIds.map((tokenId: string, index: number) => ({
+        token_id: tokenId,
+        outcome: outcomes[index] || (index === 0 ? 'Yes' : 'No'),
+      }))
+    }
+
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    })
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message },
