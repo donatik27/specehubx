@@ -86,27 +86,29 @@ export async function placePolymarketOrder(
 
 /**
  * Get user's active orders
+ * TODO: Implement when needed - check correct ClobClient method name
  */
-export async function getActiveOrders(signer: any) {
-  try {
-    const client = createPolymarketClient(signer)
-    const address = await signer.getAddress()
-    return await client.getOrders({ maker: address })
-  } catch (error) {
-    console.error('Error fetching orders:', error)
-    return []
-  }
-}
+// export async function getActiveOrders(signer: any) {
+//   try {
+//     const client = createPolymarketClient(signer)
+//     const address = await signer.getAddress()
+//     return await client.getOrders({ maker: address })
+//   } catch (error) {
+//     console.error('Error fetching orders:', error)
+//     return []
+//   }
+// }
 
 /**
  * Cancel order
+ * TODO: Implement when needed
  */
-export async function cancelOrder(signer: any, orderID: string) {
-  try {
-    const client = createPolymarketClient(signer)
-    return await client.cancelOrder({ orderID })
-  } catch (error: any) {
-    console.error('Error canceling order:', error)
-    throw new Error(error.message || 'Cancel failed')
-  }
-}
+// export async function cancelOrder(signer: any, orderID: string) {
+//   try {
+//     const client = createPolymarketClient(signer)
+//     return await client.cancelOrder({ orderID })
+//   } catch (error: any) {
+//     console.error('Error canceling order:', error)
+//     throw new Error(error.message || 'Cancel failed')
+//   }
+// }
