@@ -60,11 +60,26 @@ export async function POST(req: NextRequest) {
     const message = `${timestamp}${method}${path}${JSON.stringify(orderPayload)}`
     const messageBytes = decodeUTF8(message)
     
-    // Decode secret (base64) to use for signing
-    const secretBytes = Buffer.from(secret, 'base64')
+    // Decode secret - try HEX first (64 chars), then base64
+    let secretBytes: Buffer
+    if (secret.length === 64 && /^[0-9a-fA-F]+$/.test(secret)) {
+      // HEX format (64 hex chars = 32 bytes)
+      secretBytes = Buffer.from(secret, 'hex')
+      console.log('🔑 Using HEX secret format')
+    } else {
+      // BASE64 format
+      secretBytes = Buffer.from(secret, 'base64')
+      console.log('🔑 Using BASE64 secret format')
+    }
+    
     if (secretBytes.length !== 32) {
+      console.error('❌ Secret length:', secretBytes.length, 'Expected: 32')
       return NextResponse.json(
-        { error: 'Invalid secret format' },
+        { 
+          error: 'Invalid secret format',
+          details: `Secret decoded to ${secretBytes.length} bytes, expected 32`,
+          hint: 'Secret should be 64-char hex string or base64 string'
+        },
         { status: 500 }
       )
     }
