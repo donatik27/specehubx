@@ -25,21 +25,31 @@ export async function GET(
     
     const data = await response.json()
 
-    // Normalize tokens for binary markets using clobTokenIds
-    if (!Array.isArray(data.tokens) && Array.isArray(data.clobTokenIds)) {
-      let outcomes = data.outcomes
-      if (typeof outcomes === 'string') {
-        try {
-          outcomes = JSON.parse(outcomes)
-        } catch {
-          outcomes = null
-        }
+    // Normalize clobTokenIds and outcomes (sometimes serialized)
+    let clobTokenIds = data.clobTokenIds
+    if (typeof clobTokenIds === 'string') {
+      try {
+        clobTokenIds = JSON.parse(clobTokenIds)
+      } catch {
+        clobTokenIds = null
       }
-      if (!Array.isArray(outcomes)) {
-        outcomes = ['Yes', 'No']
-      }
+    }
 
-      data.tokens = data.clobTokenIds.map((tokenId: string, index: number) => ({
+    let outcomes = data.outcomes
+    if (typeof outcomes === 'string') {
+      try {
+        outcomes = JSON.parse(outcomes)
+      } catch {
+        outcomes = null
+      }
+    }
+    if (!Array.isArray(outcomes)) {
+      outcomes = ['Yes', 'No']
+    }
+
+    // Normalize tokens for binary markets using clobTokenIds
+    if (!Array.isArray(data.tokens) && Array.isArray(clobTokenIds)) {
+      data.tokens = clobTokenIds.map((tokenId: string, index: number) => ({
         token_id: tokenId,
         outcome: outcomes[index] || (index === 0 ? 'Yes' : 'No'),
       }))

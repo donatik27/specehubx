@@ -294,19 +294,6 @@ export default function SmartMarketDetailPage() {
       // Fetch token IDs from Polymarket API (needed for trading)
       try {
         const loadTokens = (source: any, label: string) => {
-          if (Array.isArray(source?.clobTokenIds) && source.clobTokenIds.length > 0) {
-            const outcomes = Array.isArray(source.outcomes)
-              ? source.outcomes
-              : foundMarket.outcomes || ['Yes', 'No']
-
-            foundMarket.tokens = source.clobTokenIds.map((tokenId: string, index: number) => ({
-              tokenId,
-              outcome: outcomes[index] || (index === 0 ? 'Yes' : 'No'),
-            }))
-            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from ${label} (clobTokenIds):`, foundMarket.tokens)
-            return true
-          }
-
           if (Array.isArray(source?.tokens)) {
             foundMarket.tokens = source.tokens.map((token: any) => ({
               tokenId: token.token_id,
@@ -319,7 +306,7 @@ export default function SmartMarketDetailPage() {
           return false
         }
 
-        // Use server proxy (no CORS)
+        // Use server proxy (no CORS) - proxy normalizes tokens
         const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`, { cache: 'no-store' })
         if (polyMarketRes.ok) {
           const polyMarket = await polyMarketRes.json()
