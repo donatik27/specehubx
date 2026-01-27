@@ -64,7 +64,7 @@ export async function placePolymarketOrder(
         size: params.size,
       },
       {
-        tickSize: params.tickSize || '0.01',
+        tickSize: params.tickSize ? (params.tickSize as any) : undefined,
         negRisk: params.negRisk || false,
       },
       OrderType.GTC // Good-Til-Cancelled
