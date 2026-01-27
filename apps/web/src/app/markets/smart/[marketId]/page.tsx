@@ -293,29 +293,51 @@ export default function SmartMarketDetailPage() {
 
       // Fetch token IDs from Polymarket API (needed for trading)
       try {
-        const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`)
-        if (polyMarketRes.ok) {
-          const polyMarket = await polyMarketRes.json()
-
-          // Prefer clobTokenIds from Gamma API (binary markets)
-          if (Array.isArray(polyMarket.clobTokenIds) && polyMarket.clobTokenIds.length > 0) {
-            const outcomes = Array.isArray(polyMarket.outcomes)
-              ? polyMarket.outcomes
+        const loadTokens = (source: any, label: string) => {
+          if (Array.isArray(source?.clobTokenIds) && source.clobTokenIds.length > 0) {
+            const outcomes = Array.isArray(source.outcomes)
+              ? source.outcomes
               : foundMarket.outcomes || ['Yes', 'No']
 
-            foundMarket.tokens = polyMarket.clobTokenIds.map((tokenId: string, index: number) => ({
+            foundMarket.tokens = source.clobTokenIds.map((tokenId: string, index: number) => ({
               tokenId,
               outcome: outcomes[index] || (index === 0 ? 'Yes' : 'No'),
             }))
-            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from clobTokenIds:`, foundMarket.tokens)
-          } else if (Array.isArray(polyMarket.tokens)) {
-            foundMarket.tokens = polyMarket.tokens.map((token: any) => ({
+            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from ${label} (clobTokenIds):`, foundMarket.tokens)
+            return true
+          }
+
+          if (Array.isArray(source?.tokens)) {
+            foundMarket.tokens = source.tokens.map((token: any) => ({
               tokenId: token.token_id,
               outcome: token.outcome,
             }))
-            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from tokens array:`, foundMarket.tokens)
+            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from ${label} (tokens array):`, foundMarket.tokens)
+            return true
+          }
+
+          return false
+        }
+
+        // 1) Try our proxy (no CORS)
+        const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`, { cache: 'no-store' })
+        if (polyMarketRes.ok) {
+          const polyMarket = await polyMarketRes.json()
+          if (loadTokens(polyMarket, 'proxy')) {
+            // done
           } else {
-            console.warn('⚠️ No tokens found in market response')
+            console.warn('⚠️ No tokens found in proxy response, trying direct Gamma API...')
+          }
+        }
+
+        // 2) Fallback to direct Gamma API (if proxy missing tokens)
+        if (!foundMarket.tokens || foundMarket.tokens.length === 0) {
+          const directRes = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`, { cache: 'no-store' })
+          if (directRes.ok) {
+            const directMarket = await directRes.json()
+            if (!loadTokens(directMarket, 'direct')) {
+              console.warn('⚠️ No tokens found in market response')
+            }
           }
         }
       } catch (e) {
@@ -715,6 +737,17 @@ export default function SmartMarketDetailPage() {
                 yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
                 noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
               />
+            </div>
+          )
+        }
+
+        // Show loading/error state when tokens are missing
+        if (!eventInfo && market && !market.tokens) {
+          return (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 pixel-border">
+              <p className="text-red-400 font-mono text-sm">
+                ⚠️ Trading tokens not loaded yet. Refresh the page to retry.
+              </p>
             </div>
           )
         }
