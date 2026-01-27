@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, TrendingUp, Users, DollarSign, Target, Activity, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { TradingPanel } from '@/components/TradingPanel'
+import { PriceChart } from '@/components/PriceChart'
 
 // Feature flag for trading
 // TEMPORARY: Hardcoded to true for testing
@@ -870,140 +871,13 @@ export default function SmartMarketDetailPage() {
           </div>
         </div>
       ) : (
-        // Standard outcomes view for non-multi-outcome markets
-        <div className="bg-card pixel-border border-primary/40 p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Activity className="h-6 w-6 text-primary alien-glow" />
-            <h2 className="text-2xl font-bold text-primary">CURRENT_ODDS</h2>
-            {(() => {
-              // Check if market is settled (100/0 or 0/100)
-              const firstPrice = market.outcomePrices?.[0] ? parseFloat(market.outcomePrices[0]) : 0.5;
-              const isSettled = firstPrice === 1 || firstPrice === 0;
-              
-              return isSettled ? (
-                <span className="flex items-center gap-1 text-xs text-yellow-500 font-mono">
-                  <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></span>
-                  SETTLED
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs text-primary/70 font-mono">
-                  <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-                  LIVE
-                </span>
-              );
-            })()}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Show event outcomes if multi-outcome, otherwise show binary YES/NO */}
-            {eventInfo && eventInfo.topOutcomes && eventInfo.topOutcomes.length > 0 ? (
-              // Multi-outcome event: Show teams/candidates
-              eventInfo.topOutcomes.map((outcome: any, idx: number) => {
-                const price = outcome.price || 0
-                const percentage = (price * 100).toFixed(1)
-                
-                // Extract clean name from question (e.g., "Will Barcelona win?" -> "Barcelona")
-                let cleanName = outcome.question
-                const teamMatch = outcome.question.match(/Will\s+(?:the\s+)?(.+?)\s+(?:win|make|reach|qualify)/i)
-                if (teamMatch) {
-                  cleanName = teamMatch[1].trim()
-                }
-
-                return (
-                  <div
-                    key={outcome.id}
-                    className="bg-black/40 pixel-border p-6 hover:scale-105 transition-all border-white/20 hover:border-primary"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-bold text-white">
-                        {cleanName}
-                      </h3>
-                      <span className="text-xs text-muted-foreground">#{idx + 1}</span>
-                    </div>
-
-                  <div className="mb-3">
-                    <div className="text-4xl font-bold text-white mb-1">
-                      {percentage}%
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      ${price.toFixed(4)} per share
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="w-full bg-black/60 h-2 pixel-border border-white/10 overflow-hidden">
-                    <div 
-                      className="h-full bg-primary"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-                )
-              })
-            ) : (
-              // Binary market: Try to extract team/player names, fallback to YES/NO
-              (() => {
-                // Try to extract sports team names from question
-                const sportsOutcomes = extractSportsOutcomes(market.question)
-                const displayOutcomes = sportsOutcomes || 
-                  (Array.isArray(market.outcomes) ? market.outcomes : ['YES', 'NO'])
-                
-                return displayOutcomes.map((outcome, idx) => {
-                  let price = 0.5
-                  if (market.outcomePrices?.[idx]) {
-                    const parsed = parseFloat(market.outcomePrices[idx])
-                    price = isNaN(parsed) ? 0.5 : parsed
-                  }
-                  const percentage = (price * 100).toFixed(1)
-                  const isYes = outcome.toLowerCase() === 'yes'
-                  const isNo = outcome.toLowerCase() === 'no'
-
-                  return (
-                    <div
-                      key={idx}
-                      className={`bg-black/40 pixel-border p-6 hover:scale-105 transition-all ${
-                        isYes ? 'border-green-500/50 hover:border-green-500' :
-                        isNo ? 'border-red-500/50 hover:border-red-500' :
-                        'border-white/20 hover:border-white/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className={`text-lg font-bold ${
-                          isYes ? 'text-green-500' :
-                          isNo ? 'text-red-500' :
-                          'text-white'
-                        }`}>
-                          {outcome}
-                        </h3>
-                        <span className="text-xs text-muted-foreground">#{idx + 1}</span>
-                      </div>
-
-                    <div className="mb-3">
-                      <div className="text-4xl font-bold text-white mb-1">
-                        {percentage}%
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        ${price.toFixed(4)} per share
-                      </div>
-                    </div>
-
-                    {/* Progress bar */}
-                    <div className="w-full bg-black/60 h-2 pixel-border border-white/10 overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          isYes ? 'bg-green-500' :
-                          isNo ? 'bg-red-500' :
-                          'bg-primary'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                  )
-                })
-              })()
-            )}
-          </div>
+        // Price Chart for binary markets
+        <div className="mb-6">
+          <PriceChart
+            marketId={market.id}
+            yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+            noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+          />
         </div>
       )}
 
