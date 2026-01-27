@@ -87,10 +87,11 @@ export function TradingPanel({
 
       // Place real order on Polymarket!
       // This will trigger MetaMask popup for signature
+      // We're always BUYING shares (YES or NO based on tokenID)
       const result = await placePolymarketOrder(signer, {
         tokenID,
         price: currentPrice,
-        side: side === 'BUY' ? 'BUY' : 'SELL',
+        side: 'BUY', // Always BUY shares (selling would be different flow)
         size: parseFloat(amount),
       })
 
