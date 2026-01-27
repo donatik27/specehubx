@@ -46,15 +46,22 @@ Your Project → Settings → Environment Variables
 
 **Variable 1:**
 ```
-Name: POLYMARKET_API_KEY_ID
-Value: [paste your API Key ID]
+Name: POLYMARKET_API_KEY
+Value: [paste your apiKey]
 Environment: Production, Preview, Development
 ```
 
 **Variable 2:**
 ```
-Name: POLYMARKET_PRIVATE_KEY
-Value: [paste your Private Key]
+Name: POLYMARKET_SECRET
+Value: [paste your secret]
+Environment: Production, Preview, Development
+```
+
+**Variable 3:**
+```
+Name: POLYMARKET_PASSPHRASE
+Value: [paste your passphrase]
 Environment: Production, Preview, Development
 ```
 

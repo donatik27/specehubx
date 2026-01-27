@@ -26,26 +26,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Check for API credentials
-    const apiKeyId = process.env.POLYMARKET_API_KEY_ID
-    const privateKeyBase64 = process.env.POLYMARKET_PRIVATE_KEY
+    const apiKey = process.env.POLYMARKET_API_KEY
+    const secret = process.env.POLYMARKET_SECRET
+    const passphrase = process.env.POLYMARKET_PASSPHRASE
 
-    if (!apiKeyId || !privateKeyBase64) {
+    if (!apiKey || !secret || !passphrase) {
       return NextResponse.json(
         {
           error: 'API credentials not configured',
-          message: 'Set POLYMARKET_API_KEY_ID and POLYMARKET_PRIVATE_KEY in Vercel environment variables',
+          message: 'Set POLYMARKET_API_KEY, POLYMARKET_SECRET, and POLYMARKET_PASSPHRASE in Vercel environment variables',
           docs: 'https://docs.polymarket.com/developers/CLOB/authentication',
         },
         { status: 503 }
-      )
-    }
-
-    // Decode private key
-    const privateKey = Buffer.from(privateKeyBase64, 'base64')
-    if (privateKey.length !== 32) {
-      return NextResponse.json(
-        { error: 'Invalid private key format' },
-        { status: 500 }
       )
     }
 
@@ -67,7 +59,17 @@ export async function POST(req: NextRequest) {
     const path = '/order'
     const message = `${timestamp}${method}${path}${JSON.stringify(orderPayload)}`
     const messageBytes = decodeUTF8(message)
-    const signature = nacl.sign.detached(messageBytes, privateKey)
+    
+    // Decode secret (base64) to use for signing
+    const secretBytes = Buffer.from(secret, 'base64')
+    if (secretBytes.length !== 32) {
+      return NextResponse.json(
+        { error: 'Invalid secret format' },
+        { status: 500 }
+      )
+    }
+    
+    const signature = nacl.sign.detached(messageBytes, secretBytes)
     const signatureBase64 = encodeBase64(signature)
 
     // Send order to Polymarket CLOB
@@ -75,9 +77,10 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PM-Access-Key': apiKeyId,
+        'X-PM-Access-Key': apiKey,
         'X-PM-Timestamp': timestamp.toString(),
         'X-PM-Signature': signatureBase64,
+        'X-PM-Passphrase': passphrase,
       },
       body: JSON.stringify(orderPayload),
     })
