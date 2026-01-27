@@ -53,7 +53,7 @@ export default function MapPage() {
   const [hoveredTrader, setHoveredTrader] = useState<HoveredTrader | null>(null)
   const [focusedTrader, setFocusedTrader] = useState<{ lat: number; lng: number; address: string } | null>(null)
   const [topTradersRotation, setTopTradersRotation] = useState(0) // For randomizing top traders
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     fetchData()
