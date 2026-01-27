@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { TradingPanel } from '@/components/TradingPanel'
 
 // Feature flag for trading
-const ENABLE_TRADING = process.env.NEXT_PUBLIC_ENABLE_TRADING === 'true'
+// TEMPORARY: Hardcoded to true for testing
+const ENABLE_TRADING = true // process.env.NEXT_PUBLIC_ENABLE_TRADING === 'true'
 
 interface Market {
   id: string
