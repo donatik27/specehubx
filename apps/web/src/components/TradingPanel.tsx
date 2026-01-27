@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { useAccount } from 'wagmi'
+import { useState, useEffect } from 'react'
+import { useAccount, useWalletClient } from 'wagmi'
 import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
 import { WalletConnectButton } from './WalletConnect'
+import { ApprovalButton } from './ApprovalButton'
+import { ethers } from 'ethers'
+import { checkUSDCAllowance } from '@/lib/usdc-approval'
 
 interface TradingPanelProps {
   marketId: string
@@ -23,9 +26,34 @@ export function TradingPanel({
   noTokenId,
 }: TradingPanelProps) {
   const { address, isConnected } = useAccount()
+  const { data: walletClient } = useWalletClient()
   const [side, setSide] = useState<'YES' | 'NO'>('YES')
   const [amount, setAmount] = useState('10')
   const [loading, setLoading] = useState(false)
+  const [hasAllowance, setHasAllowance] = useState(false)
+  const [checkingAllowance, setCheckingAllowance] = useState(true)
+
+  useEffect(() => {
+    if (isConnected && address) {
+      checkApproval()
+    }
+  }, [isConnected, address])
+
+  const checkApproval = async () => {
+    if (!address) return
+    
+    try {
+      setCheckingAllowance(true)
+      const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com')
+      const allowance = await checkUSDCAllowance(address, provider)
+      setHasAllowance(allowance > 0n)
+    } catch (err) {
+      console.error('Error checking allowance:', err)
+      setHasAllowance(false)
+    } finally {
+      setCheckingAllowance(false)
+    }
+  }
 
   const currentPrice = side === 'YES' ? yesPrice : noPrice
   const shares = parseFloat(amount) / currentPrice
@@ -37,24 +65,37 @@ export function TradingPanel({
       return
     }
 
+    if (!hasAllowance) {
+      alert('Please approve USDC first!')
+      return
+    }
+
     setLoading(true)
     try {
-      // TODO: Implement actual order placement via API
-      console.log('Placing order:', {
-        marketId,
-        side,
-        amount: parseFloat(amount),
-        price: currentPrice,
-        userAddress: address,
+      // Call backend API to place order
+      const response = await fetch('/api/trade/place-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          marketId,
+          side,
+          amount: parseFloat(amount),
+          price: currentPrice,
+          userAddress: address,
+          tokenId: side === 'YES' ? yesTokenId : noTokenId,
+        })
       })
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const data = await response.json()
 
-      alert(`Order placed! (Demo mode)\nSide: ${side}\nAmount: $${amount}`)
-    } catch (error) {
+      if (data.success) {
+        alert(`✅ Order placed successfully!\n\nOrder ID: ${data.orderId}\nSide: ${side}\nAmount: $${amount}`)
+      } else {
+        throw new Error(data.error || 'Order placement failed')
+      }
+    } catch (error: any) {
       console.error('Trade failed:', error)
-      alert('Trade failed. Check console for details.')
+      alert(`❌ Trade failed: ${error.message}`)
     } finally {
       setLoading(false)
     }
@@ -71,11 +112,15 @@ export function TradingPanel({
           </h3>
         </div>
 
-        {!isConnected && (
-          <div className="mb-4">
-            <WalletConnectButton />
-          </div>
-        )}
+      {!isConnected ? (
+        <div className="mb-4">
+          <WalletConnectButton />
+        </div>
+      ) : (
+        <div className="mb-4 bg-black/40 pixel-border border-primary/30 p-4">
+          <ApprovalButton />
+        </div>
+      )}
       </div>
 
       {/* YES/NO Selection */}
@@ -151,13 +196,13 @@ export function TradingPanel({
       {isConnected ? (
         <button
           onClick={handleTrade}
-          disabled={loading || parseFloat(amount) <= 0}
+          disabled={loading || parseFloat(amount) <= 0 || !hasAllowance || checkingAllowance}
           className={`w-full py-4 font-bold pixel-border transition-all uppercase tracking-wider text-base ${
             side === 'YES'
               ? 'bg-green-500 text-black hover:bg-green-400'
               : 'bg-red-500 text-white hover:bg-red-400'
           } ${
-            loading || parseFloat(amount) <= 0
+            loading || parseFloat(amount) <= 0 || !hasAllowance || checkingAllowance
               ? 'opacity-50 cursor-not-allowed'
               : ''
           }`}
@@ -167,20 +212,26 @@ export function TradingPanel({
               <Loader2 className="inline h-5 w-5 mr-2 animate-spin" />
               Placing_Order...
             </>
+          ) : checkingAllowance ? (
+            <>
+              <Loader2 className="inline h-5 w-5 mr-2 animate-spin" />
+              Checking_Approval...
+            </>
+          ) : !hasAllowance ? (
+            '⚠️ Approve USDC First'
           ) : (
-            `Buy ${side} Shares`
+            `2️⃣ Buy ${side} Shares`
           )}
         </button>
       ) : (
         <div className="text-center py-6 text-muted-foreground font-mono text-sm">
           <p className="mb-2">→ CONNECT_WALLET_TO_TRADE ←</p>
-          <p className="text-xs opacity-70">(Demo mode - no real trades yet)</p>
         </div>
       )}
 
-      {/* Warning */}
-      <div className="mt-4 p-3 bg-yellow-500/10 pixel-border border-yellow-500/30 text-xs text-yellow-500 font-mono">
-        ⚠️ DEMO MODE: Trading infrastructure in development. No real orders placed yet.
+      {/* Info */}
+      <div className="mt-4 p-3 bg-primary/10 pixel-border border-primary/30 text-xs text-primary font-mono">
+        🚀 REAL TRADING: Orders placed on Polymarket!
       </div>
     </div>
   )
