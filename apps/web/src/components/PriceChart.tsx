@@ -41,29 +41,18 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
       try {
         setLoading(true)
         
-        // Map timeRange to fidelity (candle interval)
-        const fidelityMap = {
-          '1H': '1',    // 1 minute candles
-          '6H': '5',    // 5 minute candles
-          '1D': '60',   // 1 hour candles
-          '1W': '1440', // 1 day candles
-          'ALL': '1440' // 1 day candles
+        // Map timeRange to Polymarket interval format
+        const intervalMap = {
+          '1H': '1m',   // 1 minute candles
+          '6H': '5m',   // 5 minute candles
+          '1D': '1h',   // 1 hour candles
+          '1W': '1d',   // 1 day candles
+          'ALL': 'max'  // All available data
         }
-        const fidelity = fidelityMap[timeRange]
-
-        // Calculate start timestamp based on range
-        const now = Date.now()
-        const startTsMap = {
-          '1H': now - 60 * 60 * 1000,
-          '6H': now - 6 * 60 * 60 * 1000,
-          '1D': now - 24 * 60 * 60 * 1000,
-          '1W': now - 7 * 24 * 60 * 60 * 1000,
-          'ALL': now - 30 * 24 * 60 * 60 * 1000 // 30 days
-        }
-        const startTs = Math.floor(startTsMap[timeRange] / 1000)
+        const interval = intervalMap[timeRange]
 
         const response = await fetch(
-          `/api/price-history?tokenId=${yesTokenId}&fidelity=${fidelity}&startTs=${startTs}`
+          `/api/price-history?tokenId=${yesTokenId}&interval=${interval}`
         )
 
         if (!response.ok) {

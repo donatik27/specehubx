@@ -4,22 +4,18 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Fetch price history for a token from Polymarket
- * Endpoint: GET /api/price-history?tokenId=XXX&fidelity=1
+ * Endpoint: GET /api/price-history?tokenId=XXX&interval=1h
  * 
- * Fidelity options:
- * 1 = 1 minute candles (recent data)
- * 5 = 5 minute candles
- * 60 = 1 hour candles
- * 1440 = 1 day candles (historical)
+ * Interval options:
+ * 1m, 5m, 1h, 6h, 1d, max (all available data)
  * 
- * Docs: https://docs.polymarket.com/api-reference/pricing/get-price-history-for-a-traded-token
+ * Docs: https://docs.polymarket.com/developers/CLOB/timeseries
  */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const tokenId = searchParams.get('tokenId')
-    const fidelity = searchParams.get('fidelity') || '60' // Default 1 hour candles
-    const startTs = searchParams.get('startTs') // Optional start timestamp
+    const interval = searchParams.get('interval') || 'max' // Default: all data
 
     if (!tokenId) {
       return NextResponse.json(
@@ -29,10 +25,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Build Polymarket API URL
-    let url = `https://clob.polymarket.com/prices-history?market=${tokenId}&interval=${fidelity}`
-    if (startTs) {
-      url += `&startTs=${startTs}`
-    }
+    const url = `https://clob.polymarket.com/prices-history?market=${tokenId}&interval=${interval}`
 
     console.log(`📊 Fetching price history: ${url}`)
 
@@ -72,7 +65,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       tokenId,
-      fidelity,
+      interval,
       count: pricePoints.length,
       history: pricePoints
     })
