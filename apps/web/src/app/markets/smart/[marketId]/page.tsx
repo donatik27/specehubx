@@ -293,19 +293,34 @@ export default function SmartMarketDetailPage() {
 
       // Fetch token IDs from Polymarket API (needed for trading)
       try {
-        const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`)
-        if (polyMarketRes.ok) {
-          const polyMarket = await polyMarketRes.json()
+        // Try simplified markets endpoint (has more data including tokens)
+        const simplifiedRes = await fetch(`/api/smart-markets-simple`)
+        if (simplifiedRes.ok) {
+          const simplifiedMarkets = await simplifiedRes.json()
+          const simplifiedMarket = simplifiedMarkets.find((m: any) => m.id === marketId)
           
-          // Extract token IDs from Polymarket response
-          if (polyMarket.tokens && Array.isArray(polyMarket.tokens)) {
-            foundMarket.tokens = polyMarket.tokens.map((token: any) => ({
-              tokenId: token.token_id,
+          if (simplifiedMarket?.tokens) {
+            foundMarket.tokens = simplifiedMarket.tokens.map((token: any) => ({
+              tokenId: token.token_id || token.tokenId,
               outcome: token.outcome,
             }))
-            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens for trading:`, foundMarket.tokens)
+            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from simplified endpoint:`, foundMarket.tokens)
           } else {
-            console.warn('⚠️ No tokens found in market response')
+            console.warn('⚠️ No tokens in simplified markets')
+            
+            // Fallback: Try Gamma API
+            const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`)
+            if (polyMarketRes.ok) {
+              const polyMarket = await polyMarketRes.json()
+              
+              if (polyMarket.tokens && Array.isArray(polyMarket.tokens)) {
+                foundMarket.tokens = polyMarket.tokens.map((token: any) => ({
+                  tokenId: token.token_id,
+                  outcome: token.outcome,
+                }))
+                console.log(`✅ Fetched ${foundMarket.tokens.length} tokens from Gamma API:`, foundMarket.tokens)
+              }
+            }
           }
         }
       } catch (e) {
