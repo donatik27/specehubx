@@ -28,7 +28,8 @@ export function ApprovalButton() {
     
     try {
       setChecking(true)
-      const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com')
+      // Use reliable RPC endpoint
+      const provider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com')
       const allowance = await checkUSDCAllowance(address, provider)
       
       // If allowance > 0, user has approved
@@ -45,9 +46,11 @@ export function ApprovalButton() {
     if (!address) return
     
     try {
-      const provider = new ethers.providers.JsonRpcProvider('https://polygon-rpc.com')
+      // Use reliable RPC endpoint
+      const provider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com')
       const balance = await getUSDCBalance(address, provider)
       setUsdcBalance(formatUSDC(balance))
+      console.log(`✅ USDC Balance: $${formatUSDC(balance)}`)
     } catch (err) {
       console.error('Error checking balance:', err)
     }
