@@ -72,14 +72,21 @@ export function ApprovalButton() {
 
       // Approve USDC
       const tx = await approveUSDC(signer)
+      console.log('📝 Approval tx sent:', tx.hash)
       
       // Wait for confirmation
-      await tx.wait()
+      const receipt = await tx.wait()
+      console.log('✅ Approval confirmed in block:', receipt.blockNumber)
       
-      // Recheck allowance
-      await checkAllowance()
+      // Set approved immediately (don't wait for RPC to update)
+      setHasAllowance(true)
       
       alert('✅ USDC Approved! You can now place orders.')
+      
+      // Recheck allowance in background (after 2 seconds for RPC to update)
+      setTimeout(() => {
+        checkAllowance()
+      }, 2000)
     } catch (err: any) {
       console.error('Approval error:', err)
       setError(err.message || 'Approval failed')
