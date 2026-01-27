@@ -314,7 +314,7 @@ export default function TraderGlobe({ traders, onTraderHover, focusedTrader }: T
   const [shouldRotate, setShouldRotate] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
   const [isInteracting, setIsInteracting] = React.useState(false);
-  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Reset inactivity timer
   const resetInactivityTimer = () => {
