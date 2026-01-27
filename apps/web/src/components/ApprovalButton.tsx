@@ -6,6 +6,13 @@ import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 import { ethers } from 'ethers'
 import { checkUSDCAllowance, approveUSDC, formatUSDC, getUSDCBalance } from '@/lib/usdc-approval'
 
+const RPC_URLS = [
+  'https://polygon.llamarpc.com',
+  'https://polygon-rpc.com',
+  'https://rpc.ankr.com/polygon',
+  'https://polygon-bor.publicnode.com',
+]
+
 export function ApprovalButton() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
@@ -16,6 +23,24 @@ export function ApprovalButton() {
   const [usdcBalance, setUsdcBalance] = useState<string>('0')
   const [error, setError] = useState<string | null>(null)
   const [approvalConfirmed, setApprovalConfirmed] = useState(false) // NEW: Track if approval was done in this session
+
+  const getReadProvider = async () => {
+    if (walletClient) {
+      return new ethers.providers.Web3Provider(walletClient as any)
+    }
+
+    for (const url of RPC_URLS) {
+      try {
+        const provider = new ethers.providers.JsonRpcProvider(url)
+        await provider.getBlockNumber()
+        return provider
+      } catch (err) {
+        console.warn('RPC failed:', url, err)
+      }
+    }
+
+    throw new Error('No available Polygon RPC endpoints')
+  }
 
   useEffect(() => {
     if (isConnected && address && !approvalConfirmed) {
@@ -40,8 +65,7 @@ export function ApprovalButton() {
     
     try {
       setChecking(true)
-      // Use reliable RPC endpoint
-      const provider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com')
+      const provider = await getReadProvider()
       const allowance = await checkUSDCAllowance(address, provider)
       
       console.log('🔍 Allowance check:', allowance.toString())
@@ -67,13 +91,13 @@ export function ApprovalButton() {
     if (!address) return
     
     try {
-      // Use reliable RPC endpoint
-      const provider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com')
+      const provider = await getReadProvider()
       const balance = await getUSDCBalance(address, provider)
       setUsdcBalance(formatUSDC(balance))
       console.log(`✅ USDC Balance: $${formatUSDC(balance)}`)
     } catch (err) {
       console.error('Error checking balance:', err)
+      setError('RPC error: Unable to fetch USDC balance. Try refreshing.')
     }
   }
 
