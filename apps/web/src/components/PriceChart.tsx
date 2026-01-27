@@ -41,18 +41,9 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
       try {
         setLoading(true)
         
-        // Map timeRange to Polymarket interval format
-        const intervalMap = {
-          '1H': '1m',   // 1 minute candles
-          '6H': '5m',   // 5 minute candles
-          '1D': '1h',   // 1 hour candles
-          '1W': '1d',   // 1 day candles
-          'ALL': 'max'  // All available data
-        }
-        const interval = intervalMap[timeRange]
-
+        // Always fetch ALL data from Polymarket, then filter client-side
         const response = await fetch(
-          `/api/price-history?tokenId=${yesTokenId}&interval=${interval}`
+          `/api/price-history?tokenId=${yesTokenId}&interval=max`
         )
 
         if (!response.ok) {
@@ -64,8 +55,28 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
         const data = await response.json()
         
         if (data.history && data.history.length > 0) {
-          setPriceHistory(data.history)
-          console.log(`✅ Loaded ${data.history.length} real price points`)
+          // Filter data based on timeRange
+          const now = Date.now()
+          const timeRangeMs = {
+            '1H': 60 * 60 * 1000,
+            '6H': 6 * 60 * 60 * 1000,
+            '1D': 24 * 60 * 60 * 1000,
+            '1W': 7 * 24 * 60 * 60 * 1000,
+            'ALL': Infinity
+          }
+          const cutoff = now - timeRangeMs[timeRange]
+          
+          // Filter and sample data points based on timeRange
+          let filteredData = data.history.filter((point: PricePoint) => point.timestamp >= cutoff)
+          
+          // Sample data to keep chart responsive (max 100 points)
+          if (filteredData.length > 100) {
+            const step = Math.ceil(filteredData.length / 100)
+            filteredData = filteredData.filter((_: any, i: number) => i % step === 0)
+          }
+          
+          setPriceHistory(filteredData)
+          console.log(`✅ Loaded ${filteredData.length} real price points (${timeRange})`)
         } else {
           // Fallback to mock if no data
           setUseRealData(false)
@@ -154,6 +165,14 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
               tick={{ fill: '#666', fontSize: 10 }}
               tickLine={false}
               axisLine={{ stroke: '#333' }}
+              tickFormatter={(value) => {
+                // Format based on timeRange
+                if (timeRange === '1H' || timeRange === '6H') {
+                  // Show time only for short ranges
+                  return value.split(',')[1]?.trim() || value
+                }
+                return value
+              }}
             />
             <YAxis 
               domain={[0, 1]}

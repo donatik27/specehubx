@@ -50,16 +50,38 @@ export async function GET(req: NextRequest) {
     // Transform to our format
     const history = data.history || data || []
     
-    const pricePoints = history.map((point: any) => ({
-      timestamp: point.t * 1000, // Convert to milliseconds
-      price: parseFloat(point.p),
-      time: new Date(point.t * 1000).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }))
+    const pricePoints = history.map((point: any) => {
+      const timestamp = point.t * 1000 // Convert to milliseconds
+      const date = new Date(timestamp)
+      
+      // Format time based on how old the data is
+      const now = Date.now()
+      const age = now - timestamp
+      const oneDayMs = 24 * 60 * 60 * 1000
+      
+      let timeFormat
+      if (age < oneDayMs) {
+        // Recent: show time only
+        timeFormat = date.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      } else {
+        // Older: show date + time
+        timeFormat = date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }
+      
+      return {
+        timestamp,
+        price: parseFloat(point.p),
+        time: timeFormat
+      }
+    })
 
     console.log(`✅ Fetched ${pricePoints.length} price points for token ${tokenId}`)
 
