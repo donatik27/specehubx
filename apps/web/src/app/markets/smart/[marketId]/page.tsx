@@ -292,11 +292,20 @@ export default function SmartMarketDetailPage() {
 
       // Fetch token IDs from Polymarket API (needed for trading)
       try {
-        const tokensRes = await fetch(`/api/market-tokens?marketId=${marketId}`)
-        if (tokensRes.ok) {
-          const tokensData = await tokensRes.json()
-          foundMarket.tokens = tokensData.tokens
-          console.log(`✅ Fetched ${tokensData.tokens?.length || 0} tokens for trading`)
+        const polyMarketRes = await fetch(`/api/polymarket/markets/${marketId}`)
+        if (polyMarketRes.ok) {
+          const polyMarket = await polyMarketRes.json()
+          
+          // Extract token IDs from Polymarket response
+          if (polyMarket.tokens && Array.isArray(polyMarket.tokens)) {
+            foundMarket.tokens = polyMarket.tokens.map((token: any) => ({
+              tokenId: token.token_id,
+              outcome: token.outcome,
+            }))
+            console.log(`✅ Fetched ${foundMarket.tokens.length} tokens for trading:`, foundMarket.tokens)
+          } else {
+            console.warn('⚠️ No tokens found in market response')
+          }
         }
       } catch (e) {
         console.warn('Could not fetch token IDs:', e)
