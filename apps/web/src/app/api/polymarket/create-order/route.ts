@@ -30,6 +30,16 @@ export async function POST(req: NextRequest) {
     const secret = process.env.POLYMARKET_SECRET
     const passphrase = process.env.POLYMARKET_PASSPHRASE
 
+    console.log('🔐 Credentials check:', {
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length,
+      hasSecret: !!secret,
+      secretLength: secret?.length,
+      secretFirst10: secret?.substring(0, 10),
+      hasPassphrase: !!passphrase,
+      passphraseLength: passphrase?.length,
+    })
+
     if (!apiKey || !secret || !passphrase) {
       return NextResponse.json(
         {
