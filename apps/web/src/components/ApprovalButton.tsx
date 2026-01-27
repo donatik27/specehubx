@@ -15,9 +15,11 @@ export function ApprovalButton() {
   const [approving, setApproving] = useState(false)
   const [usdcBalance, setUsdcBalance] = useState<string>('0')
   const [error, setError] = useState<string | null>(null)
+  const [approvalConfirmed, setApprovalConfirmed] = useState(false) // NEW: Track if approval was done in this session
 
   useEffect(() => {
-    if (isConnected && address) {
+    if (isConnected && address && !approvalConfirmed) {
+      // Only check if we haven't just approved
       checkAllowance()
       checkBalance()
     }
@@ -26,14 +28,33 @@ export function ApprovalButton() {
   const checkAllowance = async () => {
     if (!address) return
     
+    // Check localStorage first - if user approved before, trust it
+    const stored = localStorage.getItem(`usdc_approved_${address}`)
+    if (stored === 'true') {
+      console.log('✅ Found approval in localStorage - skipping RPC check')
+      setHasAllowance(true)
+      setApprovalConfirmed(true)
+      setChecking(false)
+      return
+    }
+    
     try {
       setChecking(true)
       // Use reliable RPC endpoint
       const provider = new ethers.providers.JsonRpcProvider('https://polygon.llamarpc.com')
       const allowance = await checkUSDCAllowance(address, provider)
       
+      console.log('🔍 Allowance check:', allowance.toString())
+      
       // If allowance > 0, user has approved
-      setHasAllowance(allowance > 0n)
+      const approved = allowance > 0n
+      setHasAllowance(approved)
+      
+      // Store in localStorage if approved
+      if (approved && address) {
+        localStorage.setItem(`usdc_approved_${address}`, 'true')
+        setApprovalConfirmed(true)
+      }
     } catch (err) {
       console.error('Error checking allowance:', err)
       setHasAllowance(false)
@@ -80,13 +101,16 @@ export function ApprovalButton() {
       
       // Set approved immediately (don't wait for RPC to update)
       setHasAllowance(true)
+      setApprovalConfirmed(true) // Mark approval as confirmed - prevents re-checking
+      
+      // Store in localStorage for persistence
+      if (address) {
+        localStorage.setItem(`usdc_approved_${address}`, 'true')
+      }
       
       alert('✅ USDC Approved! You can now place orders.')
       
-      // Recheck allowance in background (after 2 seconds for RPC to update)
-      setTimeout(() => {
-        checkAllowance()
-      }, 2000)
+      console.log('🎉 Approval state locked - will not recheck automatically')
     } catch (err: any) {
       console.error('Approval error:', err)
       setError(err.message || 'Approval failed')
