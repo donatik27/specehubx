@@ -50,33 +50,50 @@ export async function placePolymarketOrder(
   params: CreateOrderParams
 ): Promise<OrderResponse> {
   try {
-    const client = createPolymarketClient(signer)
+    // Get user address for order
+    const userAddress = await signer.getAddress()
 
-    // Convert side to SDK enum
-    const side = params.side === 'BUY' ? Side.BUY : Side.SELL
-
-    // Create and post order
-    const response = await client.createAndPostOrder(
-      {
+    // Call backend API for server-side order creation
+    // Backend handles API credentials and signing
+    const response = await fetch('/api/polymarket/create-order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         tokenID: params.tokenID,
         price: params.price,
-        side,
+        side: params.side,
         size: params.size,
-      },
-      {
-        tickSize: params.tickSize ? (params.tickSize as any) : undefined,
-        negRisk: params.negRisk || false,
-      },
-      OrderType.GTC // Good-Til-Cancelled
-    )
+        userAddress,
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      // Handle specific error cases
+      if (response.status === 503 && data.error?.includes('not configured')) {
+        return {
+          success: false,
+          error: 'API credentials not set up. Please add POLYMARKET_API_KEY_ID and POLYMARKET_PRIVATE_KEY to Vercel environment variables.',
+        }
+      }
+
+      return {
+        success: false,
+        error: data.error || data.message || 'Order creation failed',
+      }
+    }
 
     return {
       success: true,
-      orderID: response.orderID,
-      status: response.status,
+      orderID: data.orderID,
+      status: data.status,
     }
   } catch (error: any) {
     console.error('Polymarket order error:', error)
+    
     return {
       success: false,
       error: error.message || 'Order placement failed',
