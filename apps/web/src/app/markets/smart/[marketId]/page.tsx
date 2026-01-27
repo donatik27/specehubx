@@ -21,6 +21,10 @@ interface Market {
   outcomes: string[]
   outcomePrices: string[]
   endDate: string
+  tokens?: Array<{
+    tokenId: string
+    outcome: string
+  }>
 }
 
 interface EventInfo {
@@ -645,15 +649,15 @@ export default function SmartMarketDetailPage() {
       ) : null}
 
       {/* Trading Panel - Only show if feature is enabled */}
-      {ENABLE_TRADING && !eventInfo && market && (
+      {ENABLE_TRADING && !eventInfo && market && market.tokens && (
         <div className="mb-6">
           <TradingPanel
             marketId={market.id}
             question={market.question}
             yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
             noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-            yesTokenId={market.outcomes?.[0]}
-            noTokenId={market.outcomes?.[1]}
+            yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
+            noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
           />
         </div>
       )}
