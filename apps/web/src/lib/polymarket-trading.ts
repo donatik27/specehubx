@@ -28,11 +28,11 @@ export interface OrderResponse {
 /**
  * Create Polymarket CLOB Client with user's wallet
  */
-export function createPolymarketClient(signer: ethers.Signer) {
+export function createPolymarketClient(signer: any) {
   return new ClobClient(
     CLOB_URL,
     CHAIN_ID,
-    signer
+    signer as any
   )
 }
 
@@ -46,7 +46,7 @@ export function createPolymarketClient(signer: ethers.Signer) {
  * 4. Return real order ID from Polymarket
  */
 export async function placePolymarketOrder(
-  signer: ethers.Signer,
+  signer: any,
   params: CreateOrderParams
 ): Promise<OrderResponse> {
   try {
@@ -87,7 +87,7 @@ export async function placePolymarketOrder(
 /**
  * Get user's active orders
  */
-export async function getActiveOrders(signer: ethers.Signer) {
+export async function getActiveOrders(signer: any) {
   try {
     const client = createPolymarketClient(signer)
     const address = await signer.getAddress()
@@ -101,7 +101,7 @@ export async function getActiveOrders(signer: ethers.Signer) {
 /**
  * Cancel order
  */
-export async function cancelOrder(signer: ethers.Signer, orderID: string) {
+export async function cancelOrder(signer: any, orderID: string) {
   try {
     const client = createPolymarketClient(signer)
     return await client.cancelOrder({ orderID })
