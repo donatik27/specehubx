@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, TrendingUp, Users, DollarSign, Target, Activity, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { TradingPanel } from '@/components/TradingPanel'
+
+// Feature flag for trading
+const ENABLE_TRADING = process.env.NEXT_PUBLIC_ENABLE_TRADING === 'true'
 
 interface Market {
   id: string
@@ -639,6 +643,20 @@ export default function SmartMarketDetailPage() {
           </div>
         </div>
       ) : null}
+
+      {/* Trading Panel - Only show if feature is enabled */}
+      {ENABLE_TRADING && !eventInfo && market && (
+        <div className="mb-6">
+          <TradingPanel
+            marketId={market.id}
+            question={market.question}
+            yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+            noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+            yesTokenId={market.outcomes?.[0]}
+            noTokenId={market.outcomes?.[1]}
+          />
+        </div>
+      )}
 
       {/* Smart Money Outcomes - Multi-Outcome Markets */}
       {multiOutcomePositions.length > 0 ? (
