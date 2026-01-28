@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Loader2 } from 'lucide-react'
-import Draggable, { DraggableData, DraggableEvent } from 'react-draggable'
+import Draggable, { DraggableData } from 'react-draggable'
 
 interface WhaleBubble {
   id: string // wallet address
@@ -13,6 +13,11 @@ interface WhaleBubble {
   size: number // pixel size for bubble
   x: number // position x for connections
   y: number // position y for connections
+}
+
+interface MarketHub {
+  x: number
+  y: number
 }
 
 interface WhaleNetworkGraphProps {
@@ -27,9 +32,9 @@ export default function WhaleNetworkGraph({
   const [marketInfo, setMarketInfo] = useState<{ title: string; volume: number; image: string } | null>(null)
   const [yesWhales, setYesWhales] = useState<WhaleBubble[]>([])
   const [noWhales, setNoWhales] = useState<WhaleBubble[]>([])
+  const [marketHub, setMarketHub] = useState<MarketHub>({ x: 0, y: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   const fetchWhaleNetwork = useCallback(async () => {
     try {
@@ -105,16 +110,22 @@ export default function WhaleNetworkGraph({
         }
       })
 
-      // Filter and sort - TOP 50 whales
+      // Filter and sort - TOP 30 whales for cleaner look
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
         .sort(([_, a], [__, b]) => b.amount - a.amount)
-        .slice(0, 50)
+        .slice(0, 30)
 
       console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
-      // Create bubbles with sizes
-      const bubbles: WhaleBubble[] = filteredWallets.map(([wallet, data]) => {
+      // Calculate positions - Hub in center, whales in circle around
+      const centerX = window.innerWidth / 2
+      const centerY = window.innerHeight / 2
+      
+      setMarketHub({ x: centerX, y: centerY })
+
+      // Create bubbles with sizes and positions
+      const bubbles: WhaleBubble[] = filteredWallets.map(([wallet, data], index) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
         // Color based on side and amount
@@ -125,11 +136,18 @@ export default function WhaleNetworkGraph({
           color = side === 'YES' ? '#16a34a' : '#e11d48'
         }
         
-        // Calculate bubble size (60px to 200px)
-        const minSize = 60
-        const maxSize = 200
+        // Calculate bubble size (80px to 150px for better visibility)
+        const minSize = 80
+        const maxSize = 150
         const maxAmount = Math.max(...filteredWallets.map(([_, d]) => d.amount))
         const size = minSize + ((data.amount / maxAmount) * (maxSize - minSize))
+        
+        // Position in circle around hub
+        const radius = 350 // Distance from center
+        const angleStep = (2 * Math.PI) / filteredWallets.length
+        const angle = index * angleStep
+        const x = centerX + Math.cos(angle) * radius
+        const y = centerY + Math.sin(angle) * radius
         
         return {
           id: wallet,
@@ -138,8 +156,8 @@ export default function WhaleNetworkGraph({
           side,
           color,
           size: Math.round(size),
-          x: 0, // Will be set after render
-          y: 0  // Will be set after render
+          x,
+          y
         }
       })
 
@@ -162,44 +180,6 @@ export default function WhaleNetworkGraph({
   useEffect(() => {
     fetchWhaleNetwork()
   }, [fetchWhaleNetwork])
-
-  // Initialize positions after first render
-  useEffect(() => {
-    if (!containerRef.current || yesWhales.length === 0 || yesWhales[0].x !== 0) return
-    
-    // Get positions from DOM
-    const updatePositions = () => {
-      const yesElements = containerRef.current?.querySelectorAll('[data-whale-yes]')
-      const noElements = containerRef.current?.querySelectorAll('[data-whale-no]')
-      
-      if (yesElements) {
-        const updatedYes = [...yesWhales]
-        yesElements.forEach((el, idx) => {
-          const rect = el.getBoundingClientRect()
-          if (updatedYes[idx]) {
-            updatedYes[idx].x = rect.left + rect.width / 2
-            updatedYes[idx].y = rect.top + rect.height / 2
-          }
-        })
-        setYesWhales(updatedYes)
-      }
-      
-      if (noElements) {
-        const updatedNo = [...noWhales]
-        noElements.forEach((el, idx) => {
-          const rect = el.getBoundingClientRect()
-          if (updatedNo[idx]) {
-            updatedNo[idx].x = rect.left + rect.width / 2
-            updatedNo[idx].y = rect.top + rect.height / 2
-          }
-        })
-        setNoWhales(updatedNo)
-      }
-    }
-    
-    // Delay to let DOM settle
-    setTimeout(updatePositions, 100)
-  }, [yesWhales.length, noWhales.length])
 
   if (loading) {
     return (
@@ -228,25 +208,31 @@ export default function WhaleNetworkGraph({
       : `$${(marketInfo.volume / 1000).toFixed(0)}K`
     : '$0'
 
+  const allWhales = [...yesWhales, ...noWhales]
+
   // Update whale position when dragged
-  const handleWhaleDrag = (side: 'YES' | 'NO', whaleId: string, data: DraggableData) => {
-    if (side === 'YES') {
-      setYesWhales(prev => prev.map(w => 
-        w.id === whaleId 
-          ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
-          : w
-      ))
-    } else {
-      setNoWhales(prev => prev.map(w => 
-        w.id === whaleId 
-          ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
-          : w
-      ))
-    }
+  const handleWhaleDrag = (whaleId: string, data: DraggableData) => {
+    setYesWhales(prev => prev.map(w => 
+      w.id === whaleId 
+        ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
+        : w
+    ))
+    setNoWhales(prev => prev.map(w => 
+      w.id === whaleId 
+        ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
+        : w
+    ))
+  }
+
+  const handleHubDrag = (data: DraggableData) => {
+    setMarketHub(prev => ({
+      x: prev.x + data.deltaX,
+      y: prev.y + data.deltaY
+    }))
   }
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black overflow-auto">
+    <div className="fixed inset-0 bg-black overflow-hidden">
       {/* Floating Stats (Bottom Left) */}
       <div className="fixed bottom-4 left-4 z-40 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 px-4 py-2">
         <div className="text-xs font-mono text-muted-foreground">
@@ -256,194 +242,110 @@ export default function WhaleNetworkGraph({
         </div>
       </div>
 
-      {/* SVG Overlay for Connection Lines */}
+      {/* SVG Overlay for Connection Lines - ARKHAM STYLE (HUB-SPOKE) */}
       <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-        {/* YES Whale Connections (Green) */}
-        {yesWhales.length > 1 && yesWhales.map((whale1, i) => 
-          yesWhales.slice(i + 1).map((whale2, j) => (
-            <line
-              key={`yes-${i}-${j}`}
-              x1={whale1.x}
-              y1={whale1.y}
-              x2={whale2.x}
-              y2={whale2.y}
-              stroke="#22c55e"
-              strokeWidth="1"
-              opacity="0.2"
-            />
-          ))
-        )}
-        
-        {/* NO Whale Connections (Red) */}
-        {noWhales.length > 1 && noWhales.map((whale1, i) => 
-          noWhales.slice(i + 1).map((whale2, j) => (
-            <line
-              key={`no-${i}-${j}`}
-              x1={whale1.x}
-              y1={whale1.y}
-              x2={whale2.x}
-              y2={whale2.y}
-              stroke="#ef4444"
-              strokeWidth="1"
-              opacity="0.2"
-            />
-          ))
-        )}
+        {/* Lines from Market Hub to each whale */}
+        {allWhales.map((whale) => (
+          <line
+            key={`hub-${whale.id}`}
+            x1={marketHub.x}
+            y1={marketHub.y}
+            x2={whale.x}
+            y2={whale.y}
+            stroke={whale.side === 'YES' ? '#22c55e' : '#ef4444'}
+            strokeWidth="2"
+            opacity="0.5"
+          />
+        ))}
       </svg>
 
-      <div className="min-h-screen p-8" style={{ position: 'relative', zIndex: 2 }}>
-        {/* MARKET HUB - Top Center */}
-        <div className="flex justify-center mb-12">
-          <Draggable>
+      {/* Network Container */}
+      <div className="fixed inset-0" style={{ position: 'relative', zIndex: 2 }}>
+        {/* MARKET HUB - Center */}
+        <Draggable 
+          position={{ x: marketHub.x - 125, y: marketHub.y - 125 }}
+          onDrag={(e, data) => handleHubDrag(data)}
+        >
+          <div 
+            className="absolute cursor-move group"
+            style={{ width: '250px', height: '250px' }}
+          >
+            <div
+              className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-2xl shadow-purple-500/50 border-4 border-purple-400/50 hover:border-purple-300 transition-all hover:scale-105"
+            >
+              <div className="text-center">
+                {marketInfo?.image && (
+                  <img 
+                    src={marketInfo.image} 
+                    alt="Market" 
+                    className="w-16 h-16 rounded-full mx-auto mb-2 object-cover"
+                  />
+                )}
+                <div className="text-white font-bold text-xl mb-1">🎯 HUB</div>
+                <div className="text-purple-200 text-xs mb-1 px-4 line-clamp-2">
+                  {marketInfo?.title || 'Market'}
+                </div>
+                <div className="text-green-400 text-2xl font-bold">{volumeText}</div>
+                <div className="text-purple-300 text-[10px]">Total Volume</div>
+              </div>
+            </div>
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-full bg-purple-500/20 blur-xl -z-10 group-hover:bg-purple-400/30 transition-all"></div>
+          </div>
+        </Draggable>
+
+        {/* ALL WHALES - Positioned around hub */}
+        {allWhales.map((whale) => (
+          <Draggable 
+            key={whale.id}
+            position={{ x: whale.x - whale.size / 2, y: whale.y - whale.size / 2 }}
+            onDrag={(e, data) => handleWhaleDrag(whale.id, data)}
+          >
             <div 
-              className="relative cursor-move group"
-              style={{ width: '250px', height: '250px' }}
+              className="absolute cursor-move group"
+              style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
             >
               <div
-                className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-2xl shadow-purple-500/50 border-4 border-purple-400/50 hover:border-purple-300 transition-all hover:scale-105"
+                className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
+                style={{
+                  backgroundColor: whale.color,
+                  borderColor: `${whale.color}80`
+                }}
+                onClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
               >
-                <div className="text-center">
-                  {marketInfo?.image && (
-                    <img 
-                      src={marketInfo.image} 
-                      alt="Market" 
-                      className="w-16 h-16 rounded-full mx-auto mb-2 object-cover"
-                    />
-                  )}
-                  <div className="text-white font-bold text-xl mb-1">🎯 MARKET</div>
-                  <div className="text-purple-200 text-xs mb-1 px-4 line-clamp-2">
-                    {marketInfo?.title || 'Market'}
+                <div className="text-center text-white text-xs font-bold">
+                  <div className="text-[10px] opacity-80">
+                    {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
                   </div>
-                  <div className="text-green-400 text-2xl font-bold">{volumeText}</div>
-                  <div className="text-purple-300 text-[10px]">Total Volume</div>
+                  <div className="text-sm">
+                    ${(whale.amount / 1000).toFixed(1)}K
+                  </div>
                 </div>
               </div>
-              {/* Glow effect */}
-              <div className="absolute inset-0 rounded-full bg-purple-500/20 blur-xl -z-10 group-hover:bg-purple-400/30 transition-all"></div>
+              {/* Glow */}
+              <div 
+                className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
+                style={{ backgroundColor: whale.color }}
+              ></div>
+              
+              {/* Tooltip on hover */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <div 
+                  className="bg-black/90 pixel-border px-3 py-2 text-xs font-mono whitespace-nowrap"
+                  style={{ borderColor: `${whale.color}40` }}
+                >
+                  <div className="font-bold mb-1" style={{ color: whale.color }}>
+                    {whale.side} WHALE
+                  </div>
+                  <div className="text-white">{whale.wallet.slice(0, 8)}...{whale.wallet.slice(-6)}</div>
+                  <div className="font-bold" style={{ color: whale.color }}>
+                    ${whale.amount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
             </div>
           </Draggable>
-        </div>
-
-        {/* YES and NO Whales - Two Columns */}
-        <div className="grid grid-cols-2 gap-8 max-w-7xl mx-auto">
-          {/* YES WHALES (LEFT) */}
-          <div>
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-green-400 font-mono mb-1">
-                🟢 YES WHALES
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {yesWhales.length} wallets buying YES
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-4 justify-center">
-              {yesWhales.map((whale, idx) => (
-                <Draggable 
-                  key={whale.id}
-                  onDrag={(e, data) => handleWhaleDrag('YES', whale.id, data)}
-                >
-                  <div 
-                    className="relative cursor-move group"
-                    style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
-                    data-whale-yes={idx}
-                  >
-                    <div
-                      className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
-                      style={{
-                        backgroundColor: whale.color,
-                        borderColor: `${whale.color}80`
-                      }}
-                      onClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
-                    >
-                      <div className="text-center text-white text-xs font-bold">
-                        <div className="text-[10px] opacity-80">
-                          {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
-                        </div>
-                        <div className="text-sm">
-                          ${(whale.amount / 1000).toFixed(1)}K
-                        </div>
-                      </div>
-                    </div>
-                    {/* Glow */}
-                    <div 
-                      className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
-                      style={{ backgroundColor: whale.color }}
-                    ></div>
-                    
-                    {/* Tooltip on hover */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <div className="bg-black/90 pixel-border border-green-500/40 px-3 py-2 text-xs font-mono whitespace-nowrap">
-                        <div className="text-green-400 font-bold mb-1">YES WHALE</div>
-                        <div className="text-white">{whale.wallet.slice(0, 8)}...{whale.wallet.slice(-6)}</div>
-                        <div className="text-green-400 font-bold">${whale.amount.toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </Draggable>
-              ))}
-            </div>
-          </div>
-
-          {/* NO WHALES (RIGHT) */}
-          <div>
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-red-400 font-mono mb-1">
-                🔴 NO WHALES
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {noWhales.length} wallets buying NO
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-4 justify-center">
-              {noWhales.map((whale, idx) => (
-                <Draggable 
-                  key={whale.id}
-                  onDrag={(e, data) => handleWhaleDrag('NO', whale.id, data)}
-                >
-                  <div 
-                    className="relative cursor-move group"
-                    style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
-                    data-whale-no={idx}
-                  >
-                    <div
-                      className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
-                      style={{
-                        backgroundColor: whale.color,
-                        borderColor: `${whale.color}80`
-                      }}
-                      onClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
-                    >
-                      <div className="text-center text-white text-xs font-bold">
-                        <div className="text-[10px] opacity-80">
-                          {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
-                        </div>
-                        <div className="text-sm">
-                          ${(whale.amount / 1000).toFixed(1)}K
-                        </div>
-                      </div>
-                    </div>
-                    {/* Glow */}
-                    <div 
-                      className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
-                      style={{ backgroundColor: whale.color }}
-                    ></div>
-                    
-                    {/* Tooltip on hover */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <div className="bg-black/90 pixel-border border-red-500/40 px-3 py-2 text-xs font-mono whitespace-nowrap">
-                        <div className="text-red-400 font-bold mb-1">NO WHALE</div>
-                        <div className="text-white">{whale.wallet.slice(0, 8)}...{whale.wallet.slice(-6)}</div>
-                        <div className="text-red-400 font-bold">${whale.amount.toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </Draggable>
-              ))}
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   )
