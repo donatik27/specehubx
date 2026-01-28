@@ -335,23 +335,42 @@ export default function WhaleNetworkGraph({
       w.id !== whale.id
     )
     
-    // Update followers with CHAOTIC delay & variation (хаос! 🌪️)
+    // Update followers with DISTANCE-BASED attenuation (розтягування! 🕸️)
     sameCluster.forEach((w, index) => {
       // RANDOM delay (20-60ms) - не синхронно!
       const baseDelay = index * 25
       const randomDelayOffset = Math.random() * 35 // ±35ms chaos!
       const delay = baseDelay + randomDelayOffset
       
-      // RANDOM movement factor (70-100%) - не струни!
-      const randomFactor = 0.7 + Math.random() * 0.3 // 70-100%
+      // Get current positions for distance calculation
+      const followerPos = whalePositions.get(w.id) || { x: 0, y: 0 }
+      const draggedPos = data // Current dragged position
+      
+      // Calculate REAL distance between dragged whale and follower
+      const dx = followerPos.x - draggedPos.x
+      const dy = followerPos.y - draggedPos.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      // Strength ЗАТУХАЄ з відстанню! 📏
+      // distance = 0px   → strength = 1.0 (100%) - близько!
+      // distance = 400px → strength = 0.5 (50%) - середньо!
+      // distance = 800px → strength = 0.0 (0%) - далеко!
+      const maxDistance = 800 // Затухає на 800px
+      const strength = Math.max(0, 1 - distance / maxDistance)
+      
+      // Lerp factor for smoothness (плавність! 🎯)
+      const lerpFactor = 0.1 + Math.random() * 0.05 // 10-15%
+      
+      // Combined: Distance-based + Lerp!
+      const movementFactor = strength * lerpFactor
       
       setTimeout(() => {
         setWhalePositions(prev => {
           const newPositions = new Map(prev)
           const wPos = prev.get(w.id) || { x: 0, y: 0 }
           newPositions.set(w.id, {
-            x: wPos.x + deltaX * randomFactor, // Хаотично! 🌪️
-            y: wPos.y + deltaY * randomFactor
+            x: wPos.x + deltaX * movementFactor, // Чим далі = тим менше! 📏
+            y: wPos.y + deltaY * movementFactor
           })
           return newPositions
         })
