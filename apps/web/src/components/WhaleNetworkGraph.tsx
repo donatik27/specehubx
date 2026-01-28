@@ -548,16 +548,23 @@ export default function WhaleNetworkGraph({
         </style>
         
         {/* Hub-Spoke Lines: CURVED lines from Market Hub to each whale */}
-        {marketHub.x > 0 && allWhales.map((whale) => {
-          if (whale.x === 0) return null
+        {hubPosition.x !== 0 && allWhales.map((whale) => {
+          const whalePos = whalePositions.get(whale.id)
+          if (!whalePos) return null
+          
+          // Convert Draggable coordinates to SVG center coordinates
+          const hubCenterX = hubPosition.x + 125 // Hub size = 250px, center = 125px
+          const hubCenterY = hubPosition.y + 125
+          const whaleCenterX = whalePos.x + whale.size / 2
+          const whaleCenterY = whalePos.y + whale.size / 2
           
           // Calculate control point for quadratic Bezier curve
-          const midX = (marketHub.x + whale.x) / 2
-          const midY = (marketHub.y + whale.y) / 2
+          const midX = (hubCenterX + whaleCenterX) / 2
+          const midY = (hubCenterY + whaleCenterY) / 2
           
-          // Perpendicular offset for curve (20% of distance)
-          const dx = whale.x - marketHub.x
-          const dy = whale.y - marketHub.y
+          // Perpendicular offset for curve
+          const dx = whaleCenterX - hubCenterX
+          const dy = whaleCenterY - hubCenterY
           const distance = Math.sqrt(dx * dx + dy * dy)
           const curvature = distance * 0.15 // 15% curve
           
@@ -569,7 +576,7 @@ export default function WhaleNetworkGraph({
             <path
               key={`hub-${whale.id}`}
               className="fluid"
-              d={`M ${marketHub.x} ${marketHub.y} Q ${controlX} ${controlY} ${whale.x} ${whale.y}`}
+              d={`M ${hubCenterX} ${hubCenterY} Q ${controlX} ${controlY} ${whaleCenterX} ${whaleCenterY}`}
               stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
               strokeWidth="2"
               opacity="0.6"
@@ -581,12 +588,19 @@ export default function WhaleNetworkGraph({
         {/* TOP 5 MESH: Subtle CURVED connections between biggest whales */}
         {topYesWhales.length > 1 && topYesWhales.map((whale1, i) => 
           topYesWhales.slice(i + 1).map((whale2) => {
-            if (whale1.x === 0 || whale2.x === 0) return null
+            const pos1 = whalePositions.get(whale1.id)
+            const pos2 = whalePositions.get(whale2.id)
+            if (!pos1 || !pos2) return null
             
-            const midX = (whale1.x + whale2.x) / 2
-            const midY = (whale1.y + whale2.y) / 2
-            const dx = whale2.x - whale1.x
-            const dy = whale2.y - whale1.y
+            const x1 = pos1.x + whale1.size / 2
+            const y1 = pos1.y + whale1.size / 2
+            const x2 = pos2.x + whale2.size / 2
+            const y2 = pos2.y + whale2.size / 2
+            
+            const midX = (x1 + x2) / 2
+            const midY = (y1 + y2) / 2
+            const dx = x2 - x1
+            const dy = y2 - y1
             const distance = Math.sqrt(dx * dx + dy * dy)
             const curvature = distance * 0.1 // subtle curve
             const controlX = midX + (-dy / distance) * curvature
@@ -596,7 +610,7 @@ export default function WhaleNetworkGraph({
               <path
                 key={`top-yes-${whale1.id}-${whale2.id}`}
                 className="fluid"
-                d={`M ${whale1.x} ${whale1.y} Q ${controlX} ${controlY} ${whale2.x} ${whale2.y}`}
+                d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
                 stroke="#10b981"
                 strokeWidth="1"
                 opacity="0.1"
@@ -608,12 +622,19 @@ export default function WhaleNetworkGraph({
         
         {topNoWhales.length > 1 && topNoWhales.map((whale1, i) => 
           topNoWhales.slice(i + 1).map((whale2) => {
-            if (whale1.x === 0 || whale2.x === 0) return null
+            const pos1 = whalePositions.get(whale1.id)
+            const pos2 = whalePositions.get(whale2.id)
+            if (!pos1 || !pos2) return null
             
-            const midX = (whale1.x + whale2.x) / 2
-            const midY = (whale1.y + whale2.y) / 2
-            const dx = whale2.x - whale1.x
-            const dy = whale2.y - whale1.y
+            const x1 = pos1.x + whale1.size / 2
+            const y1 = pos1.y + whale1.size / 2
+            const x2 = pos2.x + whale2.size / 2
+            const y2 = pos2.y + whale2.size / 2
+            
+            const midX = (x1 + x2) / 2
+            const midY = (y1 + y2) / 2
+            const dx = x2 - x1
+            const dy = y2 - y1
             const distance = Math.sqrt(dx * dx + dy * dy)
             const curvature = distance * 0.1 // subtle curve
             const controlX = midX + (-dy / distance) * curvature
@@ -623,7 +644,7 @@ export default function WhaleNetworkGraph({
               <path
                 key={`top-no-${whale1.id}-${whale2.id}`}
                 className="fluid"
-                d={`M ${whale1.x} ${whale1.y} Q ${controlX} ${controlY} ${whale2.x} ${whale2.y}`}
+                d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
                 stroke="#dc2626"
                 strokeWidth="1"
                 opacity="0.1"
@@ -636,21 +657,30 @@ export default function WhaleNetworkGraph({
         {/* HOVER MESH: Show connections to same TIER + SIDE whales! */}
         {hoveredWhaleId && (() => {
           const hoveredWhale = allWhales.find(w => w.id === hoveredWhaleId)
-          if (!hoveredWhale || hoveredWhale.x === 0) return null
+          const hoveredPos = whalePositions.get(hoveredWhaleId)
+          if (!hoveredWhale || !hoveredPos) return null
+          
+          const hoveredX = hoveredPos.x + hoveredWhale.size / 2
+          const hoveredY = hoveredPos.y + hoveredWhale.size / 2
           
           // Find whales with SAME TIER + SAME SIDE!
           const sameTierAndSideWhales = allWhales.filter(w => 
             w.tier === hoveredWhale.tier && 
             w.side === hoveredWhale.side && 
-            w.id !== hoveredWhale.id && 
-            w.x > 0
+            w.id !== hoveredWhale.id
           )
           
           return sameTierAndSideWhales.map(whale => {
-            const midX = (hoveredWhale.x + whale.x) / 2
-            const midY = (hoveredWhale.y + whale.y) / 2
-            const dx = whale.x - hoveredWhale.x
-            const dy = whale.y - hoveredWhale.y
+            const whalePos = whalePositions.get(whale.id)
+            if (!whalePos) return null
+            
+            const whaleX = whalePos.x + whale.size / 2
+            const whaleY = whalePos.y + whale.size / 2
+            
+            const midX = (hoveredX + whaleX) / 2
+            const midY = (hoveredY + whaleY) / 2
+            const dx = whaleX - hoveredX
+            const dy = whaleY - hoveredY
             const distance = Math.sqrt(dx * dx + dy * dy)
             const curvature = distance * 0.15 // curved!
             const controlX = midX + (-dy / distance) * curvature
@@ -660,7 +690,7 @@ export default function WhaleNetworkGraph({
               <path
                 key={`hover-${hoveredWhale.id}-${whale.id}`}
                 className="fluid"
-                d={`M ${hoveredWhale.x} ${hoveredWhale.y} Q ${controlX} ${controlY} ${whale.x} ${whale.y}`}
+                d={`M ${hoveredX} ${hoveredY} Q ${controlX} ${controlY} ${whaleX} ${whaleY}`}
                 stroke={hoveredWhale.side === 'YES' ? '#10b981' : '#dc2626'}
                 strokeWidth="2"
                 opacity="0.6"
