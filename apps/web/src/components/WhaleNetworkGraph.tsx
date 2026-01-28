@@ -298,14 +298,44 @@ export default function WhaleNetworkGraph({
           Whales: {allWhales.filter(w => w.x > 0).length} / {allWhales.length} positioned
         </text>
         
-        {/* HARDCODED TEST LINES - Should ALWAYS show! */}
-        <line x1="100" y1="100" x2="500" y2="500" stroke="red" strokeWidth="5" opacity="1" />
-        <line x1="500" y1="100" x2="100" y2="500" stroke="yellow" strokeWidth="5" opacity="1" />
-        <circle cx="300" cy="300" r="50" stroke="green" strokeWidth="3" fill="none" opacity="1" />
+        {/* HARDCODED TEST LINES - CENTER SCREEN! */}
+        <line x1="700" y1="400" x2="1200" y2="400" stroke="red" strokeWidth="5" opacity="1" />
+        <line x1="950" y1="200" x2="950" y2="600" stroke="yellow" strokeWidth="5" opacity="1" />
+        <circle cx="950" cy="400" r="100" stroke="green" strokeWidth="5" fill="none" opacity="1" />
         
         <text x="10" y="70" fill="yellow" fontSize="16" fontWeight="bold">
-          ⚠️ If you see this, SVG WORKS!
+          ⚠️ If you see RED + (center), SVG WORKS!
         </text>
+        
+        {/* DEBUG: Show first whale coordinates */}
+        {allWhales.length > 0 && (
+          <>
+            <text x="10" y="95" fill="cyan" fontSize="14" fontWeight="bold">
+              First whale: x={allWhales[0].x.toFixed(0)}, y={allWhales[0].y.toFixed(0)}
+            </text>
+            <text x="10" y="115" fill="cyan" fontSize="14" fontWeight="bold">
+              marketHub: x={marketHub.x.toFixed(0)}, y={marketHub.y.toFixed(0)}
+            </text>
+            
+            {/* TEST LINE from Hub to first whale - SHOULD be visible! */}
+            {allWhales[0].x > 0 && marketHub.x > 0 && (
+              <>
+                <line
+                  x1={marketHub.x}
+                  y1={marketHub.y}
+                  x2={allWhales[0].x}
+                  y2={allWhales[0].y}
+                  stroke="magenta"
+                  strokeWidth="10"
+                  opacity="1"
+                />
+                <text x="10" y="135" fill="magenta" fontSize="14" fontWeight="bold">
+                  ⚠️ MAGENTA line Hub→Whale1 ({marketHub.x.toFixed(0)},{marketHub.y.toFixed(0)})→({allWhales[0].x.toFixed(0)},{allWhales[0].y.toFixed(0)})
+                </text>
+              </>
+            )}
+          </>
+        )}
         
         {/* Hub-Spoke Lines: from Market Hub to each whale */}
         {marketHub.x > 0 && allWhales.map((whale) => (
