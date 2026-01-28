@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
 
@@ -11,8 +11,8 @@ interface WhaleBubble {
   side: 'YES' | 'NO'
   color: string
   size: number // pixel size for bubble
-  x: number // position x for connections
-  y: number // position y for connections
+  x: number // position x for connections (from getBoundingClientRect)
+  y: number // position y for connections (from getBoundingClientRect)
 }
 
 interface MarketHub {
@@ -35,6 +35,8 @@ export default function WhaleNetworkGraph({
   const [marketHub, setMarketHub] = useState<MarketHub>({ x: 0, y: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hubRef = useRef<HTMLDivElement>(null)
+  const whaleRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const fetchWhaleNetwork = useCallback(async () => {
     try {
@@ -118,14 +120,8 @@ export default function WhaleNetworkGraph({
 
       console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
-      // Calculate positions - Hub in center, whales in circle around
-      const centerX = window.innerWidth / 2
-      const centerY = window.innerHeight / 2
-      
-      setMarketHub({ x: centerX, y: centerY })
-
-      // Create bubbles with sizes and positions
-      const bubbles: WhaleBubble[] = filteredWallets.map(([wallet, data], index) => {
+      // Create bubbles with sizes (positions will be calculated from DOM)
+      const bubbles: WhaleBubble[] = filteredWallets.map(([wallet, data]) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
         // Color based on side and amount
@@ -142,18 +138,6 @@ export default function WhaleNetworkGraph({
         const maxAmount = Math.max(...filteredWallets.map(([_, d]) => d.amount))
         const size = minSize + ((data.amount / maxAmount) * (maxSize - minSize))
         
-        // Position in circle around hub with random offset for chaos
-        const radius = 350 // Distance from center
-        const angleStep = (2 * Math.PI) / filteredWallets.length
-        const angle = index * angleStep
-        // Add random offset for more chaotic look
-        const radiusOffset = (Math.random() - 0.5) * 100 // ±50px
-        const angleOffset = (Math.random() - 0.5) * 0.3 // ±0.15 radians
-        const finalRadius = radius + radiusOffset
-        const finalAngle = angle + angleOffset
-        const x = centerX + Math.cos(finalAngle) * finalRadius
-        const y = centerY + Math.sin(finalAngle) * finalRadius
-        
         return {
           id: wallet,
           wallet,
@@ -161,8 +145,8 @@ export default function WhaleNetworkGraph({
           side,
           color,
           size: Math.round(size),
-          x,
-          y
+          x: 0, // Will be calculated from DOM
+          y: 0  // Will be calculated from DOM
         }
       })
 
@@ -182,9 +166,67 @@ export default function WhaleNetworkGraph({
     }
   }, [marketId, minAmount])
 
+  // Update positions from DOM
+  const updatePositions = useCallback(() => {
+    // Update Hub position
+    if (hubRef.current) {
+      const rect = hubRef.current.getBoundingClientRect()
+      setMarketHub({
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      })
+    }
+
+    // Update whale positions
+    const updatedYes = yesWhales.map(whale => {
+      const ref = whaleRefs.current.get(whale.id)
+      if (ref) {
+        const rect = ref.getBoundingClientRect()
+        return {
+          ...whale,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        }
+      }
+      return whale
+    })
+
+    const updatedNo = noWhales.map(whale => {
+      const ref = whaleRefs.current.get(whale.id)
+      if (ref) {
+        const rect = ref.getBoundingClientRect()
+        return {
+          ...whale,
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        }
+      }
+      return whale
+    })
+
+    setYesWhales(updatedYes)
+    setNoWhales(updatedNo)
+  }, [yesWhales, noWhales])
+
   useEffect(() => {
     fetchWhaleNetwork()
   }, [fetchWhaleNetwork])
+
+  // Update positions after render and on window resize
+  useEffect(() => {
+    if (loading) return
+    
+    const timer = setTimeout(() => {
+      updatePositions()
+    }, 100)
+
+    window.addEventListener('resize', updatePositions)
+    
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updatePositions)
+    }
+  }, [loading, updatePositions])
 
   if (loading) {
     return (
@@ -215,27 +257,6 @@ export default function WhaleNetworkGraph({
 
   const allWhales = [...yesWhales, ...noWhales]
 
-  // Update whale position when dragged
-  const handleWhaleDrag = (whaleId: string, data: DraggableData) => {
-    setYesWhales(prev => prev.map(w => 
-      w.id === whaleId 
-        ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
-        : w
-    ))
-    setNoWhales(prev => prev.map(w => 
-      w.id === whaleId 
-        ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
-        : w
-    ))
-  }
-
-  const handleHubDrag = (data: DraggableData) => {
-    setMarketHub(prev => ({
-      x: prev.x + data.deltaX,
-      y: prev.y + data.deltaY
-    }))
-  }
-
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
       {/* Floating Stats (Bottom Left) */}
@@ -250,60 +271,64 @@ export default function WhaleNetworkGraph({
       {/* SVG Overlay for Connection Lines */}
       <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
         {/* Hub-Spoke Lines: from Market Hub to each whale */}
-        {allWhales.map((whale) => (
-          <line
-            key={`hub-${whale.id}`}
-            x1={marketHub.x}
-            y1={marketHub.y}
-            x2={whale.x}
-            y2={whale.y}
-            stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
-            strokeWidth="3"
-            opacity="0.7"
-          />
+        {marketHub.x > 0 && allWhales.map((whale) => (
+          whale.x > 0 && (
+            <line
+              key={`hub-${whale.id}`}
+              x1={marketHub.x}
+              y1={marketHub.y}
+              x2={whale.x}
+              y2={whale.y}
+              stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
+              strokeWidth="3"
+              opacity="0.7"
+            />
+          )
         ))}
         
         {/* Mesh Network: YES whales connected to each other */}
         {yesWhales.length > 1 && yesWhales.map((whale1, i) => 
           yesWhales.slice(i + 1).map((whale2) => (
-            <line
-              key={`yes-mesh-${whale1.id}-${whale2.id}`}
-              x1={whale1.x}
-              y1={whale1.y}
-              x2={whale2.x}
-              y2={whale2.y}
-              stroke="#22c55e"
-              strokeWidth="1"
-              opacity="0.15"
-            />
+            whale1.x > 0 && whale2.x > 0 && (
+              <line
+                key={`yes-mesh-${whale1.id}-${whale2.id}`}
+                x1={whale1.x}
+                y1={whale1.y}
+                x2={whale2.x}
+                y2={whale2.y}
+                stroke="#22c55e"
+                strokeWidth="1"
+                opacity="0.15"
+              />
+            )
           ))
         )}
         
         {/* Mesh Network: NO whales connected to each other */}
         {noWhales.length > 1 && noWhales.map((whale1, i) => 
           noWhales.slice(i + 1).map((whale2) => (
-            <line
-              key={`no-mesh-${whale1.id}-${whale2.id}`}
-              x1={whale1.x}
-              y1={whale1.y}
-              x2={whale2.x}
-              y2={whale2.y}
-              stroke="#ef4444"
-              strokeWidth="1"
-              opacity="0.15"
-            />
+            whale1.x > 0 && whale2.x > 0 && (
+              <line
+                key={`no-mesh-${whale1.id}-${whale2.id}`}
+                x1={whale1.x}
+                y1={whale1.y}
+                x2={whale2.x}
+                y2={whale2.y}
+                stroke="#ef4444"
+                strokeWidth="1"
+                opacity="0.15"
+              />
+            )
           ))
         )}
       </svg>
 
       {/* Network Container */}
-      <div className="fixed inset-0" style={{ position: 'relative', zIndex: 5 }}>
+      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 5 }}>
         {/* MARKET HUB - Center */}
-        <Draggable 
-          position={{ x: marketHub.x - 125, y: marketHub.y - 125 }}
-          onDrag={(e, data) => handleHubDrag(data)}
-        >
+        <Draggable onStop={updatePositions}>
           <div 
+            ref={hubRef}
             className="absolute cursor-move group"
             style={{ width: '250px', height: '250px' }}
           >
@@ -331,58 +356,84 @@ export default function WhaleNetworkGraph({
           </div>
         </Draggable>
 
-        {/* ALL WHALES - Positioned around hub */}
-        {allWhales.map((whale) => (
-          <Draggable 
-            key={whale.id}
-            position={{ x: whale.x - whale.size / 2, y: whale.y - whale.size / 2 }}
-            onDrag={(e, data) => handleWhaleDrag(whale.id, data)}
-          >
-            <div 
-              className="absolute cursor-move group"
-              style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
-            >
-              <div
-                className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110 cursor-pointer"
-                style={{
-                  backgroundColor: whale.color,
-                  borderColor: `${whale.color}80`
-                }}
-                onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
+        {/* ALL WHALES - Circular layout */}
+        <div className="relative" style={{ width: '100%', height: '100%' }}>
+          {allWhales.map((whale, index) => {
+            // Calculate position in circle
+            const centerX = 0
+            const centerY = 0
+            const radius = 350
+            const angleStep = (2 * Math.PI) / allWhales.length
+            const angle = index * angleStep
+            // Add random offset for chaos
+            const radiusOffset = (Math.random() - 0.5) * 100
+            const angleOffset = (Math.random() - 0.5) * 0.3
+            const finalRadius = radius + radiusOffset
+            const finalAngle = angle + angleOffset
+            const x = centerX + Math.cos(finalAngle) * finalRadius
+            const y = centerY + Math.sin(finalAngle) * finalRadius
+
+            return (
+              <Draggable 
+                key={whale.id}
+                defaultPosition={{ x, y }}
+                onStop={updatePositions}
               >
-                <div className="text-center text-white text-xs font-bold">
-                  <div className="text-[10px] opacity-80">
-                    {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
-                  </div>
-                  <div className="text-sm">
-                    ${(whale.amount / 1000).toFixed(1)}K
-                  </div>
-                </div>
-              </div>
-              {/* Glow */}
-              <div 
-                className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
-                style={{ backgroundColor: whale.color }}
-              ></div>
-              
-              {/* Tooltip on hover */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 <div 
-                  className="bg-black/90 pixel-border px-3 py-2 text-xs font-mono whitespace-nowrap"
-                  style={{ borderColor: `${whale.color}40` }}
+                  ref={(el) => {
+                    if (el) whaleRefs.current.set(whale.id, el)
+                  }}
+                  className="absolute cursor-move group"
+                  style={{ 
+                    width: `${whale.size}px`, 
+                    height: `${whale.size}px`,
+                    marginLeft: `-${whale.size / 2}px`,
+                    marginTop: `-${whale.size / 2}px`
+                  }}
                 >
-                  <div className="font-bold mb-1" style={{ color: whale.color }}>
-                    {whale.side} WHALE
+                  <div
+                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110 cursor-pointer"
+                    style={{
+                      backgroundColor: whale.color,
+                      borderColor: `${whale.color}80`
+                    }}
+                    onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
+                  >
+                    <div className="text-center text-white text-xs font-bold">
+                      <div className="text-[10px] opacity-80">
+                        {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
+                      </div>
+                      <div className="text-sm">
+                        ${(whale.amount / 1000).toFixed(1)}K
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-white">{whale.wallet.slice(0, 8)}...{whale.wallet.slice(-6)}</div>
-                  <div className="font-bold" style={{ color: whale.color }}>
-                    ${whale.amount.toLocaleString()}
+                  {/* Glow */}
+                  <div 
+                    className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
+                    style={{ backgroundColor: whale.color }}
+                  ></div>
+                  
+                  {/* Tooltip on hover */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div 
+                      className="bg-black/90 pixel-border px-3 py-2 text-xs font-mono whitespace-nowrap"
+                      style={{ borderColor: `${whale.color}40` }}
+                    >
+                      <div className="font-bold mb-1" style={{ color: whale.color }}>
+                        {whale.side} WHALE
+                      </div>
+                      <div className="text-white">{whale.wallet.slice(0, 8)}...{whale.wallet.slice(-6)}</div>
+                      <div className="font-bold" style={{ color: whale.color }}>
+                        ${whale.amount.toLocaleString()}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </Draggable>
-        ))}
+              </Draggable>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
