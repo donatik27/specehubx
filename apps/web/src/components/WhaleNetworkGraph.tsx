@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
 
@@ -35,6 +35,7 @@ export default function WhaleNetworkGraph({
   const [marketHub, setMarketHub] = useState<MarketHub>({ x: 0, y: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hoveredWhaleId, setHoveredWhaleId] = useState<string | null>(null)
   const hubRef = useRef<HTMLDivElement>(null)
   const whaleRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -248,6 +249,17 @@ export default function WhaleNetworkGraph({
     }
   }, [loading, updatePositions])
 
+  // TOP 5 whales for subtle mesh network (must be before early returns!)
+  const allWhales = useMemo(() => [...yesWhales, ...noWhales], [yesWhales, noWhales])
+  const topYesWhales = useMemo(() => 
+    [...yesWhales].sort((a, b) => b.amount - a.amount).slice(0, 5),
+    [yesWhales]
+  )
+  const topNoWhales = useMemo(() => 
+    [...noWhales].sort((a, b) => b.amount - a.amount).slice(0, 5),
+    [noWhales]
+  )
+
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">
@@ -274,8 +286,6 @@ export default function WhaleNetworkGraph({
       ? `$${(marketInfo.volume / 1000000).toFixed(2)}M`
       : `$${(marketInfo.volume / 1000).toFixed(0)}K`
     : '$0'
-
-  const allWhales = [...yesWhales, ...noWhales]
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
@@ -326,41 +336,63 @@ export default function WhaleNetworkGraph({
           )
         ))}
         
-        {/* Mesh Network: YES whales connected to each other */}
-        {yesWhales.length > 1 && yesWhales.map((whale1, i) => 
-          yesWhales.slice(i + 1).map((whale2) => (
+        {/* TOP 5 MESH: Subtle connections between biggest whales */}
+        {topYesWhales.length > 1 && topYesWhales.map((whale1, i) => 
+          topYesWhales.slice(i + 1).map((whale2) => (
             whale1.x > 0 && whale2.x > 0 && (
               <line
-                key={`yes-mesh-${whale1.id}-${whale2.id}`}
+                key={`top-yes-${whale1.id}-${whale2.id}`}
                 x1={whale1.x}
                 y1={whale1.y}
                 x2={whale2.x}
                 y2={whale2.y}
                 stroke="#10b981"
                 strokeWidth="1"
-                opacity="0.2"
+                opacity="0.1"
               />
             )
           ))
         )}
         
-        {/* Mesh Network: NO whales connected to each other */}
-        {noWhales.length > 1 && noWhales.map((whale1, i) => 
-          noWhales.slice(i + 1).map((whale2) => (
+        {topNoWhales.length > 1 && topNoWhales.map((whale1, i) => 
+          topNoWhales.slice(i + 1).map((whale2) => (
             whale1.x > 0 && whale2.x > 0 && (
               <line
-                key={`no-mesh-${whale1.id}-${whale2.id}`}
+                key={`top-no-${whale1.id}-${whale2.id}`}
                 x1={whale1.x}
                 y1={whale1.y}
                 x2={whale2.x}
                 y2={whale2.y}
                 stroke="#dc2626"
                 strokeWidth="1"
-                opacity="0.2"
+                opacity="0.1"
               />
             )
           ))
         )}
+
+        {/* HOVER MESH: Bright connections when hovering a whale */}
+        {hoveredWhaleId && (() => {
+          const hoveredWhale = allWhales.find(w => w.id === hoveredWhaleId)
+          if (!hoveredWhale || hoveredWhale.x === 0) return null
+          
+          const sameTypeWhales = allWhales.filter(w => 
+            w.side === hoveredWhale.side && w.id !== hoveredWhale.id && w.x > 0
+          )
+          
+          return sameTypeWhales.map(whale => (
+            <line
+              key={`hover-${hoveredWhale.id}-${whale.id}`}
+              x1={hoveredWhale.x}
+              y1={hoveredWhale.y}
+              x2={whale.x}
+              y2={whale.y}
+              stroke={hoveredWhale.side === 'YES' ? '#10b981' : '#dc2626'}
+              strokeWidth="2"
+              opacity="0.8"
+            />
+          ))
+        })()}
       </svg>
 
       {/* Network Container - ABOVE SVG lines! */}
@@ -443,6 +475,8 @@ export default function WhaleNetworkGraph({
                     width: `${whale.size}px`, 
                     height: `${whale.size}px`
                   }}
+                  onMouseEnter={() => setHoveredWhaleId(whale.id)}
+                  onMouseLeave={() => setHoveredWhaleId(null)}
                 >
                   <div
                     className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-4 hover:border-white transition-all hover:scale-110 cursor-pointer"
