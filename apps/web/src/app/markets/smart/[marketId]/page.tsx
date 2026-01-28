@@ -6,6 +6,7 @@ import { ArrowLeft, TrendingUp, Users, DollarSign, Target, Activity, ExternalLin
 import Link from 'next/link'
 import { TradingPanel } from '@/components/TradingPanel'
 import { PriceChart } from '@/components/PriceChart'
+import { WhaleActivity } from '@/components/WhaleActivity'
 
 // Feature flag for trading
 // TEMPORARY: Hardcoded to true for testing
@@ -538,7 +539,7 @@ export default function SmartMarketDetailPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto font-mono text-white">
+    <div className="p-8 max-w-[1800px] mx-auto font-mono text-white">
       {/* Back Button */}
       <Link 
         href="/markets/smart"
@@ -677,11 +678,16 @@ export default function SmartMarketDetailPage() {
         </div>
       ) : null}
 
-      {/* TWO COLUMN LAYOUT FOR BINARY MARKETS */}
+      {/* THREE COLUMN LAYOUT FOR BINARY MARKETS */}
       {multiOutcomePositions.length === 0 && !eventInfo ? (
-        // Binary market: Two-column layout (Chart left, Trading right)
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* LEFT COLUMN: Price Chart (60% width = 2 cols) */}
+        // Binary market: Three-column layout (Whale left, Chart center, Trading right)
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+          {/* LEFT COLUMN: Whale Activity (20% width = 1 col, sticky) */}
+          <div className="lg:col-span-1">
+            <WhaleActivity marketId={market.id} />
+          </div>
+
+          {/* CENTER COLUMN: Price Chart (50% width = 2 cols) */}
           <div className="lg:col-span-2">
             <PriceChart
               marketId={market.id}
@@ -691,8 +697,8 @@ export default function SmartMarketDetailPage() {
             />
           </div>
 
-          {/* RIGHT COLUMN: Trading Panel (40% width = 1 col, sticky) */}
-          <div className="lg:col-span-1">
+          {/* RIGHT COLUMN: Trading Panel (30% width = 2 cols, sticky) */}
+          <div className="lg:col-span-2">
             <div className="lg:sticky lg:top-6">
               {(() => {
                 // Show debug message if trading disabled
