@@ -157,7 +157,7 @@ export default function WhaleNetworkGraph({
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
 
-      // Create whale nodes - ORGANIC FORCE-DIRECTED LAYOUT
+      // Create whale nodes with INITIAL POSITIONING BIAS
       const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
@@ -170,14 +170,19 @@ export default function WhaleNetworkGraph({
           color = side === 'YES' ? '#16a34a' : '#e11d48'
         }
         
+        // Initial position bias: YES left, NO right
+        const xBias = side === 'YES' ? -200 : 200
+        const yBias = (Math.random() - 0.5) * 300
+        
         return {
           id: wallet,
           name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
           val: data.amount, // SIZE = POSITION SIZE!
           color,
           side,
-          amount: data.amount
-          // NO fx/fy - let force simulation position them organically!
+          amount: data.amount,
+          x: xBias, // Initial position bias
+          y: yBias
         }
       })
 
@@ -208,15 +213,18 @@ export default function WhaleNetworkGraph({
       const yesNodes = whaleNodes.filter(n => n.side === 'YES').sort((a, b) => b.amount - a.amount)
       const noNodes = whaleNodes.filter(n => n.side === 'NO').sort((a, b) => b.amount - a.amount)
 
-      // STRATEGY 1: Connect ALL whales to MARKET HUB
-      // (це основа - всі позиції пов'язані з маркетом)
+      // STRATEGY 1: Connect ONLY BIG whales to MARKET HUB
+      // (не всі, тільки великі позиції!)
       whaleNodes.forEach(whale => {
-        const strength = Math.min(whale.amount / 5000, 3) // Stronger link for bigger positions
-        links.push({
-          source: 'MARKET_HUB',
-          target: whale.id,
-          value: strength
-        })
+        // Only connect if position > $1000
+        if (whale.amount > 1000) {
+          const strength = Math.min(whale.amount / 3000, 2)
+          links.push({
+            source: 'MARKET_HUB',
+            target: whale.id,
+            value: strength
+          })
+        }
       })
 
       // STRATEGY 2: Connect similar-sized whales (pods)
@@ -356,11 +364,11 @@ export default function WhaleNetworkGraph({
           nodeVal={(node: any) => {
             // Market Hub is MUCH larger
             if (node.id === 'MARKET_HUB') {
-              return node.val / 50 // Make hub stand out even more
+              return node.val / 20 // BIGGER hub!
             }
-            return node.val / 100
+            return node.val / 30 // Bigger whales too!
           }}
-          nodeRelSize={10} // Larger base size
+          nodeRelSize={15} // Even larger base size!
           nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
             // Custom rendering for Market Hub
             if (node.id === 'MARKET_HUB') {
@@ -408,10 +416,11 @@ export default function WhaleNetworkGraph({
           enableNodeDrag={true} // ПЛАСТИЧНИЙ - можна рухати всі nodes!
           enableZoomInteraction={true}
           enablePanInteraction={true}
-          cooldownTicks={200} // Let simulation settle
+          cooldownTicks={300} // More time to settle
           warmupTicks={100}
-          d3VelocityDecay={0.4} // Smooth movement
-          d3AlphaDecay={0.02} // Slower cooldown for organic look
+          d3VelocityDecay={0.3} // Less friction - more natural
+          d3AlphaDecay={0.015} // Even slower cooldown
+          onEngineStop={() => console.log('🎯 Graph settled!')}
         />
       </div>
     </div>
