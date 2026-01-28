@@ -849,6 +849,10 @@ export default function WhaleNetworkGraph({
             ref={hubRef}
             className="absolute cursor-move group drag-node"
             style={{ width: '250px', height: '250px' }}
+            onDoubleClick={(e) => {
+              e.stopPropagation()
+              window.open(`https://polymarket.com/event/${marketId}`, '_blank')
+            }}
           >
             <div
               className="absolute inset-0 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 hover:border-purple-300 transition-all hover:scale-105"
@@ -932,6 +936,10 @@ export default function WhaleNetworkGraph({
                     if (!isDragging) {
                       setHoveredWhaleId(null)
                     }
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')
                   }}
                 >
                   <motion.div
