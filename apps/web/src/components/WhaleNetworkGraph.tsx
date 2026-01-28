@@ -525,11 +525,11 @@ export default function WhaleNetworkGraph({
       {/* SVG Overlay for Connection Lines - BEHIND bubbles! */}
       <svg 
         style={{ 
-          position: 'fixed',
+          position: 'absolute',
           top: 0,
           left: 0,
-          width: '100vw',
-          height: '100vh',
+          width: '100%',
+          height: '100%',
           pointerEvents: 'none',
           zIndex: 1,
           overflow: 'visible'
@@ -672,7 +672,7 @@ export default function WhaleNetworkGraph({
       </svg>
 
       {/* Network Container - ABOVE SVG lines! */}
-      <div className="fixed inset-0" style={{ zIndex: 10 }}>
+      <div className="relative" style={{ width: '100%', height: '100%', zIndex: 10 }}>
         {/* MARKET HUB - Center (controlled position for group drag!) */}
         <Draggable 
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
