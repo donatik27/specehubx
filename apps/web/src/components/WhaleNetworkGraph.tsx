@@ -183,48 +183,50 @@ export default function WhaleNetworkGraph({
       console.warn('❌ Hub ref not found!')
     }
 
-    // Update whale positions
+    // Update whale positions using FUNCTIONAL UPDATE to avoid infinite loop!
     console.log('🐋 Updating whale positions...')
-    console.log('  YES whales:', yesWhales.length)
-    console.log('  NO whales:', noWhales.length)
     console.log('  Refs map size:', whaleRefs.current.size)
 
-    const updatedYes = yesWhales.map(whale => {
-      const ref = whaleRefs.current.get(whale.id)
-      if (ref) {
-        const rect = ref.getBoundingClientRect()
-        const pos = {
-          ...whale,
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
+    setYesWhales(prev => {
+      console.log('  YES whales:', prev.length)
+      return prev.map(whale => {
+        const ref = whaleRefs.current.get(whale.id)
+        if (ref) {
+          const rect = ref.getBoundingClientRect()
+          const pos = {
+            ...whale,
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          }
+          console.log(`  ✅ YES whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
+          return pos
         }
-        console.log(`  ✅ YES whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
-        return pos
-      }
-      console.warn(`  ❌ YES whale ${whale.id.slice(0, 8)}: ref not found!`)
-      return whale
+        console.warn(`  ❌ YES whale ${whale.id.slice(0, 8)}: ref not found!`)
+        return whale
+      })
     })
 
-    const updatedNo = noWhales.map(whale => {
-      const ref = whaleRefs.current.get(whale.id)
-      if (ref) {
-        const rect = ref.getBoundingClientRect()
-        const pos = {
-          ...whale,
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
+    setNoWhales(prev => {
+      console.log('  NO whales:', prev.length)
+      return prev.map(whale => {
+        const ref = whaleRefs.current.get(whale.id)
+        if (ref) {
+          const rect = ref.getBoundingClientRect()
+          const pos = {
+            ...whale,
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+          }
+          console.log(`  ✅ NO whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
+          return pos
         }
-        console.log(`  ✅ NO whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
-        return pos
-      }
-      console.warn(`  ❌ NO whale ${whale.id.slice(0, 8)}: ref not found!`)
-      return whale
+        console.warn(`  ❌ NO whale ${whale.id.slice(0, 8)}: ref not found!`)
+        return whale
+      })
     })
 
-    console.log('📊 Setting updated positions...')
-    setYesWhales(updatedYes)
-    setNoWhales(updatedNo)
-  }, [yesWhales, noWhales])
+    console.log('📊 Positions updated!')
+  }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
   useEffect(() => {
     fetchWhaleNetwork()
