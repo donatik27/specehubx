@@ -51,8 +51,10 @@ interface SmartTrader {
   tier: string
   rarityScore: number
   outcome: string // YES, NO, or specific outcome
-  price: number // Entry price (0-1)
-  amount: number // Amount bet
+  price: number // Entry price (0-1) - kept for backward compatibility
+  entryPrice: number // Entry price (0-1) - explicit field
+  shares: number // Number of shares
+  amount: number // Amount bet (shares × entryPrice)
 }
 
 interface MultiOutcomePosition {
@@ -477,9 +479,9 @@ export default function SmartMarketDetailPage() {
               
               // Use REAL position data from worker (side, shares, entryPrice)
               const outcome = trader.side || firstOutcome; // Use real side (YES/NO) from on-chain data
-              const price = trader.entryPrice || 0.5;      // Use real entry price from market data
+              const entryPrice = trader.entryPrice || 0.5;      // Use real entry price from market data
               const shares = trader.shares || 0;           // Real number of shares
-              const amount = shares * price;               // Calculate real position size in $
+              const amount = shares * entryPrice;               // Calculate real position size in $
               
               return {
                 address: trader.address,
@@ -488,7 +490,9 @@ export default function SmartMarketDetailPage() {
                 tier: trader.tier,
                 rarityScore: trader.rarityScore,
                 outcome,  // ✅ REAL: YES or NO from on-chain
-                price,    // ✅ REAL: entry price from market
+                price: entryPrice,    // ✅ REAL: entry price (kept for backward compat)
+                entryPrice,           // ✅ REAL: entry price from market
+                shares,               // ✅ REAL: number of shares
                 amount    // ✅ REAL: calculated from shares × price
               }
             })
