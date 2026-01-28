@@ -463,6 +463,9 @@ export default function SmartMarketDetailPage() {
           const thisMarket = smartMarkets.find((m: any) => m.marketId === marketId)
           
           if (thisMarket && thisMarket.topTraders && thisMarket.topTraders.length > 0) {
+            // DEBUG: Log entire topTraders array
+            console.log('📊 TOP TRADERS FROM API:', JSON.stringify(thisMarket.topTraders, null, 2))
+            
             // Fetch all traders to get real avatars
             const allTradersRes = await fetch('/api/traders')
             const allTraders = allTradersRes.ok ? await allTradersRes.json() : []
@@ -472,6 +475,15 @@ export default function SmartMarketDetailPage() {
               : 'YES'
             
             const realTraders: SmartTrader[] = thisMarket.topTraders.map((trader: any) => {
+              // DEBUG: Log raw trader data
+              console.log('🔍 RAW TRADER DATA:', {
+                address: trader.address,
+                entryPrice: trader.entryPrice,
+                shares: trader.shares,
+                side: trader.side,
+                tier: trader.tier
+              })
+              
               // Find full trader data to get real avatar
               const fullTrader = allTraders.find((t: any) => 
                 t.address.toLowerCase() === trader.address.toLowerCase()
@@ -482,6 +494,14 @@ export default function SmartMarketDetailPage() {
               const entryPrice = trader.entryPrice || 0.5;      // Use real entry price from market data
               const shares = trader.shares || 0;           // Real number of shares
               const amount = shares * entryPrice;               // Calculate real position size in $
+              
+              console.log('✅ MAPPED TRADER:', {
+                address: trader.address,
+                entryPrice,
+                shares,
+                amount,
+                outcome
+              })
               
               return {
                 address: trader.address,
