@@ -48,8 +48,9 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
           return
         }
         
-        // data is array of trades from Data API
-        const tradesArray = Array.isArray(data) ? data : []
+        // Extract trades from API response (backwards compatible)
+        const trades = data.trades || data // Handle both { trades, marketInfo } and legacy array format
+        const tradesArray = Array.isArray(trades) ? trades : []
         
         // Map Data API format to our format
         // Data API already filters for $100+ (we set filterAmount=100)
