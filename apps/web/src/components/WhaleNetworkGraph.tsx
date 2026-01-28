@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
+import { motion } from 'framer-motion'
 
 type TierType = 'S' | 'A' | 'B'
 
@@ -282,44 +283,50 @@ export default function WhaleNetworkGraph({
     console.log('📊 Positions updated!')
   }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
-  // Handle whale drag - moves entire tier cluster!
+  // Handle whale drag - moves entire tier cluster with ROPE/ELASTIC effect!
   const handleWhaleDrag = useCallback((whale: WhaleBubble, data: DraggableData) => {
     // Get all current whales from state (yesWhales + noWhales)
     const currentWhales = [...yesWhales, ...noWhales]
     
+    // Update dragged whale INSTANTLY
     setWhalePositions(prev => {
       const newPositions = new Map(prev)
-      
-      // Get all whales in same tier and same side (cluster)
-      const sameCluster = currentWhales.filter(w => 
-        w.tier === whale.tier && 
-        w.side === whale.side && 
-        w.id !== whale.id
-      )
-      
-      // Calculate delta from old position
-      const oldPos = prev.get(whale.id) || { x: 0, y: 0 }
-      const deltaX = data.x - oldPos.x
-      const deltaY = data.y - oldPos.y
-      
-      // Update dragged whale
       newPositions.set(whale.id, { x: data.x, y: data.y })
-      
-      // Update all whales in cluster by same delta!
-      sameCluster.forEach(w => {
-        const wPos = prev.get(w.id) || { x: 0, y: 0 }
-        newPositions.set(w.id, {
-          x: wPos.x + deltaX,
-          y: wPos.y + deltaY
-        })
-      })
-      
       return newPositions
+    })
+    
+    // Get cluster followers
+    const sameCluster = currentWhales.filter(w => 
+      w.tier === whale.tier && 
+      w.side === whale.side && 
+      w.id !== whale.id
+    )
+    
+    // Calculate delta
+    const oldPos = whalePositions.get(whale.id) || { x: 0, y: 0 }
+    const deltaX = data.x - oldPos.x
+    const deltaY = data.y - oldPos.y
+    
+    // Update followers with STAGGERED delay (rope effect!)
+    sameCluster.forEach((w, index) => {
+      const delay = index * 30 // 30ms per whale (stagger!)
+      
+      setTimeout(() => {
+        setWhalePositions(prev => {
+          const newPositions = new Map(prev)
+          const wPos = prev.get(w.id) || { x: 0, y: 0 }
+          newPositions.set(w.id, {
+            x: wPos.x + deltaX * 0.9, // 90% movement (elastic!)
+            y: wPos.y + deltaY * 0.9
+          })
+          return newPositions
+        })
+      }, delay)
     })
     
     // Update line positions real-time
     updatePositions()
-  }, [yesWhales, noWhales, updatePositions])
+  }, [yesWhales, noWhales, whalePositions, updatePositions])
 
   // Handle hub drag - moves ALL whales!
   const handleHubDrag = useCallback((data: DraggableData) => {
@@ -628,12 +635,19 @@ export default function WhaleNetworkGraph({
                   onMouseEnter={() => setHoveredWhaleId(whale.id)}
                   onMouseLeave={() => setHoveredWhaleId(null)}
                 >
-                  <div
-                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-4 hover:border-white transition-all hover:scale-110 cursor-pointer"
+                  <motion.div
+                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-4 hover:border-white cursor-pointer"
                     style={{
                       background: 'rgba(0, 0, 0, 0.85)',
                       borderColor: whale.color,
                       boxShadow: `0 0 20px ${whale.color}80`
+                    }}
+                    whileHover={{ scale: 1.1, borderColor: '#ffffff' }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 300,
+                      damping: 20
                     }}
                     onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
                   >
@@ -645,7 +659,7 @@ export default function WhaleNetworkGraph({
                         ${(whale.amount / 1000).toFixed(1)}K
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                   {/* Glow */}
                   <div 
                     className="absolute inset-0 rounded-full blur-md -z-10 opacity-50 group-hover:opacity-75 transition-opacity"
