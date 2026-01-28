@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
 
+type TierType = 'S' | 'A' | 'B'
+
 interface WhaleBubble {
   id: string // wallet address
   wallet: string
@@ -13,7 +15,21 @@ interface WhaleBubble {
   size: number // pixel size for bubble
   x: number // position x for connections (from getBoundingClientRect)
   y: number // position y for connections (from getBoundingClientRect)
+  tier: TierType // S (top 15%), A (16-50%), B (50%+)
 }
+
+interface TierConfig {
+  name: TierType
+  radiusMin: number
+  radiusMax: number
+  color: string // for debug/visualization
+}
+
+const TIER_CONFIGS: TierConfig[] = [
+  { name: 'S', radiusMin: 250, radiusMax: 300, color: '#fbbf24' }, // Gold
+  { name: 'A', radiusMin: 350, radiusMax: 400, color: '#a78bfa' }, // Purple
+  { name: 'B', radiusMin: 450, radiusMax: 500, color: '#60a5fa' }, // Blue
+]
 
 interface MarketHub {
   x: number
@@ -23,6 +39,30 @@ interface MarketHub {
 interface WhaleNetworkGraphProps {
   marketId: string
   minAmount?: number
+}
+
+// Calculate dynamic tier thresholds based on percentiles
+function calculateTierThresholds(whales: { amount: number }[]): { S: number; A: number } {
+  if (whales.length === 0) return { S: 0, A: 0 }
+  
+  const sorted = [...whales].sort((a, b) => b.amount - a.amount)
+  
+  // Tier S: Top 15%
+  const tierSIndex = Math.floor(sorted.length * 0.15)
+  const tierSThreshold = sorted[Math.max(0, tierSIndex - 1)]?.amount || 0
+  
+  // Tier A: Top 16-50% (so threshold is at 50% mark)
+  const tierAIndex = Math.floor(sorted.length * 0.50)
+  const tierAThreshold = sorted[Math.max(0, tierAIndex - 1)]?.amount || 0
+  
+  return { S: tierSThreshold, A: tierAThreshold }
+}
+
+// Assign tier to a whale based on amount and thresholds
+function assignTier(amount: number, thresholds: { S: number; A: number }): TierType {
+  if (amount >= thresholds.S) return 'S'
+  if (amount >= thresholds.A) return 'A'
+  return 'B'
 }
 
 export default function WhaleNetworkGraph({ 
@@ -36,6 +76,12 @@ export default function WhaleNetworkGraph({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredWhaleId, setHoveredWhaleId] = useState<string | null>(null)
+  
+  // Controlled positions for group drag functionality
+  const [whalePositions, setWhalePositions] = useState<Map<string, { x: number; y: number }>>(new Map())
+  const [hubPosition, setHubPosition] = useState({ x: 0, y: 0 })
+  const [positionsInitialized, setPositionsInitialized] = useState(false)
+  
   const hubRef = useRef<HTMLDivElement>(null)
   const whaleRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -121,9 +167,15 @@ export default function WhaleNetworkGraph({
 
       console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
-      // Create bubbles with sizes (positions will be calculated from DOM)
+      // Calculate dynamic tier thresholds for ALL whales
+      const allAmounts = filteredWallets.map(([_, data]) => ({ amount: data.amount }))
+      const tierThresholds = calculateTierThresholds(allAmounts)
+      console.log(`📊 Tier thresholds: S >= $${tierThresholds.S.toFixed(0)}, A >= $${tierThresholds.A.toFixed(0)}`)
+
+      // Create bubbles with sizes and tiers
       const bubbles: WhaleBubble[] = filteredWallets.map(([wallet, data]) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
+        const tier = assignTier(data.amount, tierThresholds)
         
         // Color based on side and amount
         let color = side === 'YES' ? '#22c55e' : '#ef4444'
@@ -147,7 +199,8 @@ export default function WhaleNetworkGraph({
           color,
           size: Math.round(size),
           x: 0, // Will be calculated from DOM
-          y: 0  // Will be calculated from DOM
+          y: 0,  // Will be calculated from DOM
+          tier
         }
       })
 
@@ -229,9 +282,120 @@ export default function WhaleNetworkGraph({
     console.log('📊 Positions updated!')
   }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
+  // Handle whale drag - moves entire tier cluster!
+  const handleWhaleDrag = useCallback((whale: WhaleBubble, data: DraggableData) => {
+    // Get all current whales from state (yesWhales + noWhales)
+    const currentWhales = [...yesWhales, ...noWhales]
+    
+    setWhalePositions(prev => {
+      const newPositions = new Map(prev)
+      
+      // Get all whales in same tier and same side (cluster)
+      const sameCluster = currentWhales.filter(w => 
+        w.tier === whale.tier && 
+        w.side === whale.side && 
+        w.id !== whale.id
+      )
+      
+      // Calculate delta from old position
+      const oldPos = prev.get(whale.id) || { x: 0, y: 0 }
+      const deltaX = data.x - oldPos.x
+      const deltaY = data.y - oldPos.y
+      
+      // Update dragged whale
+      newPositions.set(whale.id, { x: data.x, y: data.y })
+      
+      // Update all whales in cluster by same delta!
+      sameCluster.forEach(w => {
+        const wPos = prev.get(w.id) || { x: 0, y: 0 }
+        newPositions.set(w.id, {
+          x: wPos.x + deltaX,
+          y: wPos.y + deltaY
+        })
+      })
+      
+      return newPositions
+    })
+    
+    // Update line positions real-time
+    updatePositions()
+  }, [yesWhales, noWhales, updatePositions])
+
+  // Handle hub drag - moves ALL whales!
+  const handleHubDrag = useCallback((data: DraggableData) => {
+    // Get all current whales from state
+    const currentWhales = [...yesWhales, ...noWhales]
+    
+    setWhalePositions(prev => {
+      const newPositions = new Map(prev)
+      
+      // Calculate delta from old hub position
+      const deltaX = data.x - hubPosition.x
+      const deltaY = data.y - hubPosition.y
+      
+      // Update ALL whales!
+      currentWhales.forEach(w => {
+        const wPos = prev.get(w.id) || { x: 0, y: 0 }
+        newPositions.set(w.id, {
+          x: wPos.x + deltaX,
+          y: wPos.y + deltaY
+        })
+      })
+      
+      return newPositions
+    })
+    
+    // Update hub position
+    setHubPosition({ x: data.x, y: data.y })
+    
+    // Update line positions real-time
+    updatePositions()
+  }, [yesWhales, noWhales, hubPosition, updatePositions])
+
   useEffect(() => {
     fetchWhaleNetwork()
   }, [fetchWhaleNetwork])
+
+  // Initialize whale positions when whales are loaded
+  useEffect(() => {
+    const totalWhales = yesWhales.length + noWhales.length
+    if (loading || positionsInitialized || totalWhales === 0) return
+    
+    console.log('🎯 Initializing whale positions...')
+    const currentWhales = [...yesWhales, ...noWhales]
+    const newWhalePositions = new Map<string, { x: number; y: number }>()
+    const screenCenterX = typeof window !== 'undefined' ? window.innerWidth / 2 : 800
+    const screenCenterY = typeof window !== 'undefined' ? window.innerHeight / 2 : 400
+    
+    // Initialize Hub position
+    setHubPosition({ 
+      x: screenCenterX - 125, 
+      y: screenCenterY - 125 
+    })
+    
+    // Initialize each whale position based on tier
+    currentWhales.forEach((whale, index) => {
+      const tierConfig = TIER_CONFIGS.find(t => t.name === whale.tier) || TIER_CONFIGS[2]
+      const baseRadius = (tierConfig.radiusMin + tierConfig.radiusMax) / 2
+      
+      const angleStep = (2 * Math.PI) / currentWhales.length
+      const angle = index * angleStep
+      
+      const radiusOffset = (Math.random() - 0.5) * (tierConfig.radiusMax - tierConfig.radiusMin)
+      const angleOffset = (Math.random() - 0.5) * 0.5
+      const finalRadius = baseRadius + radiusOffset
+      const finalAngle = angle + angleOffset
+      
+      const x = screenCenterX + Math.cos(finalAngle) * finalRadius - whale.size / 2
+      const y = screenCenterY + Math.sin(finalAngle) * finalRadius - whale.size / 2
+      
+      newWhalePositions.set(whale.id, { x, y })
+    })
+    
+    setWhalePositions(newWhalePositions)
+    setPositionsInitialized(true)
+    console.log(`✅ Initialized ${newWhalePositions.size} whale positions!`)
+  }, [loading, yesWhales, noWhales, positionsInitialized])
 
   // Update positions after render and on window resize
   useEffect(() => {
@@ -397,13 +561,10 @@ export default function WhaleNetworkGraph({
 
       {/* Network Container - ABOVE SVG lines! */}
       <div className="fixed inset-0" style={{ zIndex: 10 }}>
-        {/* MARKET HUB - Center */}
+        {/* MARKET HUB - Center (controlled position for group drag!) */}
         <Draggable 
-          defaultPosition={{ 
-            x: typeof window !== 'undefined' ? window.innerWidth / 2 - 125 : 0, 
-            y: typeof window !== 'undefined' ? window.innerHeight / 2 - 125 : 0 
-          }}
-          onDrag={updatePositions}
+          position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
+          onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
           onStop={updatePositions}
           bounds="parent"
         >
@@ -441,28 +602,17 @@ export default function WhaleNetworkGraph({
           </div>
         </Draggable>
 
-        {/* ALL WHALES - Circular layout */}
+        {/* ALL WHALES - Tier-based circular layout with GROUP DRAG! */}
         <div className="relative" style={{ width: '100%', height: '100%' }}>
-          {allWhales.map((whale, index) => {
-            // Calculate position in circle around screen center
-            const screenCenterX = typeof window !== 'undefined' ? window.innerWidth / 2 : 800
-            const screenCenterY = typeof window !== 'undefined' ? window.innerHeight / 2 : 400
-            const radius = 350
-            const angleStep = (2 * Math.PI) / allWhales.length
-            const angle = index * angleStep
-            // Add random offset for chaos
-            const radiusOffset = (Math.random() - 0.5) * 100
-            const angleOffset = (Math.random() - 0.5) * 0.3
-            const finalRadius = radius + radiusOffset
-            const finalAngle = angle + angleOffset
-            const x = screenCenterX + Math.cos(finalAngle) * finalRadius - whale.size / 2
-            const y = screenCenterY + Math.sin(finalAngle) * finalRadius - whale.size / 2
+          {allWhales.map((whale) => {
+            // Get position from state (controlled position for group drag!)
+            const position = whalePositions.get(whale.id) || { x: 0, y: 0 }
 
             return (
               <Draggable 
                 key={whale.id}
-                defaultPosition={{ x, y }}
-                onDrag={updatePositions}
+                position={positionsInitialized ? position : { x: 0, y: 0 }}
+                onDrag={(e, data) => positionsInitialized && handleWhaleDrag(whale, data)}
                 onStop={updatePositions}
                 bounds="parent"
               >
