@@ -168,26 +168,40 @@ export default function WhaleNetworkGraph({
 
   // Update positions from DOM
   const updatePositions = useCallback(() => {
+    console.log('🔄 updatePositions called!')
+    
     // Update Hub position
     if (hubRef.current) {
       const rect = hubRef.current.getBoundingClientRect()
-      setMarketHub({
+      const hubPos = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2
-      })
+      }
+      console.log('🎯 Hub position:', hubPos)
+      setMarketHub(hubPos)
+    } else {
+      console.warn('❌ Hub ref not found!')
     }
 
     // Update whale positions
+    console.log('🐋 Updating whale positions...')
+    console.log('  YES whales:', yesWhales.length)
+    console.log('  NO whales:', noWhales.length)
+    console.log('  Refs map size:', whaleRefs.current.size)
+
     const updatedYes = yesWhales.map(whale => {
       const ref = whaleRefs.current.get(whale.id)
       if (ref) {
         const rect = ref.getBoundingClientRect()
-        return {
+        const pos = {
           ...whale,
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2
         }
+        console.log(`  ✅ YES whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
+        return pos
       }
+      console.warn(`  ❌ YES whale ${whale.id.slice(0, 8)}: ref not found!`)
       return whale
     })
 
@@ -195,15 +209,19 @@ export default function WhaleNetworkGraph({
       const ref = whaleRefs.current.get(whale.id)
       if (ref) {
         const rect = ref.getBoundingClientRect()
-        return {
+        const pos = {
           ...whale,
           x: rect.left + rect.width / 2,
           y: rect.top + rect.height / 2
         }
+        console.log(`  ✅ NO whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
+        return pos
       }
+      console.warn(`  ❌ NO whale ${whale.id.slice(0, 8)}: ref not found!`)
       return whale
     })
 
+    console.log('📊 Setting updated positions...')
     setYesWhales(updatedYes)
     setNoWhales(updatedNo)
   }, [yesWhales, noWhales])
@@ -270,6 +288,14 @@ export default function WhaleNetworkGraph({
 
       {/* SVG Overlay for Connection Lines */}
       <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+        {/* DEBUG INFO */}
+        <text x="10" y="20" fill="white" fontSize="12">
+          Hub: ({marketHub.x.toFixed(0)}, {marketHub.y.toFixed(0)})
+        </text>
+        <text x="10" y="40" fill="white" fontSize="12">
+          Whales: {allWhales.filter(w => w.x > 0).length} / {allWhales.length} positioned
+        </text>
+        
         {/* Hub-Spoke Lines: from Market Hub to each whale */}
         {marketHub.x > 0 && allWhales.map((whale) => (
           whale.x > 0 && (
