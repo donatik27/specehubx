@@ -78,6 +78,7 @@ export default function WhaleNetworkGraph({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [hoveredWhaleId, setHoveredWhaleId] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false) // Track drag state for hover persistence
   
   // Controlled positions for group drag functionality
   const [whalePositions, setWhalePositions] = useState<Map<string, { x: number; y: number }>>(new Map())
@@ -290,6 +291,9 @@ export default function WhaleNetworkGraph({
 
   // Handle whale drag - moves entire tier cluster with ROPE/ELASTIC effect!
   const handleWhaleDrag = useCallback((whale: WhaleBubble, data: DraggableData) => {
+    // Track dragging state (для hover persistence!)
+    setIsDragging(true)
+    
     // Get all current whales from state (yesWhales + noWhales)
     const currentWhales = [...yesWhales, ...noWhales]
     
@@ -331,17 +335,23 @@ export default function WhaleNetworkGraph({
       w.id !== whale.id
     )
     
-    // Update followers with STAGGERED delay (rope effect!)
+    // Update followers with CHAOTIC delay & variation (хаос! 🌪️)
     sameCluster.forEach((w, index) => {
-      const delay = index * 30 // 30ms per whale (stagger!)
+      // RANDOM delay (20-60ms) - не синхронно!
+      const baseDelay = index * 25
+      const randomDelayOffset = Math.random() * 35 // ±35ms chaos!
+      const delay = baseDelay + randomDelayOffset
+      
+      // RANDOM movement factor (70-100%) - не струни!
+      const randomFactor = 0.7 + Math.random() * 0.3 // 70-100%
       
       setTimeout(() => {
         setWhalePositions(prev => {
           const newPositions = new Map(prev)
           const wPos = prev.get(w.id) || { x: 0, y: 0 }
           newPositions.set(w.id, {
-            x: wPos.x + deltaX * 0.9, // 90% movement (elastic!)
-            y: wPos.y + deltaY * 0.9
+            x: wPos.x + deltaX * randomFactor, // Хаотично! 🌪️
+            y: wPos.y + deltaY * randomFactor
           })
           return newPositions
         })
@@ -816,6 +826,8 @@ export default function WhaleNetworkGraph({
                     newVelocities.set(whale.id, { vx: 0, vy: 0 })
                     return newVelocities
                   })
+                  // Reset drag state (hover can work again!)
+                  setIsDragging(false)
                   updatePositions()
                 }}
               >
@@ -829,7 +841,12 @@ export default function WhaleNetworkGraph({
                     height: `${whale.size}px`
                   }}
                   onMouseEnter={() => setHoveredWhaleId(whale.id)}
-                  onMouseLeave={() => setHoveredWhaleId(null)}
+                  onMouseLeave={() => {
+                    // Don't clear hover if dragging! (лінії не пропадають!)
+                    if (!isDragging) {
+                      setHoveredWhaleId(null)
+                    }
+                  }}
                 >
                   <motion.div
                     className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg hover:border-white cursor-pointer"
