@@ -27,9 +27,9 @@ interface TierConfig {
 }
 
 const TIER_CONFIGS: TierConfig[] = [
-  { name: 'S', radiusMin: 250, radiusMax: 300, color: '#fbbf24' }, // Gold
-  { name: 'A', radiusMin: 350, radiusMax: 400, color: '#a78bfa' }, // Purple
-  { name: 'B', radiusMin: 450, radiusMax: 500, color: '#60a5fa' }, // Blue
+  { name: 'S', radiusMin: 350, radiusMax: 400, color: '#fbbf24' }, // Gold - close to Hub
+  { name: 'A', radiusMin: 500, radiusMax: 550, color: '#a78bfa' }, // Purple - middle
+  { name: 'B', radiusMin: 650, radiusMax: 700, color: '#60a5fa' }, // Blue - outer
 ]
 
 interface MarketHub {
