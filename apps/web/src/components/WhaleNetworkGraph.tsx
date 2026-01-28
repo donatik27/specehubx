@@ -263,8 +263,6 @@ export default function WhaleNetworkGraph({
 
   // Update positions from DOM
   const updatePositions = useCallback(() => {
-    console.log('🔄 updatePositions called!')
-    
     // Update Hub position
     if (hubRef.current) {
       const rect = hubRef.current.getBoundingClientRect()
@@ -272,18 +270,11 @@ export default function WhaleNetworkGraph({
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2
       }
-      console.log('🎯 Hub position:', hubPos)
       setMarketHub(hubPos)
-    } else {
-      console.warn('❌ Hub ref not found!')
     }
 
     // Update whale positions using FUNCTIONAL UPDATE to avoid infinite loop!
-    console.log('🐋 Updating whale positions...')
-    console.log('  Refs map size:', whaleRefs.current.size)
-
     setYesWhales(prev => {
-      console.log('  YES whales:', prev.length)
       return prev.map(whale => {
         const ref = whaleRefs.current.get(whale.id)
         if (ref) {
@@ -293,16 +284,13 @@ export default function WhaleNetworkGraph({
             x: rect.left + rect.width / 2,
             y: rect.top + rect.height / 2
           }
-          console.log(`  ✅ YES whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
           return pos
         }
-        console.warn(`  ❌ YES whale ${whale.id.slice(0, 8)}: ref not found!`)
         return whale
       })
     })
 
     setNoWhales(prev => {
-      console.log('  NO whales:', prev.length)
       return prev.map(whale => {
         const ref = whaleRefs.current.get(whale.id)
         if (ref) {
@@ -312,15 +300,11 @@ export default function WhaleNetworkGraph({
             x: rect.left + rect.width / 2,
             y: rect.top + rect.height / 2
           }
-          console.log(`  ✅ NO whale ${whale.id.slice(0, 8)}: (${pos.x.toFixed(0)}, ${pos.y.toFixed(0)})`)
           return pos
         }
-        console.warn(`  ❌ NO whale ${whale.id.slice(0, 8)}: ref not found!`)
         return whale
       })
     })
-
-    console.log('📊 Positions updated!')
   }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
   // Handle whale drag - D3 FORCE-BASED (Arkham-style! 🔥)
@@ -393,7 +377,6 @@ export default function WhaleNetworkGraph({
     const totalWhales = yesWhales.length + noWhales.length
     if (loading || positionsInitialized || totalWhales === 0) return
     
-    console.log('🎯 Initializing whale positions...')
     const currentWhales = [...yesWhales, ...noWhales]
     const newWhalePositions = new Map<string, { x: number; y: number }>()
     const screenCenterX = typeof window !== 'undefined' ? window.innerWidth / 2 : 800
@@ -430,7 +413,6 @@ export default function WhaleNetworkGraph({
     
     setWhalePositions(newWhalePositions)
     setPositionsInitialized(true)
-    console.log(`✅ Initialized ${newWhalePositions.size} whale positions!`)
   }, [loading, yesWhales, noWhales, positionsInitialized])
 
   // Update positions after render and on window resize
@@ -454,7 +436,6 @@ export default function WhaleNetworkGraph({
     if (!positionsInitialized || loading) return
     if (yesWhales.length === 0 && noWhales.length === 0) return
     
-    console.log('🚀 Initializing D3 Force Simulation!')
     const currentWhales = [...yesWhales, ...noWhales]
     
     // Create D3 nodes (Hub + Whales)
@@ -499,8 +480,6 @@ export default function WhaleNetworkGraph({
         return (tierConfig.radiusMin + tierConfig.radiusMax) / 2
       })()
     }))
-    
-    console.log(`📊 D3 Setup: ${nodes.length} nodes, ${links.length} links`)
     
     // Create D3 Force Simulation
     const simulation = d3.forceSimulation(nodes)
@@ -550,11 +529,9 @@ export default function WhaleNetworkGraph({
       })
     
     simulationRef.current = simulation
-    console.log('✅ D3 Simulation started!')
     
     // Cleanup
     return () => {
-      console.log('🛑 Stopping D3 simulation')
       simulation.stop()
       simulationRef.current = null
     }
