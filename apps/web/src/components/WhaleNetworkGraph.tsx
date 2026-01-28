@@ -118,7 +118,7 @@ export default function WhaleNetworkGraph({
         throw new Error('No trades available for this market yet')
       }
 
-      // Data API already filters for $100+ (we set filterAmount=100)
+      // Data API returns trades with outcome ("Yes"/"No").
       // Build nodes (wallets) - aggregate all trades per wallet
       const walletMap = new Map<string, { 
         amount: number
@@ -131,8 +131,14 @@ export default function WhaleNetworkGraph({
         // Data API format: proxyWallet, side, price, size
         const wallet = trade.proxyWallet || trade.user || 'unknown'
         if (wallet === 'unknown') return
-        
-        const side = trade.side?.toUpperCase()
+
+        // IMPORTANT: Use outcome (YES/NO), not BUY/SELL
+        const outcomeRaw = String(trade.outcome || '').toLowerCase()
+        let outcomeSide: 'YES' | 'NO' | null = null
+        if (trade.outcomeIndex === 0 || outcomeRaw === 'yes') outcomeSide = 'YES'
+        if (trade.outcomeIndex === 1 || outcomeRaw === 'no') outcomeSide = 'NO'
+        if (!outcomeSide) return
+
         const price = parseFloat(trade.price || '0')
         const size = parseFloat(trade.size || '0')
         const amount = price * size
@@ -141,13 +147,13 @@ export default function WhaleNetworkGraph({
           const data = walletMap.get(wallet)!
           data.amount += amount
           data.tradeCount += 1
-          if (side === 'BUY') data.yesTrades += amount
+          if (outcomeSide === 'YES') data.yesTrades += amount
           else data.noTrades += amount
         } else {
           walletMap.set(wallet, {
             amount,
-            yesTrades: side === 'BUY' ? amount : 0,
-            noTrades: side === 'SELL' ? amount : 0,
+            yesTrades: outcomeSide === 'YES' ? amount : 0,
+            noTrades: outcomeSide === 'NO' ? amount : 0,
             tradeCount: 1
           })
         }
@@ -243,7 +249,7 @@ export default function WhaleNetworkGraph({
       // Combine all nodes (hub first for rendering order)
       const nodes = [marketHub, ...whaleNodes]
 
-      // Build links - ORGANIC NETWORK STRUCTURE
+      // Build links - STATIC NETWORK STRUCTURE
       const links: GraphLink[] = []
       
       // Separate YES and NO whales, sort by amount
@@ -430,22 +436,7 @@ export default function WhaleNetworkGraph({
             }
             return 'rgba(255,255,255,0.08)'
           }}
-          linkWidth={(link: any) => link.value * 1.5}
-          linkDirectionalParticles={(link: any) => {
-            // More particles for hub connections
-            if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
-              return 4
-            }
-            return 2
-          }}
-          linkDirectionalParticleWidth={3}
-          linkDirectionalParticleSpeed={0.003}
-          linkDirectionalParticleColor={(link: any) => {
-            if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
-              return 'rgba(168,85,247,0.6)'
-            }
-            return 'rgba(255,255,255,0.3)'
-          }}
+          linkWidth={(link: any) => link.value}
           onNodeClick={handleNodeClick}
           onNodeHover={(node: any) => {
             document.body.style.cursor = node ? 'pointer' : 'default'
