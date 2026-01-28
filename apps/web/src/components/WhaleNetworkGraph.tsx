@@ -32,6 +32,8 @@ interface GraphNode {
   color: string // green for YES, red for NO
   side: 'YES' | 'NO'
   amount: number
+  fx?: number // fixed x position (for Market Hub)
+  fy?: number // fixed y position (for Market Hub)
 }
 
 interface GraphLink {
@@ -58,21 +60,20 @@ export default function WhaleNetworkGraph({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const graphRef = useRef<any>()
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [graphWidth, setGraphWidth] = useState(1200)
+  const [dimensions, setDimensions] = useState({ width: 1200, height: 800 })
 
+  // Track window size for fullscreen
   useEffect(() => {
-    if (!containerRef.current) return
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      })
+    }
 
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const nextWidth = Math.max(320, Math.floor(entry.contentRect.width))
-        setGraphWidth(nextWidth)
-      }
-    })
-
-    observer.observe(containerRef.current)
-    return () => observer.disconnect()
+    updateDimensions()
+    window.addEventListener('resize', updateDimensions)
+    return () => window.removeEventListener('resize', updateDimensions)
   }, [])
 
   const fetchWhaleNetwork = useCallback(async () => {
@@ -156,8 +157,8 @@ export default function WhaleNetworkGraph({
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
 
-      // Create whale nodes
-      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
+      // Create whale nodes with initial positioning
+      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data], index) => {
         // Determine dominant side
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
@@ -179,24 +180,32 @@ export default function WhaleNetworkGraph({
           val: data.amount,
           color,
           side,
-          amount: data.amount
+          amount: data.amount,
+          // Initial positioning hint for force simulation
+          fx: undefined, // Let force simulation position them
+          fy: undefined
         }
       })
 
       // Calculate max whale size for hub sizing
       const maxWhaleAmount = Math.max(...whaleNodes.map(n => n.amount), 1000)
+      
+      // Calculate total trade volume from actual trades
+      const totalTradeVolume = whaleNodes.reduce((sum, node) => sum + node.amount, 0)
 
-      // Create MARKET HUB (центральний node)
+      // Create MARKET HUB (центральний node) - BIGGEST NODE
       const marketHub: GraphNode = {
         id: 'MARKET_HUB',
-        name: marketTitle.length > 30 ? marketTitle.slice(0, 30) + '...' : marketTitle,
-        val: maxWhaleAmount * 5, // 5x bigger than biggest whale!
+        name: marketTitle.length > 50 ? marketTitle.slice(0, 50) + '...' : marketTitle,
+        val: maxWhaleAmount * 8, // 8x bigger than biggest whale! (was 5x)
         color: '#a855f7', // Purple
         side: 'YES', // Neutral
-        amount: marketVolume
+        amount: marketVolume > 0 ? marketVolume : totalTradeVolume,
+        fx: 0, // Fixed at center X
+        fy: 0  // Fixed at center Y
       }
 
-      // Combine all nodes
+      // Combine all nodes (hub first for rendering order)
       const nodes = [marketHub, ...whaleNodes]
 
       // Build links - HIERARCHICAL STRUCTURE
@@ -288,115 +297,133 @@ export default function WhaleNetworkGraph({
 
   if (loading) {
     return (
-      <div className="bg-card pixel-border border-[#22c55e]/40 p-6">
-        <div className="flex items-center justify-center h-[600px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-3 text-sm text-muted-foreground">Loading whale network...</span>
-        </div>
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <Loader2 className="h-12 w-12 animate-spin text-purple-400" />
+        <span className="ml-3 text-sm text-muted-foreground font-mono">Loading whale network...</span>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-card pixel-border border-red-500/40 p-6">
-        <div className="text-center text-red-500">
-          <p className="font-bold mb-2">⚠️ Error</p>
-          <p className="text-sm">{error}</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="text-center text-red-500 pixel-border border-red-500/40 p-8 bg-black/80">
+          <p className="font-bold mb-2 text-2xl">⚠️ Error</p>
+          <p className="text-sm font-mono">{error}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-card pixel-border border-[#22c55e]/40 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-xl font-bold text-[#22c55e] font-mono">
-            🌊 WHALE_NETWORK_GRAPH
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1 font-mono">
-            {graphData.nodes.length} wallets • {graphData.links.length} connections • Min ${minAmount}
-          </p>
-        </div>
-        <div className="flex items-center gap-3 text-xs font-mono">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-[#22c55e]"></div>
-            <span>YES</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
-            <span>NO</span>
-          </div>
+    <div className="fixed inset-0 bg-black">
+      {/* Floating Stats (Bottom Left) */}
+      <div className="fixed bottom-4 left-4 z-40 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 px-4 py-2">
+        <div className="text-xs font-mono text-muted-foreground">
+          <span className="text-purple-400 font-bold">{graphData.nodes.length - 1}</span> whales •{' '}
+          <span className="text-purple-400 font-bold">{graphData.links.length}</span> connections
         </div>
       </div>
 
-      {/* Graph */}
-      <div
-        ref={containerRef}
-        className="relative bg-black/40 pixel-border border-white/10 overflow-hidden"
-      >
+      {/* FULLSCREEN Graph */}
+      <div className="w-full h-full">
         <ForceGraph2D
           ref={graphRef}
           graphData={graphData}
-          width={graphWidth}
-          height={600}
-          backgroundColor="rgba(0,0,0,0.8)"
+          width={dimensions.width}
+          height={dimensions.height}
+          backgroundColor="#000000"
           nodeLabel={(node: any) => {
             // Special label for Market Hub
             if (node.id === 'MARKET_HUB') {
+              const volumeText = node.amount > 1000000 
+                ? `$${(node.amount / 1000000).toFixed(2)}M`
+                : `$${(node.amount / 1000).toFixed(0)}K`
+              
               return `
-                <div style="background: rgba(168,85,247,0.2); padding: 12px; border: 2px solid #a855f7; border-radius: 8px; font-family: monospace; backdrop-filter: blur(8px);">
-                  <div style="color: #a855f7; font-weight: bold; font-size: 14px; margin-bottom: 6px;">🎯 MARKET HUB</div>
-                  <div style="color: white; font-size: 12px; margin-bottom: 4px;">${node.name}</div>
-                  <div style="color: #22c55e; font-size: 16px; font-weight: bold;">$${(node.amount / 1000000).toFixed(2)}M</div>
-                  <div style="color: #a855f7; font-size: 10px; margin-top: 4px;">Total Volume</div>
+                <div style="background: rgba(168,85,247,0.95); padding: 16px; border: 3px solid #a855f7; border-radius: 12px; font-family: monospace; backdrop-filter: blur(12px); box-shadow: 0 0 30px rgba(168,85,247,0.5);">
+                  <div style="color: white; font-weight: bold; font-size: 16px; margin-bottom: 8px; text-align: center;">🎯 MARKET HUB</div>
+                  <div style="color: #e9d5ff; font-size: 11px; margin-bottom: 6px; max-width: 250px;">${node.name}</div>
+                  <div style="color: #22c55e; font-size: 20px; font-weight: bold; text-align: center;">${volumeText}</div>
+                  <div style="color: #c4b5fd; font-size: 10px; margin-top: 4px; text-align: center;">Total Volume</div>
                 </div>
               `
             }
             
             // Regular whale label
+            const amountText = node.amount > 1000 
+              ? `$${(node.amount / 1000).toFixed(1)}K`
+              : `$${node.amount.toFixed(0)}`
+            
             return `
-              <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid ${node.color}; border-radius: 4px; font-family: monospace;">
-                <div style="color: ${node.color}; font-weight: bold; margin-bottom: 4px;">${node.side}</div>
-                <div style="color: white; font-size: 12px;">${node.name}</div>
-                <div style="color: #22c55e; font-size: 14px; font-weight: bold;">$${(node.amount / 1000).toFixed(1)}K</div>
+              <div style="background: rgba(0,0,0,0.95); padding: 10px; border: 2px solid ${node.color}; border-radius: 6px; font-family: monospace; box-shadow: 0 0 15px ${node.color}40;">
+                <div style="color: ${node.color}; font-weight: bold; margin-bottom: 4px; font-size: 11px;">${node.side} WHALE</div>
+                <div style="color: white; font-size: 11px; margin-bottom: 4px;">${node.name}</div>
+                <div style="color: #22c55e; font-size: 14px; font-weight: bold;">${amountText}</div>
               </div>
             `
           }}
           nodeColor={(node: any) => node.color}
-          nodeVal={(node: any) => node.val / 100} // Scale down for better visualization
-          nodeRelSize={8} // Larger nodes for better visibility
+          nodeVal={(node: any) => {
+            // Market Hub is MUCH larger
+            if (node.id === 'MARKET_HUB') {
+              return node.val / 50 // Make hub stand out even more
+            }
+            return node.val / 100
+          }}
+          nodeRelSize={10} // Larger base size
+          nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
+            // Custom rendering for Market Hub
+            if (node.id === 'MARKET_HUB') {
+              const label = '🎯'
+              const fontSize = 30 / globalScale
+              ctx.font = `${fontSize}px Sans-Serif`
+              ctx.textAlign = 'center'
+              ctx.textBaseline = 'middle'
+              ctx.fillText(label, node.x, node.y)
+              
+              // Glow effect
+              ctx.beginPath()
+              ctx.arc(node.x, node.y, (node.val / 50) * 1.2, 0, 2 * Math.PI, false)
+              ctx.fillStyle = 'rgba(168,85,247,0.1)'
+              ctx.fill()
+            }
+          }}
           linkColor={(link: any) => {
             // Stronger color for hub connections
             if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
-              return 'rgba(168,85,247,0.3)'
+              return 'rgba(168,85,247,0.4)'
             }
-            return 'rgba(255,255,255,0.1)'
+            return 'rgba(255,255,255,0.08)'
           }}
-          linkWidth={(link: any) => link.value}
+          linkWidth={(link: any) => link.value * 1.5}
           linkDirectionalParticles={(link: any) => {
             // More particles for hub connections
             if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
-              return 3
+              return 4
             }
-            return 1
+            return 2
           }}
-          linkDirectionalParticleWidth={2}
-          linkDirectionalParticleSpeed={0.005}
+          linkDirectionalParticleWidth={3}
+          linkDirectionalParticleSpeed={0.003}
+          linkDirectionalParticleColor={(link: any) => {
+            if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
+              return 'rgba(168,85,247,0.6)'
+            }
+            return 'rgba(255,255,255,0.3)'
+          }}
           onNodeClick={handleNodeClick}
-          cooldownTicks={100}
-          d3VelocityDecay={0.3}
+          onNodeHover={(node: any) => {
+            document.body.style.cursor = node ? 'pointer' : 'default'
+          }}
+          enableNodeDrag={true}
+          enableZoomInteraction={true}
+          enablePanInteraction={true}
+          cooldownTicks={150}
+          d3VelocityDecay={0.2}
+          d3AlphaDecay={0.01}
+          warmupTicks={100}
         />
-      </div>
-
-      {/* Legend */}
-      <div className="mt-4 p-3 bg-black/20 pixel-border border-white/10">
-        <p className="text-xs text-muted-foreground font-mono">
-          💡 <span className="text-white">TIP:</span> Click on any wallet to view on Polymarket • 
-          Larger bubbles = bigger trades • Lines = connections between whales
-        </p>
       </div>
     </div>
   )

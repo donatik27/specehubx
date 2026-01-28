@@ -27,68 +27,46 @@ export default function BubblesPage() {
   const focusAddress = searchParams.get('focus')
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-purple-950/20 to-black">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Link 
-            href={`/markets/smart/${marketId}`}
-            className="inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors mb-4"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="font-mono">BACK TO MARKET</span>
-          </Link>
-          
-          <h1 className="text-3xl font-bold text-white mb-2">
-            <span className="text-purple-400">🫧</span> Whale Network Graph
-          </h1>
-          <p className="text-muted-foreground text-sm font-mono">
-            Interactive visualization of all whale trades • Click any bubble to view on Polymarket
-          </p>
-        </div>
+    <div className="fixed inset-0 bg-black">
+      {/* Floating Back Button (Top Left) */}
+      <Link 
+        href={`/markets/smart/${marketId}`}
+        className="fixed top-4 left-4 z-50 inline-flex items-center gap-2 px-3 py-2 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 text-purple-400 hover:text-purple-300 hover:border-purple-400/60 transition-all text-sm font-mono"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        <span>BACK</span>
+      </Link>
 
-        {/* Graph */}
-        <Suspense fallback={
-          <div className="flex items-center justify-center h-[600px] bg-card pixel-border border-purple-500/40 p-6">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+      {/* Floating Legend (Top Right) */}
+      <div className="fixed top-4 right-4 z-50 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 p-3 w-64">
+        <div className="text-xs font-mono space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-purple-500" />
+            <span className="text-purple-400 font-bold">MARKET HUB</span>
           </div>
-        }>
-          <WhaleNetworkGraph marketId={marketId} minAmount={100} />
-        </Suspense>
-
-        {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div className="bg-black/60 pixel-border border-green-500/30 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full bg-green-400" />
-              <span className="text-sm font-bold text-green-400 font-mono">YES WHALES</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Green bubbles = wallets buying YES. Larger = more volume.
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-400" />
+            <span className="text-green-400">YES whales (left)</span>
           </div>
-
-          <div className="bg-black/60 pixel-border border-red-500/30 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-sm font-bold text-red-400 font-mono">NO WHALES</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Red bubbles = wallets buying NO. Larger = more volume.
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-400" />
+            <span className="text-red-400">NO whales (right)</span>
           </div>
-
-          <div className="bg-black/60 pixel-border border-purple-500/30 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 bg-purple-400" />
-              <span className="text-sm font-bold text-purple-400 font-mono">CONNECTIONS</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Lines show market dynamics between YES/NO whales.
-            </p>
+          <div className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-purple-500/20">
+            💡 Drag to pan • Scroll to zoom • Click bubble to view wallet
           </div>
         </div>
       </div>
+
+      {/* FULLSCREEN Graph */}
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-400" />
+          <span className="ml-3 text-sm text-muted-foreground">Loading network...</span>
+        </div>
+      }>
+        <WhaleNetworkGraph marketId={marketId} minAmount={100} />
+      </Suspense>
     </div>
   )
 }
