@@ -577,10 +577,14 @@ export default function WhaleNetworkGraph({
         initialScale={1}
         minScale={0.3}
         maxScale={3}
-        limitToBounds={false}
+        limitToBounds={false} // ✅ INFINITE CANVAS (як Arkham!)
         centerOnInit={true}
         wheel={{ step: 0.1 }}
-        panning={{ disabled: true }}
+        panning={{ 
+          disabled: false, // ✅ ENABLE canvas panning!
+          velocityDisabled: false, // ✅ Smooth momentum!
+          excluded: ['drag-node'] // Don't pan when dragging nodes!
+        }}
         doubleClick={{ disabled: true }}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
@@ -861,7 +865,7 @@ export default function WhaleNetworkGraph({
         >
           <div 
             ref={hubRef}
-            className="absolute cursor-move group"
+            className="absolute cursor-move group drag-node"
             style={{ width: '250px', height: '250px' }}
           >
             <div
@@ -929,7 +933,7 @@ export default function WhaleNetworkGraph({
                   ref={(el) => {
                     if (el) whaleRefs.current.set(whale.id, el)
                   }}
-                  className="absolute cursor-move group"
+                  className="absolute cursor-move group drag-node"
                   style={{ 
                     width: `${whale.size}px`, 
                     height: `${whale.size}px`
