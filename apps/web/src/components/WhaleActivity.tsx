@@ -27,43 +27,55 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    // BLOCKCHAIN TERMINAL FEED:
-    // Lower threshold ($100+) to show more activity
-    // Auto-refresh every 10 seconds for live updates
+    // REAL WHALE ACTIVITY:
+    // Fetch REAL trades from Polymarket via our authenticated API
+    // Auto-refresh every 10 seconds for live feed
     
     const fetchTrades = async () => {
       try {
+        // Use our API proxy with CLOB Client SDK
         const response = await fetch(
-          `https://clob.polymarket.com/trades?market=${marketId}`,
+          `/api/market-trades?market=${marketId}&limit=100`,
           { cache: 'no-store' }
         )
         
+        const data = await response.json()
+        
         if (!response.ok) {
-          console.warn('Failed to fetch trades, using simulated data')
-          setTrades(getSimulatedTrades())
+          console.error('Failed to fetch trades:', data.error || data.message)
+          setTrades([])
           setLoading(false)
           return
         }
         
-        const data = await response.json()
+        // data is array of trades from CLOB API
+        const tradesArray = Array.isArray(data) ? data : []
         
-        // Filter for significant trades ($500+)
-        const allTrades: WhaleTrade[] = data
-          .filter((trade: any) => parseFloat(trade.size) * parseFloat(trade.price) > 500)
-          .slice(0, 30) // Show up to 30 recent trades
-          .map((trade: any, idx: number) => ({
-            id: `${trade.timestamp}-${idx}`,
-            traderAddress: trade.maker_address || trade.taker_address,
-            traderName: `${trade.maker_address?.slice(0, 6)}...${trade.maker_address?.slice(-4)}`,
-            tier: parseFloat(trade.size) * parseFloat(trade.price) > 10000 ? 'S' : 
-                  parseFloat(trade.size) * parseFloat(trade.price) > 1000 ? 'A' : 'B',
-            amount: parseFloat(trade.size) * parseFloat(trade.price),
-            outcome: trade.side === 'BUY' ? 'YES' : 'NO',
-            price: parseFloat(trade.price),
-            timestamp: new Date(trade.timestamp).getTime(),
-            shares: parseFloat(trade.size),
-            isNew: false
-          }))
+        // Filter for whale trades ($100+) and map to our format
+        const allTrades: WhaleTrade[] = tradesArray
+          .filter((trade: any) => {
+            const amount = parseFloat(trade.size || '0') * parseFloat(trade.price || '0')
+            return amount >= 100 // Min $100 for whale activity
+          })
+          .slice(0, 30) // Show top 30 recent trades
+          .map((trade: any, idx: number) => {
+            const maker = trade.maker || trade.maker_address || trade.taker_address || trade.taker
+            const makerLabel = maker ? `${maker.slice(0, 6)}...${maker.slice(-4)}` : 'unknown'
+            const amount = parseFloat(trade.size || '0') * parseFloat(trade.price || '0')
+            
+            return {
+              id: `${trade.timestamp}-${idx}`,
+              traderAddress: maker || 'unknown',
+              traderName: makerLabel,
+              tier: amount > 10000 ? 'S' : amount > 1000 ? 'A' : 'B',
+              amount,
+              outcome: trade.side === 'BUY' ? 'YES' : 'NO',
+              price: parseFloat(trade.price || '0'),
+              timestamp: new Date(trade.timestamp).getTime(),
+              shares: parseFloat(trade.size || '0'),
+              isNew: false
+            }
+          })
         
         // Mark new trades for animation
         setTrades((prevTrades) => {
@@ -74,10 +86,11 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
           }))
         })
         
-        console.log(`🐋 Loaded ${allTrades.length} trades`)
+        console.log(`🐋 Loaded ${allTrades.length} REAL trades`)
+        
       } catch (error) {
         console.error('Error fetching trades:', error)
-        setTrades(getSimulatedTrades())
+        setTrades([])
       } finally {
         setLoading(false)
       }
@@ -86,30 +99,10 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
     // Initial fetch
     fetchTrades()
     
-    // Auto-refresh every 10 seconds
+    // Auto-refresh every 10 seconds for live updates
     const interval = setInterval(fetchTrades, 10000)
     
     return () => clearInterval(interval)
-    
-    // TEMPORARY FALLBACK: Simulated trades
-    function getSimulatedTrades(): WhaleTrade[] {
-      return Array.from({ length: 15 }, (_, i) => {
-        const isYes = Math.random() > 0.5
-        const amount = Math.floor(Math.random() * 50000) + 100
-        return {
-          id: `sim-${Date.now()}-${i}`,
-          traderAddress: `0x${Math.random().toString(16).slice(2, 42)}`,
-          traderName: `0x${Math.random().toString(16).slice(2, 8)}...${Math.random().toString(16).slice(2, 6)}`,
-          tier: amount > 10000 ? 'S' : amount > 1000 ? 'A' : 'B',
-          amount,
-          outcome: isYes ? 'YES' : 'NO',
-          price: isYes ? 0.6 + Math.random() * 0.3 : 0.1 + Math.random() * 0.3,
-          timestamp: Date.now() - Math.random() * 7200000,
-          shares: Math.floor(amount / (isYes ? 0.76 : 0.24)),
-          isNew: false
-        }
-      })
-    }
   }, [marketId])
 
   const formatTime = (timestamp: number) => {
@@ -245,7 +238,7 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
 
       {/* Footer */}
       <div className="mt-2 pt-2 border-t border-purple-500/20 text-[10px] text-muted-foreground font-mono text-center">
-        {trades.length} trades • Min $500
+        {trades.length} trades • Min $100
       </div>
     </div>
   )

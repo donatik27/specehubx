@@ -1,0 +1,138 @@
+import { NextRequest, NextResponse } from 'next/server'
+import nacl from 'tweetnacl'
+import { decodeUTF8, encodeBase64 } from 'tweetnacl-util'
+
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
+/**
+ * Market Trades API - Returns real trades from Polymarket CLOB
+ * GET /api/market-trades?market={marketId}&limit={limit}
+ * 
+ * Uses Builder credentials to authenticate with CLOB API
+ */
+
+const normalizeBase64 = (value: string) => {
+  const padded = value.trim().replace(/-/g, '+').replace(/_/g, '/')
+  const padLength = (4 - (padded.length % 4)) % 4
+  return padded + '='.repeat(padLength)
+}
+
+const decodeSecretKey = (value: string) => {
+  const trimmed = value.trim()
+  if (/^[0-9a-fA-F]+$/.test(trimmed) && (trimmed.length === 64 || trimmed.length === 128)) {
+    return Buffer.from(trimmed, 'hex')
+  }
+  return Buffer.from(normalizeBase64(trimmed), 'base64')
+}
+
+function createAuthHeaders(method: string, path: string, apiKey: string, secret: string, passphrase: string) {
+  const timestamp = Date.now()
+  const message = `${timestamp}${method}${path}`
+  const messageBytes = decodeUTF8(message)
+
+  const secretBytes = decodeSecretKey(secret)
+  const signingKey = secretBytes.length === 64 
+    ? secretBytes 
+    : nacl.sign.keyPair.fromSeed(secretBytes).secretKey
+
+  const signature = nacl.sign.detached(messageBytes, signingKey)
+  const signatureBase64 = encodeBase64(signature)
+
+  return {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
+    'X-PM-Access-Key': apiKey,
+    'X-PM-Timestamp': timestamp.toString(),
+    'X-PM-Signature': signatureBase64,
+    'X-PM-Passphrase': passphrase,
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const marketId = searchParams.get('market')
+    const limit = parseInt(searchParams.get('limit') || '100')
+    
+    if (!marketId) {
+      return NextResponse.json({ error: 'Missing market parameter' }, { status: 400 })
+    }
+
+    const apiKey = process.env.POLYMARKET_API_KEY
+    const secret = process.env.POLYMARKET_SECRET
+    const passphrase = process.env.POLYMARKET_PASSPHRASE
+
+    if (!apiKey || !secret || !passphrase) {
+      console.error('[market-trades] ❌ Missing CLOB credentials')
+      return NextResponse.json({ error: 'CLOB credentials not configured' }, { status: 503 })
+    }
+
+    console.log(`[market-trades] 🔍 Fetching trades for market ${marketId}`)
+
+    // Step 1: Get market info to extract token IDs
+    const marketResponse = await fetch(
+      `https://gamma-api.polymarket.com/markets/${marketId}`,
+      { cache: 'no-store' }
+    )
+
+    if (!marketResponse.ok) {
+      console.error('[market-trades] ❌ Failed to fetch market info')
+      return NextResponse.json([])
+    }
+
+    const marketData = await marketResponse.json()
+    let tokenIds: string[] = []
+    
+    if (marketData.clobTokenIds) {
+      tokenIds = JSON.parse(marketData.clobTokenIds)
+      console.log(`[market-trades] ✅ Found ${tokenIds.length} tokens`)
+    } else {
+      console.error('[market-trades] ❌ No clobTokenIds')
+      return NextResponse.json([])
+    }
+
+    // Step 2: Fetch trades for each token with authentication
+    const allTrades: any[] = []
+
+    for (let i = 0; i < tokenIds.length; i++) {
+      const tokenId = tokenIds[i]
+      const path = `/trades?asset_id=${tokenId}`
+      
+      try {
+        const headers = createAuthHeaders('GET', path, apiKey, secret, passphrase)
+        
+        const response = await fetch(`https://clob.polymarket.com${path}`, {
+          headers,
+          cache: 'no-store'
+        })
+
+        if (response.ok) {
+          const trades = await response.json()
+          console.log(`[market-trades] ✅ Token ${i + 1}/${tokenIds.length}: ${trades.length} trades`)
+          allTrades.push(...trades)
+        } else {
+          const error = await response.json().catch(() => ({}))
+          console.warn(`[market-trades] ⚠️ Token ${i + 1}: ${response.status}`, error)
+        }
+      } catch (err: any) {
+        console.error(`[market-trades] ⚠️ Token ${i + 1}:`, err.message)
+      }
+    }
+
+    allTrades.sort((a, b) => {
+      const timeA = new Date(a.timestamp || 0).getTime()
+      const timeB = new Date(b.timestamp || 0).getTime()
+      return timeB - timeA
+    })
+
+    const limitedTrades = allTrades.slice(0, limit)
+    console.log(`[market-trades] 🎉 Returning ${limitedTrades.length} REAL trades`)
+    
+    return NextResponse.json(limitedTrades)
+
+  } catch (error: any) {
+    console.error('[market-trades] ❌ Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
