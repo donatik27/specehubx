@@ -155,7 +155,7 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
       </div>
 
       {/* Chart */}
-      <div className="bg-black/40 pixel-border border-white/10 p-2 chart-line-glow" style={{ height: '280px' }}>
+      <div className="bg-black/40 pixel-border border-white/10 p-2" style={{ height: '280px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={priceHistory} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
             <defs>
@@ -173,11 +173,15 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
                 <stop offset="100%" stopColor="#00ff00" stopOpacity={0.05} />
               </linearGradient>
               
-              {/* Glow filter */}
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              {/* Enhanced glow filter */}
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur1"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur3"/>
                 <feMerge>
-                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="blur3"/>
+                  <feMergeNode in="blur2"/>
+                  <feMergeNode in="blur1"/>
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
@@ -233,7 +237,7 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
               type="monotone" 
               dataKey="price" 
               stroke="url(#lineGradient)"
-              strokeWidth={3}
+              strokeWidth={4}
               dot={false}
               animationDuration={300}
               filter="url(#glow)"
