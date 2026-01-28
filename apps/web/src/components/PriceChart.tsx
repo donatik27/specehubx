@@ -155,9 +155,34 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
       </div>
 
       {/* Chart */}
-      <div className="bg-black/40 pixel-border border-white/10 p-2" style={{ height: '280px' }}>
+      <div className="bg-black/40 pixel-border border-white/10 p-2 chart-line-glow" style={{ height: '280px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={priceHistory} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+            <defs>
+              {/* Gradient for line */}
+              <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor="#00ff00" stopOpacity={0.8} />
+                <stop offset="50%" stopColor="#00ff88" stopOpacity={1} />
+                <stop offset="100%" stopColor="#00ffaa" stopOpacity={0.8} />
+              </linearGradient>
+              
+              {/* Gradient fill under line */}
+              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#00ff00" stopOpacity={0.3} />
+                <stop offset="50%" stopColor="#00ff00" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#00ff00" stopOpacity={0.05} />
+              </linearGradient>
+              
+              {/* Glow filter */}
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            
             <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
             <XAxis 
               dataKey="time" 
@@ -186,20 +211,34 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
             <Tooltip
               contentStyle={{
                 backgroundColor: '#0a0a0a',
-                border: '1px solid #333',
+                border: '2px solid #00ff00',
                 borderRadius: '4px',
-                padding: '8px 12px'
+                padding: '8px 12px',
+                boxShadow: '0 0 20px rgba(0, 255, 0, 0.3)'
               }}
               labelStyle={{ color: '#00ff00', fontWeight: 'bold', fontSize: '11px' }}
               formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'Chance']}
             />
+            
+            {/* Area fill under line */}
+            <defs>
+              <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#00ff00" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="#00ff00" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            
+            {/* Main glowing line */}
             <Line 
               type="monotone" 
               dataKey="price" 
-              stroke="#00ff00" 
-              strokeWidth={2}
+              stroke="url(#lineGradient)"
+              strokeWidth={3}
               dot={false}
               animationDuration={300}
+              filter="url(#glow)"
+              fill="url(#colorPrice)"
+              fillOpacity={1}
             />
           </LineChart>
         </ResponsiveContainer>
