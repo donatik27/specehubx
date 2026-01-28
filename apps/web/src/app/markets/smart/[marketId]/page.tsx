@@ -678,66 +678,68 @@ export default function SmartMarketDetailPage() {
         </div>
       ) : null}
 
-      {/* THREE COLUMN LAYOUT FOR BINARY MARKETS */}
+      {/* TWO COLUMN LAYOUT + WHALE ACTIVITY BELOW */}
       {multiOutcomePositions.length === 0 && !eventInfo ? (
-        // Binary market: Three-column layout (Whale left, Chart center, Trading right)
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
-          {/* LEFT COLUMN: Whale Activity (20% width = 1 col, sticky) */}
-          <div className="lg:col-span-1">
-            <WhaleActivity marketId={market.id} />
-          </div>
+        <>
+          {/* Binary market: Two-column layout (Chart left, Trading right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* LEFT COLUMN: Price Chart (60% width = 2 cols) */}
+            <div className="lg:col-span-2">
+              <PriceChart
+                marketId={market.id}
+                yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+                noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+                yesTokenId={market.tokens?.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId}
+              />
+            </div>
 
-          {/* CENTER COLUMN: Price Chart (50% width = 2 cols) */}
-          <div className="lg:col-span-2">
-            <PriceChart
-              marketId={market.id}
-              yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
-              noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-              yesTokenId={market.tokens?.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId}
-            />
-          </div>
+            {/* RIGHT COLUMN: Trading Panel (40% width = 1 col, sticky) */}
+            <div className="lg:col-span-1">
+              <div className="lg:sticky lg:top-6">
+                {(() => {
+                  // Show debug message if trading disabled
+                  if (!ENABLE_TRADING) {
+                    return (
+                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
+                        <p className="text-yellow-500 font-mono text-sm">
+                          ⚠️ Trading disabled
+                        </p>
+                      </div>
+                    )
+                  }
+                  
+                  // Show trading panel if conditions met
+                  if (market && market.tokens) {
+                    return (
+                      <TradingPanel
+                        marketId={market.id}
+                        question={market.question}
+                        yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+                        noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+                        yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
+                        noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
+                      />
+                    )
+                  }
 
-          {/* RIGHT COLUMN: Trading Panel (30% width = 2 cols, sticky) */}
-          <div className="lg:col-span-2">
-            <div className="lg:sticky lg:top-6">
-              {(() => {
-                // Show debug message if trading disabled
-                if (!ENABLE_TRADING) {
+                  // Show loading/error state
                   return (
-                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
-                      <p className="text-yellow-500 font-mono text-sm">
-                        ⚠️ Trading disabled
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 pixel-border">
+                      <p className="text-red-400 font-mono text-sm">
+                        ⚠️ Trading tokens not loaded
                       </p>
                     </div>
                   )
-                }
-                
-                // Show trading panel if conditions met
-                if (market && market.tokens) {
-                  return (
-                    <TradingPanel
-                      marketId={market.id}
-                      question={market.question}
-                      yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
-                      noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-                      yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
-                      noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
-                    />
-                  )
-                }
-
-                // Show loading/error state
-                return (
-                  <div className="p-4 bg-red-500/10 border border-red-500/30 pixel-border">
-                    <p className="text-red-400 font-mono text-sm">
-                      ⚠️ Trading tokens not loaded
-                    </p>
-                  </div>
-                )
-              })()}
+                })()}
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* WHALE ACTIVITY - Full width below chart */}
+          <div className="mb-6">
+            <WhaleActivity marketId={market.id} />
+          </div>
+        </>
       ) : multiOutcomePositions.length > 0 ? (
         // Multi-outcome market: Show outcomes grid
         <div className="bg-card pixel-border border-[#FFD700]/40 p-6 mb-6">

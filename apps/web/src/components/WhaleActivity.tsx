@@ -170,17 +170,21 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
   }
 
   return (
-    <div className="bg-card pixel-border border-purple-500/40 p-4 lg:sticky lg:top-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Activity className="h-5 w-5 text-purple-400 alien-glow" />
-        <h3 className="text-lg font-bold text-purple-400">🐋 WHALE_ACTIVITY</h3>
+    <div className="bg-card pixel-border border-purple-500/40 p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-purple-400 alien-glow" />
+          <h3 className="text-lg font-bold text-purple-400">🐋 WHALE_ACTIVITY</h3>
+          <span className="text-xs text-muted-foreground font-mono">
+            Large trades (&gt;$1K)
+          </span>
+        </div>
+        <div className="text-xs text-muted-foreground font-mono">
+          💡 Live from Polymarket • Updates every 30s
+        </div>
       </div>
 
-      <div className="text-xs text-muted-foreground mb-4 font-mono">
-        Large trades (&gt;$1K)
-      </div>
-
-      <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {trades.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-8">
             <p className="font-mono">&gt; NO_WHALE_ACTIVITY</p>
@@ -247,16 +251,6 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
             )
           })
         )}
-      </div>
-
-      {/* Note */}
-      <div className="mt-4 pt-3 border-t border-white/10">
-        <p className="text-xs text-muted-foreground font-mono">
-          💡 Live trades from Polymarket CLOB API
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          Showing trades &gt;$1K • Updates every 30s
-        </p>
       </div>
     </div>
   )
