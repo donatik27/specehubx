@@ -161,33 +161,65 @@ export default function WhaleNetworkGraph({
 
       console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
-      // Create whale nodes with INITIAL POSITIONING BIAS
-      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
-        const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
+      // Separate YES and NO whales
+      const yesWhales = filteredWallets.filter(([_, data]) => data.yesTrades > data.noTrades)
+      const noWhales = filteredWallets.filter(([_, data]) => data.noTrades >= data.yesTrades)
+      
+      // Create whale nodes with FIXED CIRCULAR POSITIONS
+      const whaleNodes: GraphNode[] = []
+      
+      // Position YES whales (LEFT semi-circle)
+      yesWhales.forEach(([wallet, data], index) => {
+        const side = 'YES'
+        const color = data.amount > 10000 ? '#10b981' : data.amount > 1000 ? '#16a34a' : '#22c55e'
         
-        // Color based on side and amount
-        let color = side === 'YES' ? '#22c55e' : '#ef4444'
+        // Circular positioning - LEFT SEMI (90° to 270°)
+        const totalYes = yesWhales.length
+        const angleStart = Math.PI / 2  // 90°
+        const angleEnd = (3 * Math.PI) / 2 // 270°
+        const angle = angleStart + ((angleEnd - angleStart) * (index / Math.max(totalYes - 1, 1)))
         
-        if (data.amount > 10000) {
-          color = side === 'YES' ? '#10b981' : '#dc2626' // Brighter for big positions
-        } else if (data.amount > 1000) {
-          color = side === 'YES' ? '#16a34a' : '#e11d48'
-        }
+        const radius = 300 // Fixed radius
+        const x = Math.cos(angle) * radius
+        const y = Math.sin(angle) * radius
         
-        // Initial position bias: YES left, NO right
-        const xBias = side === 'YES' ? -200 : 200
-        const yBias = (Math.random() - 0.5) * 300
-        
-        return {
+        whaleNodes.push({
           id: wallet,
           name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
-          val: data.amount, // SIZE = POSITION SIZE!
+          val: data.amount,
           color,
-          side,
+          side: 'YES',
           amount: data.amount,
-          x: xBias, // Initial position bias
-          y: yBias
-        }
+          fx: x, // FIXED X - doesn't move!
+          fy: y  // FIXED Y - doesn't move!
+        })
+      })
+      
+      // Position NO whales (RIGHT semi-circle)
+      noWhales.forEach(([wallet, data], index) => {
+        const side = 'NO'
+        const color = data.amount > 10000 ? '#dc2626' : data.amount > 1000 ? '#e11d48' : '#ef4444'
+        
+        // Circular positioning - RIGHT SEMI (-90° to 90°)
+        const totalNo = noWhales.length
+        const angleStart = -Math.PI / 2  // -90°
+        const angleEnd = Math.PI / 2     // 90°
+        const angle = angleStart + ((angleEnd - angleStart) * (index / Math.max(totalNo - 1, 1)))
+        
+        const radius = 300
+        const x = Math.cos(angle) * radius
+        const y = Math.sin(angle) * radius
+        
+        whaleNodes.push({
+          id: wallet,
+          name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+          val: data.amount,
+          color,
+          side: 'NO',
+          amount: data.amount,
+          fx: x, // FIXED X
+          fy: y  // FIXED Y
+        })
       })
 
       // Calculate max whale size for hub sizing
@@ -196,15 +228,16 @@ export default function WhaleNetworkGraph({
       // Calculate total trade volume from actual trades
       const totalTradeVolume = whaleNodes.reduce((sum, node) => sum + node.amount, 0)
 
-      // Create MARKET HUB - DRAGGABLE CENTER
+      // Create MARKET HUB - FIXED CENTER (can be dragged manually)
       const marketHub: GraphNode = {
         id: 'MARKET_HUB',
         name: marketTitle.length > 50 ? marketTitle.slice(0, 50) + '...' : marketTitle,
         val: maxWhaleAmount * 10, // 10x bigger - DOMINANT!
         color: '#a855f7', // Purple
         side: 'YES', // Neutral
-        amount: marketVolume > 0 ? marketVolume : totalTradeVolume
-        // NO fx/fy - can be dragged! But will stay near center due to connections
+        amount: marketVolume > 0 ? marketVolume : totalTradeVolume,
+        fx: 0, // FIXED at center
+        fy: 0  // FIXED at center
       }
 
       // Combine all nodes (hub first for rendering order)
@@ -417,14 +450,16 @@ export default function WhaleNetworkGraph({
           onNodeHover={(node: any) => {
             document.body.style.cursor = node ? 'pointer' : 'default'
           }}
-          enableNodeDrag={true} // ПЛАСТИЧНИЙ - можна рухати всі nodes!
+          enableNodeDrag={true} // Can drag manually
           enableZoomInteraction={true}
           enablePanInteraction={true}
-          cooldownTicks={300} // More time to settle
-          warmupTicks={100}
-          d3VelocityDecay={0.3} // Less friction - more natural
-          d3AlphaDecay={0.015} // Even slower cooldown
-          onEngineStop={() => console.log('🎯 Graph settled!')}
+          cooldownTicks={0} // NO SIMULATION - STATIC!
+          warmupTicks={0}
+          onNodeDragEnd={(node: any) => {
+            // When dragging ends, fix the node at new position
+            node.fx = node.x
+            node.fy = node.y
+          }}
         />
       </div>
     </div>
