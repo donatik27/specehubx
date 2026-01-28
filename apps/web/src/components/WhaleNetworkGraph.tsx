@@ -542,7 +542,29 @@ export default function WhaleNetworkGraph({
           ))
         )}
 
-        {/* HOVER MESH: REMOVED - було забагато ліній! */}
+        {/* HOVER MESH: Show connections to same TIER whales! */}
+        {hoveredWhaleId && (() => {
+          const hoveredWhale = allWhales.find(w => w.id === hoveredWhaleId)
+          if (!hoveredWhale || hoveredWhale.x === 0) return null
+          
+          // Find whales with SAME TIER (not side!)
+          const sameTierWhales = allWhales.filter(w => 
+            w.tier === hoveredWhale.tier && w.id !== hoveredWhale.id && w.x > 0
+          )
+          
+          return sameTierWhales.map(whale => (
+            <line
+              key={`hover-${hoveredWhale.id}-${whale.id}`}
+              x1={hoveredWhale.x}
+              y1={hoveredWhale.y}
+              x2={whale.x}
+              y2={whale.y}
+              stroke={hoveredWhale.tier === 'S' ? '#fbbf24' : hoveredWhale.tier === 'A' ? '#a78bfa' : '#60a5fa'}
+              strokeWidth="2"
+              opacity="0.6"
+            />
+          ))
+        })()}
       </svg>
 
       {/* Network Container - ABOVE SVG lines! */}
@@ -552,7 +574,6 @@ export default function WhaleNetworkGraph({
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
           onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
           onStop={updatePositions}
-          bounds="parent"
         >
           <div 
             ref={hubRef}
@@ -600,7 +621,6 @@ export default function WhaleNetworkGraph({
                 position={positionsInitialized ? position : { x: 0, y: 0 }}
                 onDrag={(e, data) => positionsInitialized && handleWhaleDrag(whale, data)}
                 onStop={updatePositions}
-                bounds="parent"
               >
                 <div 
                   ref={(el) => {
