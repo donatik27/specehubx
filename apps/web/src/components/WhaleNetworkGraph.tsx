@@ -352,11 +352,13 @@ export default function WhaleNetworkGraph({
       const distance = Math.sqrt(dx * dx + dy * dy)
       
       // Strength ЗАТУХАЄ з відстанню! 📏
-      // distance = 0px   → strength = 1.0 (100%) - близько!
-      // distance = 300px → strength = 0.5 (50%) - середньо!
-      // distance = 600px → strength = 0.0 (0%) - далеко!
-      const maxDistance = 600 // Затухає на 600px (щільніша сітка!)
-      const strength = Math.max(0, 1 - distance / maxDistance)
+      // distance = 0px    → strength = 1.0 (100%) - близько!
+      // distance = 600px  → strength = 0.5 (50%) - середньо!
+      // distance = 1200px → strength = 0.1 (10% мін) - далеко!
+      // distance > 1200px → strength = 0.1 (10% мін) - дуже далеко!
+      const maxDistance = 1200 // Затухає на 1200px (×2 більше!)
+      const minStrength = 0.1 // Мінімум 10% - ВСІ рухаються! ✅
+      const strength = Math.max(minStrength, 1 - distance / maxDistance)
       
       // Lerp factor for smoothness (СИЛЬНІША інерція! 🎯)
       const lerpFactor = 0.5 + Math.random() * 0.2 // 50-70% (було 10-15%)
