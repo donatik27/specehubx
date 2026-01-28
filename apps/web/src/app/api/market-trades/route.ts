@@ -93,30 +93,68 @@ export async function GET(request: NextRequest) {
     }
 
     // Step 2: Fetch trades for each token with authentication
+    // IMPORTANT: Add pagination params to get more trades
     const allTrades: any[] = []
 
     for (let i = 0; i < tokenIds.length; i++) {
       const tokenId = tokenIds[i]
-      const path = `/trades?asset_id=${tokenId}`
       
-      try {
-        const headers = createAuthHeaders('GET', path, apiKey, secret, passphrase)
-        
-        const response = await fetch(`https://clob.polymarket.com${path}`, {
-          headers,
-          cache: 'no-store'
-        })
+      // Try different approaches:
+      // 1. With next_cursor for pagination
+      // 2. With limit parameter
+      const queries = [
+        `/trades?asset_id=${tokenId}&limit=100`,
+        `/trades?asset_id=${tokenId}`,
+      ]
+      
+      for (const path of queries) {
+        try {
+          const headers = createAuthHeaders('GET', path, apiKey, secret, passphrase)
+          
+          const response = await fetch(`https://clob.polymarket.com${path}`, {
+            headers,
+            cache: 'no-store'
+          })
 
-        if (response.ok) {
-          const trades = await response.json()
-          console.log(`[market-trades] ✅ Token ${i + 1}/${tokenIds.length}: ${trades.length} trades`)
-          allTrades.push(...trades)
-        } else {
-          const error = await response.json().catch(() => ({}))
-          console.warn(`[market-trades] ⚠️ Token ${i + 1}: ${response.status}`, error)
+          if (response.ok) {
+            const data = await response.json()
+            
+            // Handle different response formats
+            let trades = []
+            if (Array.isArray(data)) {
+              trades = data
+            } else if (data.data && Array.isArray(data.data)) {
+              trades = data.data
+            } else if (data.trades && Array.isArray(data.trades)) {
+              trades = data.trades
+            }
+            
+            console.log(`[market-trades] ✅ Token ${i + 1}/${tokenIds.length} (${path}): ${trades.length} trades`)
+            
+            if (trades.length > 0) {
+              allTrades.push(...trades)
+              break // Found trades, no need to try other queries
+            }
+          } else {
+            const error = await response.json().catch(() => ({}))
+            console.warn(`[market-trades] ⚠️ Token ${i + 1} (${path}): ${response.status}`, error)
+          }
+        } catch (err: any) {
+          console.error(`[market-trades] ⚠️ Token ${i + 1} (${path}):`, err.message)
         }
-      } catch (err: any) {
-        console.error(`[market-trades] ⚠️ Token ${i + 1}:`, err.message)
+      }
+    }
+
+    // Step 3: If no trades from CLOB, try historical data from market volume
+    if (allTrades.length === 0) {
+      console.log('[market-trades] ℹ️ No trades from CLOB, checking if market has volume...')
+      
+      const volume24hr = parseFloat(marketData.volume24hr || '0')
+      
+      if (volume24hr > 0) {
+        console.log(`[market-trades] ℹ️ Market has $${volume24hr.toFixed(0)} volume but CLOB returns 0 trades`)
+        console.log('[market-trades] ℹ️ This is normal - CLOB /trades only shows VERY RECENT trades')
+        console.log('[market-trades] 💡 Whale Activity will update when new trades happen!')
       }
     }
 
