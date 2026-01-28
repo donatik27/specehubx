@@ -50,7 +50,7 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
         // Filter for significant trades ($500+)
         const allTrades: WhaleTrade[] = data
           .filter((trade: any) => parseFloat(trade.size) * parseFloat(trade.price) > 500)
-          .slice(0, 15) // Show up to 15 recent trades
+          .slice(0, 30) // Show up to 30 recent trades
           .map((trade: any, idx: number) => ({
             id: `${trade.timestamp}-${idx}`,
             traderAddress: trade.maker_address || trade.taker_address,
@@ -153,34 +153,34 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
   }
 
   return (
-    <div className="bg-black/60 pixel-border border-purple-500/30 p-4">
+    <div className="bg-black/60 pixel-border border-purple-500/30 p-3">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-purple-500/20">
-        <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-purple-400 alien-glow" />
-          <h3 className="text-base font-bold text-purple-400">
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-purple-500/20">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-purple-400 alien-glow" />
+          <h3 className="text-sm font-bold text-purple-400">
             🐋 WHALE ACTIVITY
           </h3>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <span className="text-xs text-muted-foreground font-mono">
-            Live • 10s
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+          <span className="text-[10px] text-muted-foreground font-mono">
+            Live
           </span>
         </div>
       </div>
 
-      {/* Trades Grid - Show fewer but more detailed */}
+      {/* Compact Trades List - Scrollable up to 30 */}
       <div 
         ref={scrollRef}
-        className="grid grid-cols-1 gap-3 max-h-[500px] overflow-y-auto pr-2 terminal-scroll"
+        className="space-y-2 max-h-[320px] overflow-y-auto pr-1 terminal-scroll"
       >
         {trades.length === 0 ? (
-          <div className="text-center text-muted-foreground text-sm py-8">
-            <p className="font-mono">&gt; WAITING_FOR_TRADES...</p>
+          <div className="text-center text-muted-foreground text-xs py-6">
+            <p className="font-mono">&gt; WAITING...</p>
           </div>
         ) : (
-          trades.slice(0, 8).map((trade) => {
+          trades.map((trade) => {
             const isYes = trade.outcome === 'YES'
             
             return (
@@ -188,19 +188,19 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
                 key={trade.id}
                 href={`/traders/${trade.traderAddress}`}
                 className={`
-                  block bg-black/40 pixel-border p-3
+                  block bg-black/40 pixel-border p-2
                   hover:border-purple-500/50 transition-all group
                   ${isYes ? 'border-green-500/30' : 'border-red-500/30'}
                   ${trade.isNew ? 'animate-fade-in-down' : ''}
                 `}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-center gap-2">
                   {/* Avatar */}
                   <div className={`
-                    w-10 h-10 pixel-border flex items-center justify-center flex-shrink-0
+                    w-8 h-8 pixel-border flex items-center justify-center flex-shrink-0
                     ${isYes ? 'bg-green-500/20' : 'bg-red-500/20'}
                   `}>
-                    <span className={`text-lg ${getTierColor(trade.tier)}`}>
+                    <span className={`text-sm font-bold ${getTierColor(trade.tier)}`}>
                       {trade.tier}
                     </span>
                   </div>
@@ -208,31 +208,32 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     {/* Name + Time */}
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-sm font-bold text-white truncate group-hover:text-purple-400 transition-colors">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-bold text-white truncate group-hover:text-purple-400 transition-colors">
                         {trade.traderName}
                       </span>
-                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                      <span className="text-[10px] text-muted-foreground flex-shrink-0">
                         {formatTime(trade.timestamp)}
                       </span>
                     </div>
                     
-                    {/* Amount - Large */}
-                    <div className="text-xl font-bold text-white mb-2">
-                      {formatAmount(trade.amount)}
-                    </div>
-                    
-                    {/* Badge + Price */}
-                    <div className="flex items-center gap-3">
-                      <div className={`
-                        px-3 py-1 text-sm font-bold pixel-border
-                        ${isYes ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}
-                      `}>
-                        {trade.outcome}
-                      </div>
-                      <span className="text-sm text-muted-foreground font-mono">
-                        @ {(trade.price * 100).toFixed(1)}¢
+                    {/* Amount + Badge + Price */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold text-white">
+                        {formatAmount(trade.amount)}
                       </span>
+                      
+                      <div className="flex items-center gap-2">
+                        <div className={`
+                          px-2 py-0.5 text-[10px] font-bold pixel-border
+                          ${isYes ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}
+                        `}>
+                          {trade.outcome}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          @{(trade.price * 100).toFixed(1)}¢
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -243,8 +244,8 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
       </div>
 
       {/* Footer */}
-      <div className="mt-4 pt-3 border-t border-purple-500/20 text-xs text-muted-foreground font-mono text-center">
-        Showing top {Math.min(trades.length, 8)} trades • Min $500
+      <div className="mt-2 pt-2 border-t border-purple-500/20 text-[10px] text-muted-foreground font-mono text-center">
+        {trades.length} trades • Min $500
       </div>
     </div>
   )
