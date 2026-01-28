@@ -101,23 +101,53 @@ export default function WhaleNetworkGraph({
       setLoading(true)
       setError(null)
 
-      // Step 1: Fetch market info
+      // Step 1: Fetch market info from Gamma API
       let marketTitle = 'Market'
       let marketVolume = 0
       let marketImage = ''
       
       try {
+        console.log(`🔍 Fetching market info for: ${marketId}`)
         const marketInfoResponse = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`, {
           cache: 'no-store'
         })
+        
         if (marketInfoResponse.ok) {
           const marketInfo = await marketInfoResponse.json()
-          marketTitle = marketInfo.question || 'Market'
-          marketVolume = parseFloat(marketInfo.volume || marketInfo.volumeNum || '0')
-          marketImage = marketInfo.image || marketInfo.icon || ''
+          console.log('📊 Market API Response:', marketInfo)
+          
+          // Title
+          marketTitle = marketInfo.question || marketInfo.title || 'Market'
+          
+          // Volume - try multiple fields!
+          const volumeRaw = marketInfo.volume || 
+                           marketInfo.volumeNum || 
+                           marketInfo.volume24hr ||
+                           marketInfo.volumeUSD ||
+                           marketInfo.totalVolume ||
+                           '0'
+          marketVolume = parseFloat(volumeRaw)
+          console.log(`💰 Volume: ${volumeRaw} → ${marketVolume}`)
+          
+          // Image - try multiple fields!
+          marketImage = marketInfo.image || 
+                       marketInfo.icon || 
+                       marketInfo.imageUrl ||
+                       marketInfo.image_url ||
+                       ''
+          console.log(`🖼️ Image URL: ${marketImage}`)
+          
+          if (!marketImage) {
+            console.warn('⚠️ No image found in API response!')
+          }
+          if (marketVolume === 0) {
+            console.warn('⚠️ Volume is 0 or not found in API response!')
+          }
+        } else {
+          console.error(`❌ Market API returned status: ${marketInfoResponse.status}`)
         }
       } catch (err) {
-        console.warn('[WhaleNetworkGraph] Failed to fetch market info:', err)
+        console.error('[WhaleNetworkGraph] Failed to fetch market info:', err)
       }
 
       // Step 2: Fetch trades
