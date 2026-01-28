@@ -84,6 +84,10 @@ export default function WhaleNetworkGraph({
   const [hubPosition, setHubPosition] = useState({ x: 0, y: 0 })
   const [positionsInitialized, setPositionsInitialized] = useState(false)
   
+  // Velocity tracking for fluid lines (як віровок! 🪢)
+  const [whaleVelocities, setWhaleVelocities] = useState<Map<string, { vx: number; vy: number }>>(new Map())
+  const lastPositionsRef = useRef<Map<string, { x: number; y: number; timestamp: number }>>(new Map())
+  
   const hubRef = useRef<HTMLDivElement>(null)
   const whaleRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -289,6 +293,30 @@ export default function WhaleNetworkGraph({
     // Get all current whales from state (yesWhales + noWhales)
     const currentWhales = [...yesWhales, ...noWhales]
     
+    const now = Date.now()
+    const oldPos = whalePositions.get(whale.id) || { x: 0, y: 0 }
+    const deltaX = data.x - oldPos.x
+    const deltaY = data.y - oldPos.y
+    
+    // Calculate velocity for fluid lines! 🌊
+    const lastPos = lastPositionsRef.current.get(whale.id)
+    if (lastPos) {
+      const dt = (now - lastPos.timestamp) / 1000 // seconds
+      if (dt > 0) {
+        const vx = (data.x - lastPos.x) / dt
+        const vy = (data.y - lastPos.y) / dt
+        
+        setWhaleVelocities(prev => {
+          const newVelocities = new Map(prev)
+          newVelocities.set(whale.id, { vx, vy })
+          return newVelocities
+        })
+      }
+    }
+    
+    // Save current position for next velocity calc
+    lastPositionsRef.current.set(whale.id, { x: data.x, y: data.y, timestamp: now })
+    
     // Update dragged whale INSTANTLY
     setWhalePositions(prev => {
       const newPositions = new Map(prev)
@@ -302,11 +330,6 @@ export default function WhaleNetworkGraph({
       w.side === whale.side && 
       w.id !== whale.id
     )
-    
-    // Calculate delta
-    const oldPos = whalePositions.get(whale.id) || { x: 0, y: 0 }
-    const deltaX = data.x - oldPos.x
-    const deltaY = data.y - oldPos.y
     
     // Update followers with STAGGERED delay (rope effect!)
     sameCluster.forEach((w, index) => {
@@ -535,19 +558,16 @@ export default function WhaleNetworkGraph({
           overflow: 'visible'
         }}
       >
-        {/* Fluid spring animation for all lines! 🌊 */}
+        {/* Real-time fluid lines - NO TRANSITION LAG! ⚡ */}
         <style>
           {`
             path {
-              transition: d 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            }
-            path.fluid {
-              transition: d 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+              /* NO TRANSITION = Real-time response! ⚡ */
             }
           `}
         </style>
         
-        {/* Hub-Spoke Lines: CURVED lines from Market Hub to each whale */}
+        {/* Hub-Spoke Lines: VELOCITY-BASED CURVED lines! 🌊 */}
         {hubPosition.x !== 0 && allWhales.map((whale) => {
           const whalePos = whalePositions.get(whale.id)
           if (!whalePos) return null
@@ -558,6 +578,10 @@ export default function WhaleNetworkGraph({
           const whaleCenterX = whalePos.x + whale.size / 2
           const whaleCenterY = whalePos.y + whale.size / 2
           
+          // Get velocity (for fluid curve!) 🪢
+          const velocity = whaleVelocities.get(whale.id) || { vx: 0, vy: 0 }
+          const speed = Math.sqrt(velocity.vx * velocity.vx + velocity.vy * velocity.vy)
+          
           // Calculate control point for quadratic Bezier curve
           const midX = (hubCenterX + whaleCenterX) / 2
           const midY = (hubCenterY + whaleCenterY) / 2
@@ -566,7 +590,12 @@ export default function WhaleNetworkGraph({
           const dx = whaleCenterX - hubCenterX
           const dy = whaleCenterY - hubCenterY
           const distance = Math.sqrt(dx * dx + dy * dy)
-          const curvature = distance * 0.15 // 15% curve
+          
+          // VELOCITY-BASED CURVATURE! 🌊
+          // speed = 0 → curvature = 0 (прямі лінії!)
+          // speed > 0 → curvature grows (curved як віровок!)
+          const baseCurvature = Math.min(speed * 0.02, distance * 0.3) // Cap at 30% distance
+          const curvature = baseCurvature
           
           // Control point perpendicular to line
           const controlX = midX + (-dy / distance) * curvature
@@ -575,7 +604,6 @@ export default function WhaleNetworkGraph({
           return (
             <path
               key={`hub-${whale.id}`}
-              className="fluid"
               d={`M ${hubCenterX} ${hubCenterY} Q ${controlX} ${controlY} ${whaleCenterX} ${whaleCenterY}`}
               stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
               strokeWidth="2"
@@ -597,19 +625,28 @@ export default function WhaleNetworkGraph({
             const x2 = pos2.x + whale2.size / 2
             const y2 = pos2.y + whale2.size / 2
             
+            // Velocity-based curvature for mesh! 🌊
+            const vel1 = whaleVelocities.get(whale1.id) || { vx: 0, vy: 0 }
+            const vel2 = whaleVelocities.get(whale2.id) || { vx: 0, vy: 0 }
+            const speed1 = Math.sqrt(vel1.vx * vel1.vx + vel1.vy * vel1.vy)
+            const speed2 = Math.sqrt(vel2.vx * vel2.vx + vel2.vy * vel2.vy)
+            const avgSpeed = (speed1 + speed2) / 2
+            
             const midX = (x1 + x2) / 2
             const midY = (y1 + y2) / 2
             const dx = x2 - x1
             const dy = y2 - y1
             const distance = Math.sqrt(dx * dx + dy * dy)
-            const curvature = distance * 0.1 // subtle curve
+            
+            const baseCurvature = Math.min(avgSpeed * 0.01, distance * 0.2)
+            const curvature = baseCurvature
+            
             const controlX = midX + (-dy / distance) * curvature
             const controlY = midY + (dx / distance) * curvature
             
             return (
               <path
                 key={`top-yes-${whale1.id}-${whale2.id}`}
-                className="fluid"
                 d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
                 stroke="#10b981"
                 strokeWidth="1"
@@ -631,19 +668,28 @@ export default function WhaleNetworkGraph({
             const x2 = pos2.x + whale2.size / 2
             const y2 = pos2.y + whale2.size / 2
             
+            // Velocity-based curvature for mesh! 🌊
+            const vel1 = whaleVelocities.get(whale1.id) || { vx: 0, vy: 0 }
+            const vel2 = whaleVelocities.get(whale2.id) || { vx: 0, vy: 0 }
+            const speed1 = Math.sqrt(vel1.vx * vel1.vx + vel1.vy * vel1.vy)
+            const speed2 = Math.sqrt(vel2.vx * vel2.vx + vel2.vy * vel2.vy)
+            const avgSpeed = (speed1 + speed2) / 2
+            
             const midX = (x1 + x2) / 2
             const midY = (y1 + y2) / 2
             const dx = x2 - x1
             const dy = y2 - y1
             const distance = Math.sqrt(dx * dx + dy * dy)
-            const curvature = distance * 0.1 // subtle curve
+            
+            const baseCurvature = Math.min(avgSpeed * 0.01, distance * 0.2)
+            const curvature = baseCurvature
+            
             const controlX = midX + (-dy / distance) * curvature
             const controlY = midY + (dx / distance) * curvature
             
             return (
               <path
                 key={`top-no-${whale1.id}-${whale2.id}`}
-                className="fluid"
                 d={`M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`}
                 stroke="#dc2626"
                 strokeWidth="1"
@@ -677,19 +723,28 @@ export default function WhaleNetworkGraph({
             const whaleX = whalePos.x + whale.size / 2
             const whaleY = whalePos.y + whale.size / 2
             
+            // Velocity-based curvature for hover mesh! 🌊
+            const hoveredVel = whaleVelocities.get(hoveredWhale.id) || { vx: 0, vy: 0 }
+            const whaleVel = whaleVelocities.get(whale.id) || { vx: 0, vy: 0 }
+            const hoveredSpeed = Math.sqrt(hoveredVel.vx * hoveredVel.vx + hoveredVel.vy * hoveredVel.vy)
+            const whaleSpeed = Math.sqrt(whaleVel.vx * whaleVel.vx + whaleVel.vy * whaleVel.vy)
+            const avgSpeed = (hoveredSpeed + whaleSpeed) / 2
+            
             const midX = (hoveredX + whaleX) / 2
             const midY = (hoveredY + whaleY) / 2
             const dx = whaleX - hoveredX
             const dy = whaleY - hoveredY
             const distance = Math.sqrt(dx * dx + dy * dy)
-            const curvature = distance * 0.15 // curved!
+            
+            const baseCurvature = Math.min(avgSpeed * 0.015, distance * 0.25)
+            const curvature = baseCurvature
+            
             const controlX = midX + (-dy / distance) * curvature
             const controlY = midY + (dx / distance) * curvature
             
             return (
               <path
                 key={`hover-${hoveredWhale.id}-${whale.id}`}
-                className="fluid"
                 d={`M ${hoveredX} ${hoveredY} Q ${controlX} ${controlY} ${whaleX} ${whaleY}`}
                 stroke={hoveredWhale.side === 'YES' ? '#10b981' : '#dc2626'}
                 strokeWidth="2"
@@ -754,7 +809,15 @@ export default function WhaleNetworkGraph({
                 key={whale.id}
                 position={positionsInitialized ? position : { x: 0, y: 0 }}
                 onDrag={(e, data) => positionsInitialized && handleWhaleDrag(whale, data)}
-                onStop={updatePositions}
+                onStop={() => {
+                  // Reset velocity when drag stops (лінії стають прямі!)
+                  setWhaleVelocities(prev => {
+                    const newVelocities = new Map(prev)
+                    newVelocities.set(whale.id, { vx: 0, vy: 0 })
+                    return newVelocities
+                  })
+                  updatePositions()
+                }}
               >
                 <div 
                   ref={(el) => {
