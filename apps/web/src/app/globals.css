@@ -341,5 +341,39 @@
   .chart-line-glow {
     animation: chart-glow 2s ease-in-out infinite;
   }
+
+  /* Blockchain terminal animations */
+  @keyframes fade-in-down {
+    0% {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-down {
+    animation: fade-in-down 0.5s ease-out;
+  }
+
+  /* Terminal scroll styling */
+  .terminal-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .terminal-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .terminal-scroll::-webkit-scrollbar-thumb {
+    background: rgba(34, 197, 94, 0.3);
+    border-radius: 3px;
+  }
+
+  .terminal-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(34, 197, 94, 0.5);
+  }
 }
 
