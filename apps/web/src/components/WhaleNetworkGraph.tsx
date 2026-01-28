@@ -288,8 +288,8 @@ export default function WhaleNetworkGraph({
         </div>
       </div>
 
-      {/* SVG Overlay for Connection Lines */}
-      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10, backgroundColor: 'rgba(255,0,0,0.1)' }}>
+      {/* SVG Overlay for Connection Lines - BEHIND bubbles! */}
+      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 1, backgroundColor: 'rgba(255,0,0,0.1)', border: '5px solid yellow' }}>
         {/* DEBUG INFO */}
         <text x="10" y="20" fill="white" fontSize="16" fontWeight="bold">
           Hub: ({marketHub.x.toFixed(0)}, {marketHub.y.toFixed(0)})
@@ -298,10 +298,13 @@ export default function WhaleNetworkGraph({
           Whales: {allWhales.filter(w => w.x > 0).length} / {allWhales.length} positioned
         </text>
         
-        {/* HARDCODED TEST LINES - CENTER SCREEN! */}
-        <line x1="700" y1="400" x2="1200" y2="400" stroke="red" strokeWidth="5" opacity="1" />
-        <line x1="950" y1="200" x2="950" y2="600" stroke="yellow" strokeWidth="5" opacity="1" />
-        <circle cx="950" cy="400" r="100" stroke="green" strokeWidth="5" fill="none" opacity="1" />
+        {/* HARDCODED TEST LINES - CENTER SCREEN - ULTRA THICK! */}
+        <line x1="700" y1="400" x2="1200" y2="400" stroke="red" strokeWidth="20" opacity="1" />
+        <line x1="950" y1="200" x2="950" y2="600" stroke="yellow" strokeWidth="20" opacity="1" />
+        <circle cx="950" cy="400" r="100" stroke="green" strokeWidth="10" fill="none" opacity="1" />
+        
+        {/* SVG FULL SCREEN BORDER - to see SVG bounds */}
+        <rect x="0" y="0" width="100%" height="100%" stroke="cyan" strokeWidth="3" fill="none" opacity="0.5" />
         
         <text x="10" y="70" fill="yellow" fontSize="16" fontWeight="bold">
           ⚠️ If you see RED + (center), SVG WORKS!
@@ -317,7 +320,7 @@ export default function WhaleNetworkGraph({
               marketHub: x={marketHub.x.toFixed(0)}, y={marketHub.y.toFixed(0)}
             </text>
             
-            {/* TEST LINE from Hub to first whale - SHOULD be visible! */}
+            {/* TEST LINE from Hub to first whale - ULTRA THICK! */}
             {allWhales[0].x > 0 && marketHub.x > 0 && (
               <>
                 <line
@@ -326,7 +329,7 @@ export default function WhaleNetworkGraph({
                   x2={allWhales[0].x}
                   y2={allWhales[0].y}
                   stroke="magenta"
-                  strokeWidth="10"
+                  strokeWidth="25"
                   opacity="1"
                 />
                 <text x="10" y="135" fill="magenta" fontSize="14" fontWeight="bold">
@@ -337,7 +340,7 @@ export default function WhaleNetworkGraph({
           </>
         )}
         
-        {/* Hub-Spoke Lines: from Market Hub to each whale */}
+        {/* Hub-Spoke Lines: from Market Hub to each whale - THICK! */}
         {marketHub.x > 0 && allWhales.map((whale) => (
           whale.x > 0 && (
             <line
@@ -347,8 +350,8 @@ export default function WhaleNetworkGraph({
               x2={whale.x}
               y2={whale.y}
               stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
-              strokeWidth="3"
-              opacity="0.7"
+              strokeWidth="8"
+              opacity="0.8"
             />
           )
         ))}
@@ -390,8 +393,8 @@ export default function WhaleNetworkGraph({
         )}
       </svg>
 
-      {/* Network Container */}
-      <div className="fixed inset-0" style={{ zIndex: 5 }}>
+      {/* Network Container - ABOVE SVG lines! */}
+      <div className="fixed inset-0" style={{ zIndex: 10 }}>
         {/* MARKET HUB - Center */}
         <Draggable 
           defaultPosition={{ 
