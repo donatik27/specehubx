@@ -27,9 +27,9 @@ interface TierConfig {
 }
 
 const TIER_CONFIGS: TierConfig[] = [
-  { name: 'S', radiusMin: 350, radiusMax: 400, color: '#fbbf24' }, // Gold - close to Hub
-  { name: 'A', radiusMin: 500, radiusMax: 550, color: '#a78bfa' }, // Purple - middle
-  { name: 'B', radiusMin: 650, radiusMax: 700, color: '#60a5fa' }, // Blue - outer
+  { name: 'S', radiusMin: 550, radiusMax: 600, color: '#fbbf24' }, // Gold - elite whales
+  { name: 'A', radiusMin: 650, radiusMax: 700, color: '#a78bfa' }, // Purple - mid tier
+  { name: 'B', radiusMin: 700, radiusMax: 850, color: '#60a5fa' }, // Blue - outer ring
 ]
 
 interface MarketHub {
@@ -388,8 +388,8 @@ export default function WhaleNetworkGraph({
       const angleStep = (2 * Math.PI) / currentWhales.length
       const angle = index * angleStep
       
-      const radiusOffset = (Math.random() - 0.5) * (tierConfig.radiusMax - tierConfig.radiusMin)
-      const angleOffset = (Math.random() - 0.5) * 0.5
+      const radiusOffset = (Math.random() - 0.5) * (tierConfig.radiusMax - tierConfig.radiusMin) * 2 // 2x chaos!
+      const angleOffset = (Math.random() - 0.5) * 1.0 // More angular chaos!
       const finalRadius = baseRadius + radiusOffset
       const finalAngle = angle + angleOffset
       
@@ -542,28 +542,7 @@ export default function WhaleNetworkGraph({
           ))
         )}
 
-        {/* HOVER MESH: Bright connections when hovering a whale */}
-        {hoveredWhaleId && (() => {
-          const hoveredWhale = allWhales.find(w => w.id === hoveredWhaleId)
-          if (!hoveredWhale || hoveredWhale.x === 0) return null
-          
-          const sameTypeWhales = allWhales.filter(w => 
-            w.side === hoveredWhale.side && w.id !== hoveredWhale.id && w.x > 0
-          )
-          
-          return sameTypeWhales.map(whale => (
-            <line
-              key={`hover-${hoveredWhale.id}-${whale.id}`}
-              x1={hoveredWhale.x}
-              y1={hoveredWhale.y}
-              x2={whale.x}
-              y2={whale.y}
-              stroke={hoveredWhale.side === 'YES' ? '#10b981' : '#dc2626'}
-              strokeWidth="2"
-              opacity="0.8"
-            />
-          ))
-        })()}
+        {/* HOVER MESH: REMOVED - було забагато ліній! */}
       </svg>
 
       {/* Network Container - ABOVE SVG lines! */}
@@ -636,11 +615,13 @@ export default function WhaleNetworkGraph({
                   onMouseLeave={() => setHoveredWhaleId(null)}
                 >
                   <motion.div
-                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-4 hover:border-white cursor-pointer"
+                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg hover:border-white cursor-pointer"
                     style={{
                       background: 'rgba(0, 0, 0, 0.85)',
                       borderColor: whale.color,
-                      boxShadow: `0 0 20px ${whale.color}80`
+                      borderWidth: whale.tier === 'S' ? '4px' : whale.tier === 'A' ? '3px' : '2px',
+                      borderStyle: 'solid',
+                      boxShadow: `0 0 ${whale.tier === 'S' ? '30' : whale.tier === 'A' ? '20' : '15'}px ${whale.color}${whale.tier === 'S' ? 'CC' : '80'}`
                     }}
                     whileHover={{ scale: 1.1, borderColor: '#ffffff' }}
                     whileTap={{ scale: 0.95 }}
@@ -651,6 +632,19 @@ export default function WhaleNetworkGraph({
                     }}
                     onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
                   >
+                    {/* TIER BADGE - Top Right Corner */}
+                    <div 
+                      className="absolute -top-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shadow-lg"
+                      style={{
+                        background: whale.tier === 'S' ? '#fbbf24' : whale.tier === 'A' ? '#a78bfa' : '#60a5fa',
+                        color: '#000',
+                        border: '2px solid rgba(0,0,0,0.8)',
+                        boxShadow: `0 0 10px ${whale.tier === 'S' ? '#fbbf24' : whale.tier === 'A' ? '#a78bfa' : '#60a5fa'}80`
+                      }}
+                    >
+                      {whale.tier}
+                    </div>
+                    
                     <div className="text-center text-white text-xs font-bold">
                       <div className="text-[10px] opacity-80">
                         {whale.wallet.slice(0, 4)}...{whale.wallet.slice(-4)}
