@@ -324,9 +324,16 @@ export default function WhaleNetworkGraph({
       </svg>
 
       {/* Network Container */}
-      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 5 }}>
+      <div className="fixed inset-0" style={{ zIndex: 5 }}>
         {/* MARKET HUB - Center */}
-        <Draggable onStop={updatePositions}>
+        <Draggable 
+          defaultPosition={{ 
+            x: typeof window !== 'undefined' ? window.innerWidth / 2 - 125 : 0, 
+            y: typeof window !== 'undefined' ? window.innerHeight / 2 - 125 : 0 
+          }}
+          onStop={updatePositions}
+          bounds="parent"
+        >
           <div 
             ref={hubRef}
             className="absolute cursor-move group"
@@ -359,9 +366,9 @@ export default function WhaleNetworkGraph({
         {/* ALL WHALES - Circular layout */}
         <div className="relative" style={{ width: '100%', height: '100%' }}>
           {allWhales.map((whale, index) => {
-            // Calculate position in circle
-            const centerX = 0
-            const centerY = 0
+            // Calculate position in circle around screen center
+            const screenCenterX = typeof window !== 'undefined' ? window.innerWidth / 2 : 800
+            const screenCenterY = typeof window !== 'undefined' ? window.innerHeight / 2 : 400
             const radius = 350
             const angleStep = (2 * Math.PI) / allWhales.length
             const angle = index * angleStep
@@ -370,14 +377,15 @@ export default function WhaleNetworkGraph({
             const angleOffset = (Math.random() - 0.5) * 0.3
             const finalRadius = radius + radiusOffset
             const finalAngle = angle + angleOffset
-            const x = centerX + Math.cos(finalAngle) * finalRadius
-            const y = centerY + Math.sin(finalAngle) * finalRadius
+            const x = screenCenterX + Math.cos(finalAngle) * finalRadius - whale.size / 2
+            const y = screenCenterY + Math.sin(finalAngle) * finalRadius - whale.size / 2
 
             return (
               <Draggable 
                 key={whale.id}
                 defaultPosition={{ x, y }}
                 onStop={updatePositions}
+                bounds="parent"
               >
                 <div 
                   ref={(el) => {
@@ -386,9 +394,7 @@ export default function WhaleNetworkGraph({
                   className="absolute cursor-move group"
                   style={{ 
                     width: `${whale.size}px`, 
-                    height: `${whale.size}px`,
-                    marginLeft: `-${whale.size / 2}px`,
-                    marginTop: `-${whale.size / 2}px`
+                    height: `${whale.size}px`
                   }}
                 >
                   <div
