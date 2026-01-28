@@ -157,34 +157,80 @@ export default function WhaleNetworkGraph({
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
 
-      // Create whale nodes with initial positioning
-      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data], index) => {
-        // Determine dominant side
+      // Create whale nodes and separate by side
+      const whaleNodesData = filteredWallets.map(([wallet, data]) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
-        // Determine tier based on amount
         let tier = 'B'
+        let tierIndex = 3
         let color = side === 'YES' ? '#22c55e' : '#ef4444'
         
         if (data.amount > 10000) {
           tier = 'S'
-          color = side === 'YES' ? '#10b981' : '#dc2626' // Brighter for S tier
+          tierIndex = 1
+          color = side === 'YES' ? '#10b981' : '#dc2626'
         } else if (data.amount > 1000) {
           tier = 'A'
+          tierIndex = 2
           color = side === 'YES' ? '#16a34a' : '#e11d48'
         }
         
         return {
-          id: wallet,
-          name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
-          val: data.amount,
-          color,
+          wallet,
+          data,
           side,
-          amount: data.amount,
-          // Initial positioning hint for force simulation
-          fx: undefined, // Let force simulation position them
-          fy: undefined
+          tier,
+          tierIndex,
+          color,
+          amount: data.amount
         }
+      })
+      
+      // Separate and sort by side and amount
+      const yesWhales = whaleNodesData.filter(w => w.side === 'YES').sort((a, b) => b.amount - a.amount)
+      const noWhales = whaleNodesData.filter(w => w.side === 'NO').sort((a, b) => b.amount - a.amount)
+      
+      // CIRCULAR LAYOUT ALGORITHM
+      const whaleNodes: GraphNode[] = []
+      
+      // Layout YES whales (LEFT semi-circle: 90° to 270°)
+      yesWhales.forEach((whale, index) => {
+        const ringRadius = 150 + (whale.tierIndex * 180) // Inner ring = S-tier, outer = B-tier
+        const angleStart = Math.PI / 2  // 90° (top)
+        const angleEnd = (3 * Math.PI) / 2 // 270° (bottom)
+        const angleRange = angleEnd - angleStart
+        const angle = angleStart + (angleRange * (index / Math.max(yesWhales.length - 1, 1)))
+        
+        whaleNodes.push({
+          id: whale.wallet,
+          name: `${whale.wallet.slice(0, 6)}...${whale.wallet.slice(-4)}`,
+          val: whale.amount,
+          color: whale.color,
+          side: 'YES',
+          amount: whale.amount,
+          fx: Math.cos(angle) * ringRadius,
+          fy: Math.sin(angle) * ringRadius
+        })
+      })
+      
+      // Layout NO whales (RIGHT semi-circle: -90° to 90°)
+      noWhales.forEach((whale, index) => {
+        const ringRadius = 150 + (whale.tierIndex * 180)
+        const angleStart = -Math.PI / 2 // -90° (top)
+        const angleEnd = Math.PI / 2    // 90° (bottom)
+        const angleRange = angleEnd - angleStart
+        const angle = angleStart + (angleRange * (index / Math.max(noWhales.length - 1, 1)))
+        
+        whaleNodes.push({
+          id: whale.wallet,
+          name: `${whale.wallet.slice(0, 6)}...${whale.wallet.slice(-4)}`,
+          val: whale.amount,
+          color: whale.color,
+          side: 'NO',
+          amount: whale.amount,
+          fx: Math.cos(angle) * ringRadius,
+          fy: Math.sin(angle) * ringRadius
+        })
       })
 
       // Calculate max whale size for hub sizing
@@ -208,12 +254,12 @@ export default function WhaleNetworkGraph({
       // Combine all nodes (hub first for rendering order)
       const nodes = [marketHub, ...whaleNodes]
 
-      // Build links - HIERARCHICAL STRUCTURE
+      // Build links - CIRCULAR STRUCTURE
       const links: GraphLink[] = []
       
-      // Separate YES and NO whales (exclude hub)
-      const yesNodes = whaleNodes.filter(n => n.side === 'YES').sort((a, b) => b.amount - a.amount)
-      const noNodes = whaleNodes.filter(n => n.side === 'NO').sort((a, b) => b.amount - a.amount)
+      // Get YES and NO nodes (already sorted from above)
+      const yesNodes = whaleNodes.filter(n => n.side === 'YES')
+      const noNodes = whaleNodes.filter(n => n.side === 'NO')
 
       // TIER 1: Connect MARKET HUB to all S-tier whales (strongest connections)
       const sTierWhales = whaleNodes.filter(n => n.amount > 10000)
@@ -416,13 +462,11 @@ export default function WhaleNetworkGraph({
           onNodeHover={(node: any) => {
             document.body.style.cursor = node ? 'pointer' : 'default'
           }}
-          enableNodeDrag={true}
+          enableNodeDrag={false} // Disable drag to keep circular layout
           enableZoomInteraction={true}
           enablePanInteraction={true}
-          cooldownTicks={150}
-          d3VelocityDecay={0.2}
-          d3AlphaDecay={0.01}
-          warmupTicks={100}
+          cooldownTicks={0} // No simulation needed - we have fixed positions
+          warmupTicks={0}
         />
       </div>
     </div>
