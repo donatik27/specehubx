@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
-import Draggable from 'react-draggable'
+import Draggable, { DraggableData, DraggableEvent } from 'react-draggable'
 
 interface WhaleBubble {
   id: string // wallet address
@@ -11,6 +11,8 @@ interface WhaleBubble {
   side: 'YES' | 'NO'
   color: string
   size: number // pixel size for bubble
+  x: number // position x for connections
+  y: number // position y for connections
 }
 
 interface WhaleNetworkGraphProps {
@@ -27,6 +29,7 @@ export default function WhaleNetworkGraph({
   const [noWhales, setNoWhales] = useState<WhaleBubble[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const fetchWhaleNetwork = useCallback(async () => {
     try {
@@ -134,7 +137,9 @@ export default function WhaleNetworkGraph({
           amount: data.amount,
           side,
           color,
-          size: Math.round(size)
+          size: Math.round(size),
+          x: 0, // Will be set after render
+          y: 0  // Will be set after render
         }
       })
 
@@ -157,6 +162,44 @@ export default function WhaleNetworkGraph({
   useEffect(() => {
     fetchWhaleNetwork()
   }, [fetchWhaleNetwork])
+
+  // Initialize positions after first render
+  useEffect(() => {
+    if (!containerRef.current || yesWhales.length === 0 || yesWhales[0].x !== 0) return
+    
+    // Get positions from DOM
+    const updatePositions = () => {
+      const yesElements = containerRef.current?.querySelectorAll('[data-whale-yes]')
+      const noElements = containerRef.current?.querySelectorAll('[data-whale-no]')
+      
+      if (yesElements) {
+        const updatedYes = [...yesWhales]
+        yesElements.forEach((el, idx) => {
+          const rect = el.getBoundingClientRect()
+          if (updatedYes[idx]) {
+            updatedYes[idx].x = rect.left + rect.width / 2
+            updatedYes[idx].y = rect.top + rect.height / 2
+          }
+        })
+        setYesWhales(updatedYes)
+      }
+      
+      if (noElements) {
+        const updatedNo = [...noWhales]
+        noElements.forEach((el, idx) => {
+          const rect = el.getBoundingClientRect()
+          if (updatedNo[idx]) {
+            updatedNo[idx].x = rect.left + rect.width / 2
+            updatedNo[idx].y = rect.top + rect.height / 2
+          }
+        })
+        setNoWhales(updatedNo)
+      }
+    }
+    
+    // Delay to let DOM settle
+    setTimeout(updatePositions, 100)
+  }, [yesWhales.length, noWhales.length])
 
   if (loading) {
     return (
@@ -185,8 +228,25 @@ export default function WhaleNetworkGraph({
       : `$${(marketInfo.volume / 1000).toFixed(0)}K`
     : '$0'
 
+  // Update whale position when dragged
+  const handleWhaleDrag = (side: 'YES' | 'NO', whaleId: string, data: DraggableData) => {
+    if (side === 'YES') {
+      setYesWhales(prev => prev.map(w => 
+        w.id === whaleId 
+          ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
+          : w
+      ))
+    } else {
+      setNoWhales(prev => prev.map(w => 
+        w.id === whaleId 
+          ? { ...w, x: w.x + data.deltaX, y: w.y + data.deltaY }
+          : w
+      ))
+    }
+  }
+
   return (
-    <div className="fixed inset-0 bg-black overflow-auto">
+    <div ref={containerRef} className="fixed inset-0 bg-black overflow-auto">
       {/* Floating Stats (Bottom Left) */}
       <div className="fixed bottom-4 left-4 z-40 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 px-4 py-2">
         <div className="text-xs font-mono text-muted-foreground">
@@ -196,7 +256,42 @@ export default function WhaleNetworkGraph({
         </div>
       </div>
 
-      <div className="min-h-screen p-8">
+      {/* SVG Overlay for Connection Lines */}
+      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 1 }}>
+        {/* YES Whale Connections (Green) */}
+        {yesWhales.length > 1 && yesWhales.map((whale1, i) => 
+          yesWhales.slice(i + 1).map((whale2, j) => (
+            <line
+              key={`yes-${i}-${j}`}
+              x1={whale1.x}
+              y1={whale1.y}
+              x2={whale2.x}
+              y2={whale2.y}
+              stroke="#22c55e"
+              strokeWidth="1"
+              opacity="0.2"
+            />
+          ))
+        )}
+        
+        {/* NO Whale Connections (Red) */}
+        {noWhales.length > 1 && noWhales.map((whale1, i) => 
+          noWhales.slice(i + 1).map((whale2, j) => (
+            <line
+              key={`no-${i}-${j}`}
+              x1={whale1.x}
+              y1={whale1.y}
+              x2={whale2.x}
+              y2={whale2.y}
+              stroke="#ef4444"
+              strokeWidth="1"
+              opacity="0.2"
+            />
+          ))
+        )}
+      </svg>
+
+      <div className="min-h-screen p-8" style={{ position: 'relative', zIndex: 2 }}>
         {/* MARKET HUB - Top Center */}
         <div className="flex justify-center mb-12">
           <Draggable>
@@ -243,11 +338,15 @@ export default function WhaleNetworkGraph({
             </div>
 
             <div className="flex flex-wrap gap-4 justify-center">
-              {yesWhales.map((whale) => (
-                <Draggable key={whale.id}>
+              {yesWhales.map((whale, idx) => (
+                <Draggable 
+                  key={whale.id}
+                  onDrag={(e, data) => handleWhaleDrag('YES', whale.id, data)}
+                >
                   <div 
                     className="relative cursor-move group"
                     style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
+                    data-whale-yes={idx}
                   >
                     <div
                       className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
@@ -298,11 +397,15 @@ export default function WhaleNetworkGraph({
             </div>
 
             <div className="flex flex-wrap gap-4 justify-center">
-              {noWhales.map((whale) => (
-                <Draggable key={whale.id}>
+              {noWhales.map((whale, idx) => (
+                <Draggable 
+                  key={whale.id}
+                  onDrag={(e, data) => handleWhaleDrag('NO', whale.id, data)}
+                >
                   <div 
                     className="relative cursor-move group"
                     style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
+                    data-whale-no={idx}
                   >
                     <div
                       className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
