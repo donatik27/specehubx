@@ -80,13 +80,22 @@ export default function WhaleNetworkGraph({
       setLoading(true)
       setError(null)
 
-      // Step 1: Fetch market info for hub
-      const marketInfoResponse = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`)
-      const marketInfo = await marketInfoResponse.json()
+      // Step 1: Fetch market info for hub (with fallback)
+      let marketTitle = 'Market'
+      let marketVolume = 0
       
-      const marketImage = marketInfo.image || marketInfo.icon || ''
-      const marketTitle = marketInfo.question || 'Market'
-      const marketVolume = parseFloat(marketInfo.volume || marketInfo.volumeNum || '0')
+      try {
+        const marketInfoResponse = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`, {
+          cache: 'no-store'
+        })
+        if (marketInfoResponse.ok) {
+          const marketInfo = await marketInfoResponse.json()
+          marketTitle = marketInfo.question || 'Market'
+          marketVolume = parseFloat(marketInfo.volume || marketInfo.volumeNum || '0')
+        }
+      } catch (err) {
+        console.warn('[WhaleNetworkGraph] Failed to fetch market info, using fallback:', err)
+      }
 
       // Step 2: Fetch all trades for this market from our API proxy
       const response = await fetch(`/api/market-trades?market=${marketId}&limit=1000`)
