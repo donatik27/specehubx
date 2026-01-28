@@ -5,6 +5,7 @@ import { Loader2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
 import { motion } from 'framer-motion'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
+import * as d3 from 'd3-force'
 
 type TierType = 'S' | 'A' | 'B'
 
@@ -91,6 +92,9 @@ export default function WhaleNetworkGraph({
   
   const hubRef = useRef<HTMLDivElement>(null)
   const whaleRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  
+  // D3 Force Simulation (Arkham-style! 🔥)
+  const simulationRef = useRef<d3.Simulation<any, any> | null>(null)
 
   const fetchWhaleNetwork = useCallback(async () => {
     try {
@@ -289,26 +293,27 @@ export default function WhaleNetworkGraph({
     console.log('📊 Positions updated!')
   }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
-  // Handle whale drag - moves entire tier cluster with ROPE/ELASTIC effect!
+  // Handle whale drag - D3 FORCE-BASED (Arkham-style! 🔥)
   const handleWhaleDrag = useCallback((whale: WhaleBubble, data: DraggableData) => {
+    if (!simulationRef.current) return
+    
     // Track dragging state (для hover persistence!)
     setIsDragging(true)
     
-    // Get all current whales from state (yesWhales + noWhales)
-    const currentWhales = [...yesWhales, ...noWhales]
-    
-    const now = Date.now()
-    const oldPos = whalePositions.get(whale.id) || { x: 0, y: 0 }
-    const deltaX = data.x - oldPos.x
-    const deltaY = data.y - oldPos.y
+    // Find the node in D3 simulation
+    const node = simulationRef.current.nodes().find((n: any) => n.id === whale.id)
+    if (!node) return
     
     // Calculate velocity for fluid lines! 🌊
+    const now = Date.now()
     const lastPos = lastPositionsRef.current.get(whale.id)
     if (lastPos) {
       const dt = (now - lastPos.timestamp) / 1000 // seconds
       if (dt > 0) {
-        const vx = (data.x - lastPos.x) / dt
-        const vy = (data.y - lastPos.y) / dt
+        const centerX = data.x + whale.size / 2
+        const centerY = data.y + whale.size / 2
+        const vx = (centerX - lastPos.x) / dt
+        const vy = (centerY - lastPos.y) / dt
         
         setWhaleVelocities(prev => {
           const newVelocities = new Map(prev)
@@ -319,100 +324,35 @@ export default function WhaleNetworkGraph({
     }
     
     // Save current position for next velocity calc
-    lastPositionsRef.current.set(whale.id, { x: data.x, y: data.y, timestamp: now })
+    const centerX = data.x + whale.size / 2
+    const centerY = data.y + whale.size / 2
+    lastPositionsRef.current.set(whale.id, { x: centerX, y: centerY, timestamp: now })
     
-    // Update dragged whale INSTANTLY
-    setWhalePositions(prev => {
-      const newPositions = new Map(prev)
-      newPositions.set(whale.id, { x: data.x, y: data.y })
-      return newPositions
-    })
+    // Update D3 node fixed position (D3 will handle the rest! 🔥)
+    node.fx = centerX
+    node.fy = centerY
     
-    // Get cluster followers
-    const sameCluster = currentWhales.filter(w => 
-      w.tier === whale.tier && 
-      w.side === whale.side && 
-      w.id !== whale.id
-    )
-    
-    // Update followers with DISTANCE-BASED attenuation (розтягування! 🕸️)
-    sameCluster.forEach((w, index) => {
-      // RANDOM delay (20-60ms) - не синхронно!
-      const baseDelay = index * 25
-      const randomDelayOffset = Math.random() * 35 // ±35ms chaos!
-      const delay = baseDelay + randomDelayOffset
-      
-      // Get current positions for distance calculation
-      const followerPos = whalePositions.get(w.id) || { x: 0, y: 0 }
-      const draggedPos = data // Current dragged position
-      
-      // Calculate REAL distance between dragged whale and follower
-      const dx = followerPos.x - draggedPos.x
-      const dy = followerPos.y - draggedPos.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-      
-      // Strength ЗАТУХАЄ з відстанню! 📏
-      // distance = 0px    → strength = 1.0 (100%) - близько!
-      // distance = 600px  → strength = 0.5 (50%) - середньо!
-      // distance = 1200px → strength = 0.1 (10% мін) - далеко!
-      // distance > 1200px → strength = 0.1 (10% мін) - дуже далеко!
-      const maxDistance = 1200 // Затухає на 1200px (×2 більше!)
-      const minStrength = 0.1 // Мінімум 10% - ВСІ рухаються! ✅
-      const strength = Math.max(minStrength, 1 - distance / maxDistance)
-      
-      // Lerp factor for smoothness (СИЛЬНІША інерція! 🎯)
-      const lerpFactor = 0.5 + Math.random() * 0.2 // 50-70% (було 10-15%)
-      
-      // Combined: Distance-based + Lerp!
-      const movementFactor = strength * lerpFactor
-      
-      setTimeout(() => {
-        setWhalePositions(prev => {
-          const newPositions = new Map(prev)
-          const wPos = prev.get(w.id) || { x: 0, y: 0 }
-          newPositions.set(w.id, {
-            x: wPos.x + deltaX * movementFactor, // Чим далі = тим менше! 📏
-            y: wPos.y + deltaY * movementFactor
-          })
-          return newPositions
-        })
-      }, delay)
-    })
-    
-    // Update line positions real-time
-    updatePositions()
-  }, [yesWhales, noWhales, whalePositions, updatePositions])
+    // Reheat simulation (make it active again!)
+    simulationRef.current.alphaTarget(0.3).restart()
+  }, [])
 
-  // Handle hub drag - moves ALL whales!
+  // Handle hub drag - D3 FORCE-BASED (Arkham-style! 🔥)
   const handleHubDrag = useCallback((data: DraggableData) => {
-    // Get all current whales from state
-    const currentWhales = [...yesWhales, ...noWhales]
+    if (!simulationRef.current) return
     
-    setWhalePositions(prev => {
-      const newPositions = new Map(prev)
-      
-      // Calculate delta from old hub position
-      const deltaX = data.x - hubPosition.x
-      const deltaY = data.y - hubPosition.y
-      
-      // Update ALL whales!
-      currentWhales.forEach(w => {
-        const wPos = prev.get(w.id) || { x: 0, y: 0 }
-        newPositions.set(w.id, {
-          x: wPos.x + deltaX,
-          y: wPos.y + deltaY
-        })
-      })
-      
-      return newPositions
-    })
+    // Find the hub node in D3 simulation
+    const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
+    if (!hubNode) return
     
-    // Update hub position
-    setHubPosition({ x: data.x, y: data.y })
+    // Update D3 hub node fixed position
+    const centerX = data.x + 125 // Hub size = 250px, center = 125px
+    const centerY = data.y + 125
+    hubNode.fx = centerX
+    hubNode.fy = centerY
     
-    // Update line positions real-time
-    updatePositions()
-  }, [yesWhales, noWhales, hubPosition, updatePositions])
+    // Reheat simulation (all whales will follow through links! 🔥)
+    simulationRef.current.alphaTarget(0.3).restart()
+  }, [])
 
   useEffect(() => {
     fetchWhaleNetwork()
@@ -478,6 +418,120 @@ export default function WhaleNetworkGraph({
       window.removeEventListener('resize', updatePositions)
     }
   }, [loading, updatePositions])
+
+  // 🔥 D3 FORCE SIMULATION (Arkham-style!) 🔥
+  useEffect(() => {
+    if (!positionsInitialized || loading) return
+    if (yesWhales.length === 0 && noWhales.length === 0) return
+    
+    console.log('🚀 Initializing D3 Force Simulation!')
+    const currentWhales = [...yesWhales, ...noWhales]
+    
+    // Create D3 nodes (Hub + Whales)
+    const nodes: any[] = [
+      // Hub node
+      {
+        id: 'hub',
+        x: hubPosition.x + 125, // Center of hub (size=250px)
+        y: hubPosition.y + 125,
+        vx: 0,
+        vy: 0,
+        fx: null, // Fixed position (null = free to move)
+        fy: null,
+        type: 'hub',
+        radius: 125
+      },
+      // Whale nodes
+      ...currentWhales.map(whale => {
+        const pos = whalePositions.get(whale.id) || { x: 0, y: 0 }
+        return {
+          id: whale.id,
+          x: pos.x + whale.size / 2, // Center of whale
+          y: pos.y + whale.size / 2,
+          vx: 0,
+          vy: 0,
+          fx: null,
+          fy: null,
+          type: 'whale',
+          whale, // Store whale data
+          radius: whale.size / 2
+        }
+      })
+    ]
+    
+    // Create D3 links (Hub → Whales)
+    const links = currentWhales.map(whale => ({
+      source: 'hub',
+      target: whale.id,
+      distance: (() => {
+        // Distance based on tier!
+        const tierConfig = TIER_CONFIGS.find(t => t.name === whale.tier) || TIER_CONFIGS[2]
+        return (tierConfig.radiusMin + tierConfig.radiusMax) / 2
+      })()
+    }))
+    
+    console.log(`📊 D3 Setup: ${nodes.length} nodes, ${links.length} links`)
+    
+    // Create D3 Force Simulation
+    const simulation = d3.forceSimulation(nodes)
+      // Link force (Hub ↔ Whales) - Spring-like connection!
+      .force('link', d3.forceLink(links)
+        .id((d: any) => d.id)
+        .distance((d: any) => d.distance) // Tier-based distance!
+        .strength(0.5) // Spring strength (0.5 = medium)
+      )
+      // Collision force - Prevent overlapping!
+      .force('collision', d3.forceCollide()
+        .radius((d: any) => d.radius + 10) // Bubble radius + padding
+        .strength(0.7) // Strong collision avoidance
+      )
+      // Many-body force (charge) - Whales repel each other!
+      .force('charge', d3.forceManyBody()
+        .strength(-100) // Negative = repulsion
+        .distanceMax(500) // Max distance for force
+      )
+      // Center force - Keep graph centered on screen!
+      .force('center', d3.forceCenter(
+        window.innerWidth / 2,
+        window.innerHeight / 2
+      ))
+      // Tick handler - Update React state from D3 positions!
+      .on('tick', () => {
+        // Update Hub position
+        const hubNode = nodes.find(n => n.id === 'hub')
+        if (hubNode) {
+          setHubPosition({
+            x: hubNode.x - 125, // Convert center to top-left
+            y: hubNode.y - 125
+          })
+        }
+        
+        // Update whale positions
+        setWhalePositions(prev => {
+          const newPositions = new Map(prev)
+          currentWhales.forEach(whale => {
+            const node = nodes.find(n => n.id === whale.id)
+            if (node) {
+              newPositions.set(whale.id, {
+                x: node.x - whale.size / 2, // Convert center to top-left
+                y: node.y - whale.size / 2
+              })
+            }
+          })
+          return newPositions
+        })
+      })
+    
+    simulationRef.current = simulation
+    console.log('✅ D3 Simulation started!')
+    
+    // Cleanup
+    return () => {
+      console.log('🛑 Stopping D3 simulation')
+      simulation.stop()
+      simulationRef.current = null
+    }
+  }, [positionsInitialized, loading, yesWhales, noWhales, hubPosition, whalePositions])
 
   // TOP 5 whales for subtle mesh network (must be before early returns!)
   const allWhales = useMemo(() => [...yesWhales, ...noWhales], [yesWhales, noWhales])
@@ -793,7 +847,17 @@ export default function WhaleNetworkGraph({
         <Draggable 
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
           onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
-          onStop={updatePositions}
+          onStop={() => {
+            // Release hub node & cool simulation (D3 force-based! 🔥)
+            if (simulationRef.current) {
+              const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
+              if (hubNode) {
+                hubNode.fx = null
+                hubNode.fy = null
+              }
+              simulationRef.current.alphaTarget(0) // Cool simulation
+            }
+          }}
         >
           <div 
             ref={hubRef}
@@ -849,7 +913,16 @@ export default function WhaleNetworkGraph({
                   })
                   // Reset drag state (hover can work again!)
                   setIsDragging(false)
-                  updatePositions()
+                  
+                  // Release whale node & cool simulation (D3 force-based! 🔥)
+                  if (simulationRef.current) {
+                    const node = simulationRef.current.nodes().find((n: any) => n.id === whale.id)
+                    if (node) {
+                      node.fx = null
+                      node.fy = null
+                    }
+                    simulationRef.current.alphaTarget(0) // Cool simulation
+                  }
                 }}
               >
                 <div 
