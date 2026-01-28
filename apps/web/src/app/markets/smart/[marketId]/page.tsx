@@ -462,9 +462,25 @@ export default function SmartMarketDetailPage() {
           const smartMarkets = await smartMarketsRes.json()
           const thisMarket = smartMarkets.find((m: any) => m.marketId === marketId)
           
+          console.log('🔍🔍🔍 MARKET FOUND:', !!thisMarket)
+          console.log('🔍🔍🔍 HAS TOP TRADERS:', !!thisMarket?.topTraders)
+          console.log('🔍🔍🔍 TOP TRADERS LENGTH:', thisMarket?.topTraders?.length)
+          
           if (thisMarket && thisMarket.topTraders && thisMarket.topTraders.length > 0) {
             // DEBUG: Log entire topTraders array
-            console.log('📊 TOP TRADERS FROM API:', JSON.stringify(thisMarket.topTraders, null, 2))
+            console.log('📊📊📊 TOP TRADERS FROM API:')
+            console.log(JSON.stringify(thisMarket.topTraders.slice(0, 3), null, 2))
+            
+            // Check first trader's data
+            const firstTrader = thisMarket.topTraders[0]
+            console.log('🔍 FIRST TRADER SAMPLE:', {
+              address: firstTrader.address,
+              entryPrice: firstTrader.entryPrice,
+              shares: firstTrader.shares,
+              side: firstTrader.side,
+              hasEntryPrice: 'entryPrice' in firstTrader,
+              hasShares: 'shares' in firstTrader
+            })
             
             // Fetch all traders to get real avatars
             const allTradersRes = await fetch('/api/traders')
