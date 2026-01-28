@@ -126,6 +126,9 @@ importers:
       react-force-graph-2d:
         specifier: ^1.29.0
         version: 1.29.0(react@18.3.1)
+      react-zoom-pan-pinch:
+        specifier: ^3.7.0
+        version: 3.7.0(react-dom@18.3.1)(react@18.3.1)
       recharts:
         specifier: ^2.10.3
         version: 2.15.4(react-dom@18.3.1)(react@18.3.1)
@@ -9029,6 +9032,17 @@ packages:
     peerDependenciesMeta:
       react-dom:
         optional: true
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+    dev: false
+
+  /react-zoom-pan-pinch@3.7.0(react-dom@18.3.1)(react@18.3.1):
+    resolution: {integrity: sha512-UmReVZ0TxlKzxSbYiAj+LeGRW8s8LraAFTXRAxzMYnNRgGPsxCudwZKVkjvGmjtx7SW/hZamt69NUmGf4xrkXA==}
+    engines: {node: '>=8', npm: '>=5'}
+    peerDependencies:
+      react: '*'
+      react-dom: '*'
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)

@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import Draggable, { DraggableData } from 'react-draggable'
 import { motion } from 'framer-motion'
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
 
 type TierType = 'S' | 'A' | 'B'
 
@@ -463,15 +464,63 @@ export default function WhaleNetworkGraph({
     : '$0'
 
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* Floating Stats (Bottom Left) */}
-      <div className="fixed bottom-4 left-4 z-40 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 px-4 py-2">
-        <div className="text-xs font-mono text-muted-foreground">
-          <span className="text-green-400 font-bold">{yesWhales.length}</span> YES •{' '}
-          <span className="text-red-400 font-bold">{noWhales.length}</span> NO •{' '}
-          <span className="text-purple-400 font-bold">{totalWhales}</span> total
-        </div>
-      </div>
+    <div className="fixed inset-0 bg-black overflow-visible">
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.3}
+        maxScale={3}
+        limitToBounds={false}
+        centerOnInit={true}
+        wheel={{ step: 0.1 }}
+        panning={{ disabled: false }}
+        doubleClick={{ disabled: true }}
+      >
+        {({ zoomIn, zoomOut, resetTransform }) => (
+          <>
+            {/* Zoom Controls (Top Right) */}
+            <div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+              <button
+                onClick={() => zoomIn()}
+                className="p-3 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 hover:border-purple-400 transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="w-5 h-5 text-purple-400" />
+              </button>
+              <button
+                onClick={() => zoomOut()}
+                className="p-3 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 hover:border-purple-400 transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="w-5 h-5 text-purple-400" />
+              </button>
+              <button
+                onClick={() => resetTransform()}
+                className="p-3 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 hover:border-purple-400 transition-colors"
+                title="Reset View"
+              >
+                <Maximize2 className="w-5 h-5 text-purple-400" />
+              </button>
+            </div>
+
+            {/* Floating Stats (Bottom Left) */}
+            <div className="fixed bottom-4 left-4 z-40 bg-black/80 backdrop-blur-sm pixel-border border-purple-500/40 px-4 py-2">
+              <div className="text-xs font-mono text-muted-foreground">
+                <span className="text-green-400 font-bold">{yesWhales.length}</span> YES •{' '}
+                <span className="text-red-400 font-bold">{noWhales.length}</span> NO •{' '}
+                <span className="text-purple-400 font-bold">{totalWhales}</span> total
+              </div>
+            </div>
+
+            <TransformComponent
+              wrapperStyle={{
+                width: '100%',
+                height: '100%',
+              }}
+              contentStyle={{
+                width: '100%',
+                height: '100%',
+              }}
+            >
 
       {/* SVG Overlay for Connection Lines - BEHIND bubbles! */}
       <svg 
@@ -486,11 +535,14 @@ export default function WhaleNetworkGraph({
           overflow: 'visible'
         }}
       >
-        {/* Smooth animation for all lines! */}
+        {/* Fluid spring animation for all lines! 🌊 */}
         <style>
           {`
-            line {
-              transition: all 0.15s ease-out;
+            path {
+              transition: d 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            path.fluid {
+              transition: d 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             }
           `}
         </style>
@@ -516,6 +568,7 @@ export default function WhaleNetworkGraph({
           return (
             <path
               key={`hub-${whale.id}`}
+              className="fluid"
               d={`M ${marketHub.x} ${marketHub.y} Q ${controlX} ${controlY} ${whale.x} ${whale.y}`}
               stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
               strokeWidth="2"
@@ -542,6 +595,7 @@ export default function WhaleNetworkGraph({
             return (
               <path
                 key={`top-yes-${whale1.id}-${whale2.id}`}
+                className="fluid"
                 d={`M ${whale1.x} ${whale1.y} Q ${controlX} ${controlY} ${whale2.x} ${whale2.y}`}
                 stroke="#10b981"
                 strokeWidth="1"
@@ -568,6 +622,7 @@ export default function WhaleNetworkGraph({
             return (
               <path
                 key={`top-no-${whale1.id}-${whale2.id}`}
+                className="fluid"
                 d={`M ${whale1.x} ${whale1.y} Q ${controlX} ${controlY} ${whale2.x} ${whale2.y}`}
                 stroke="#dc2626"
                 strokeWidth="1"
@@ -604,6 +659,7 @@ export default function WhaleNetworkGraph({
             return (
               <path
                 key={`hover-${hoveredWhale.id}-${whale.id}`}
+                className="fluid"
                 d={`M ${hoveredWhale.x} ${hoveredWhale.y} Q ${controlX} ${controlY} ${whale.x} ${whale.y}`}
                 stroke={hoveredWhale.side === 'YES' ? '#10b981' : '#dc2626'}
                 strokeWidth="2"
@@ -749,6 +805,10 @@ export default function WhaleNetworkGraph({
           })}
         </div>
       </div>
+            </TransformComponent>
+          </>
+        )}
+      </TransformWrapper>
     </div>
   )
 }
