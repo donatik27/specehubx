@@ -866,28 +866,34 @@ export default function WhaleNetworkGraph({
             style={{ width: '250px', height: '250px' }}
           >
             <div
-              className="absolute inset-0 rounded-full flex items-center justify-center shadow-2xl border-4 hover:border-purple-300 transition-all hover:scale-105"
+              className="absolute inset-0 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 hover:border-purple-300 transition-all hover:scale-105"
               style={{
-                background: 'rgba(0, 0, 0, 0.85)',
+                background: 'rgba(0, 0, 0, 0.95)',
                 borderColor: '#a855f7',
-                boxShadow: '0 0 30px rgba(168,85,247,0.6)'
+                boxShadow: '0 0 40px rgba(168,85,247,0.8)'
               }}
             >
-              <div className="text-center">
-                {marketInfo?.image && (
-                  <img 
-                    src={marketInfo.image} 
-                    alt="Market" 
-                    className="w-16 h-16 rounded-full mx-auto mb-2 object-cover"
-                  />
-                )}
-                <div className="text-white font-bold text-xl mb-1">🎯 HUB</div>
-                <div className="text-purple-200 text-xs mb-1 px-4 line-clamp-2">
-                  {marketInfo?.title || 'Market'}
+              {/* Market Image - Large & Prominent! */}
+              {marketInfo?.image ? (
+                <img 
+                  src={marketInfo.image} 
+                  alt="Market" 
+                  className="w-24 h-24 rounded-full mb-3 object-cover ring-4 ring-purple-500/50"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full mb-3 bg-purple-900 flex items-center justify-center ring-4 ring-purple-500/50">
+                  <span className="text-5xl">🎯</span>
                 </div>
-                <div className="text-green-400 text-2xl font-bold">{volumeText}</div>
-                <div className="text-purple-300 text-[10px]">Total Volume</div>
+              )}
+              
+              {/* Market Title */}
+              <div className="text-purple-200 text-[11px] mb-2 px-6 line-clamp-2 text-center leading-tight">
+                {marketInfo?.title || 'Market'}
               </div>
+              
+              {/* Volume - Big & Bold! */}
+              <div className="text-green-400 text-3xl font-black mb-1">{volumeText}</div>
+              <div className="text-purple-300 text-[9px] font-medium uppercase tracking-wider">Total Volume</div>
             </div>
             {/* Glow effect */}
             <div className="absolute inset-0 rounded-full bg-purple-500/20 blur-xl -z-10 group-hover:bg-purple-400/30 transition-all"></div>
