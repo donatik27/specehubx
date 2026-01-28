@@ -101,66 +101,44 @@ export default function WhaleNetworkGraph({
       setLoading(true)
       setError(null)
 
-      // Step 1: Fetch market info from Gamma API
-      let marketTitle = 'Market'
-      let marketVolume = 0
-      let marketImage = ''
-      
-      try {
-        console.log(`🔍 Fetching market info for: ${marketId}`)
-        const marketInfoResponse = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`, {
-          cache: 'no-store'
-        })
-        
-        if (marketInfoResponse.ok) {
-          const marketInfo = await marketInfoResponse.json()
-          console.log('📊 Market API Response:', marketInfo)
-          
-          // Title
-          marketTitle = marketInfo.question || marketInfo.title || 'Market'
-          
-          // Volume - try multiple fields!
-          const volumeRaw = marketInfo.volume || 
-                           marketInfo.volumeNum || 
-                           marketInfo.volume24hr ||
-                           marketInfo.volumeUSD ||
-                           marketInfo.totalVolume ||
-                           '0'
-          marketVolume = parseFloat(volumeRaw)
-          console.log(`💰 Volume: ${volumeRaw} → ${marketVolume}`)
-          
-          // Image - try multiple fields!
-          marketImage = marketInfo.image || 
-                       marketInfo.icon || 
-                       marketInfo.imageUrl ||
-                       marketInfo.image_url ||
-                       ''
-          console.log(`🖼️ Image URL: ${marketImage}`)
-          
-          if (!marketImage) {
-            console.warn('⚠️ No image found in API response!')
-          }
-          if (marketVolume === 0) {
-            console.warn('⚠️ Volume is 0 or not found in API response!')
-          }
-        } else {
-          console.error(`❌ Market API returned status: ${marketInfoResponse.status}`)
-        }
-      } catch (err) {
-        console.error('[WhaleNetworkGraph] Failed to fetch market info:', err)
-      }
-
-      // Step 2: Fetch trades
+      // Fetch trades AND market info from our proxy API! 🎯
+      console.log(`🔍 Fetching trades & market info for: ${marketId}`)
       const response = await fetch(`/api/market-trades?market=${marketId}&limit=1000`)
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data?.message || 'Failed to fetch trades')
+        throw new Error(data?.error || 'Failed to fetch trades')
+      }
+
+      // Extract market info from API response! ✅
+      const trades = data.trades || data // Backwards compatibility
+      const marketData = data.marketInfo
+      
+      let marketTitle = 'Market'
+      let marketVolume = 0
+      let marketImage = ''
+      
+      if (marketData) {
+        marketTitle = marketData.title || 'Market'
+        marketVolume = marketData.volume || 0
+        marketImage = marketData.image || ''
+        
+        console.log('📊 Market Info from API:', marketData)
+        console.log(`💰 Volume: $${marketVolume.toFixed(0)}`)
+        console.log(`🖼️ Image: ${marketImage}`)
+        
+        if (!marketImage) {
+          console.warn('⚠️ No image found in API response!')
+        }
+        if (marketVolume === 0) {
+          console.warn('⚠️ Volume is 0 or not found in API response!')
+        }
+      } else {
+        console.warn('⚠️ No marketInfo in API response!')
       }
       
-      const trades: any[] = Array.isArray(data) ? data : []
-      
-      if (trades.length === 0) {
+      // Validate trades array
+      if (!Array.isArray(trades) || trades.length === 0) {
         throw new Error('No trades available for this market yet')
       }
 

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     if (!marketResponse.ok) {
       console.error('[market-trades] ❌ Failed to fetch market info')
-      return NextResponse.json([])
+      return NextResponse.json({ trades: [], marketInfo: null })
     }
 
     const marketData = await marketResponse.json()
@@ -39,10 +39,19 @@ export async function GET(request: NextRequest) {
     
     if (!conditionId) {
       console.error('[market-trades] ❌ No conditionId found')
-      return NextResponse.json([])
+      return NextResponse.json({ trades: [], marketInfo: null })
     }
 
     console.log(`[market-trades] ✅ Found conditionId: ${conditionId}`)
+    
+    // Extract market info for Hub display! 🎯
+    const marketInfo = {
+      title: marketData.question || marketData.title || 'Market',
+      volume: parseFloat(marketData.volume || marketData.volumeNum || '0'),
+      image: marketData.image || marketData.icon || ''
+    }
+    console.log(`[market-trades] 📊 Market info: ${marketInfo.title}, volume: $${marketInfo.volume.toFixed(0)}`)
+    console.log(`[market-trades] 🖼️ Image: ${marketInfo.image}`)
 
     // Step 2: Fetch trades from PUBLIC Data API
     // This returns ALL historical trades, not just recent ones!
@@ -66,14 +75,14 @@ export async function GET(request: NextRequest) {
     if (!tradesResponse.ok) {
       const error = await tradesResponse.text()
       console.error('[market-trades] ❌ Data API failed:', tradesResponse.status, error)
-      return NextResponse.json([])
+      return NextResponse.json({ trades: [], marketInfo })
     }
 
     const trades = await tradesResponse.json()
     
     if (!Array.isArray(trades)) {
       console.error('[market-trades] ❌ Unexpected response format:', typeof trades)
-      return NextResponse.json([])
+      return NextResponse.json({ trades: [], marketInfo })
     }
 
     console.log(`[market-trades] 🎉 Got ${trades.length} REAL trades from Data API!`)
@@ -85,7 +94,8 @@ export async function GET(request: NextRequest) {
       return timeB - timeA
     })
     
-    return NextResponse.json(trades)
+    // Return both trades AND market info! 🎯
+    return NextResponse.json({ trades, marketInfo })
 
   } catch (error: any) {
     console.error('[market-trades] ❌ Error:', error)
