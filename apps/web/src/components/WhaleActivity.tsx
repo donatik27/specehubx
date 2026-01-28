@@ -184,7 +184,7 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {trades.length === 0 ? (
           <div className="text-center text-muted-foreground text-sm py-8">
             <p className="font-mono">&gt; NO_WHALE_ACTIVITY</p>
