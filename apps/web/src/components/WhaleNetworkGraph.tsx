@@ -474,27 +474,24 @@ export default function WhaleNetworkGraph({
     
     // Create D3 Force Simulation
     const simulation = d3.forceSimulation(nodes)
-      // Link force (Hub ↔ Whales) - Spring-like connection!
+      // Link force (Hub ↔ Whales) - WEAK spring (node stays where you drop!)
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
         .distance((d: any) => d.distance) // Tier-based distance!
-        .strength(0.5) // Spring strength (0.5 = medium)
+        .strength(0.05) // WEAK! (0.05 = node stays where dropped!)
       )
       // Collision force - Prevent overlapping!
       .force('collision', d3.forceCollide()
         .radius((d: any) => d.radius + 10) // Bubble radius + padding
         .strength(0.7) // Strong collision avoidance
       )
-      // Many-body force (charge) - Whales repel each other!
+      // Many-body force (charge) - WEAK repulsion!
       .force('charge', d3.forceManyBody()
-        .strength(-100) // Negative = repulsion
+        .strength(-30) // WEAK! (was -100, now -30)
         .distanceMax(500) // Max distance for force
       )
-      // Center force - Keep graph centered on screen!
-      .force('center', d3.forceCenter(
-        window.innerWidth / 2,
-        window.innerHeight / 2
-      ))
+      // NO CENTER FORCE - nodes stay where you drop them!
+      // (removed d3.forceCenter)
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
