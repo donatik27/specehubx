@@ -52,8 +52,11 @@ export default function BubblesPage() {
             <div className="w-3 h-3 rounded-full bg-red-400" />
             <span className="text-red-400">NO whales (right)</span>
           </div>
-          <div className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-purple-500/20">
-            💡 Drag to pan • Scroll to zoom • Click bubble to view wallet
+          <div className="text-[10px] text-purple-400/80 mt-2 pt-2 border-t border-purple-500/20">
+            🐋 Top 50 whales • Min $1K
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            💡 Drag to pan • Scroll to zoom • Click bubble
           </div>
         </div>
       </div>
@@ -65,7 +68,7 @@ export default function BubblesPage() {
           <span className="ml-3 text-sm text-muted-foreground">Loading network...</span>
         </div>
       }>
-        <WhaleNetworkGraph marketId={marketId} minAmount={100} />
+        <WhaleNetworkGraph marketId={marketId} minAmount={1000} />
       </Suspense>
     </div>
   )

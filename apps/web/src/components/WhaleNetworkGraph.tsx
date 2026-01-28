@@ -153,9 +153,13 @@ export default function WhaleNetworkGraph({
         }
       })
 
-      // Filter wallets with at least $100 total volume
+      // Filter wallets with at least minAmount, sort by size, take TOP 50 only!
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
+        .sort(([_, a], [__, b]) => b.amount - a.amount) // Sort by amount (biggest first)
+        .slice(0, 50) // TOP 50 WHALES ONLY!
+
+      console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
       // Create whale nodes with INITIAL POSITIONING BIAS
       const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
