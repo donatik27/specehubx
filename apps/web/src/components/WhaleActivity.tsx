@@ -48,31 +48,39 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
           return
         }
         
-        // data is array of trades from CLOB API
+        // data is array of trades from Data API
         const tradesArray = Array.isArray(data) ? data : []
         
-        // Filter for whale trades ($100+) and map to our format
+        // Map Data API format to our format
+        // Data API already filters for $100+ (we set filterAmount=100)
         const allTrades: WhaleTrade[] = tradesArray
-          .filter((trade: any) => {
-            const amount = parseFloat(trade.size || '0') * parseFloat(trade.price || '0')
-            return amount >= 100 // Min $100 for whale activity
-          })
           .slice(0, 30) // Show top 30 recent trades
           .map((trade: any, idx: number) => {
-            const maker = trade.maker || trade.maker_address || trade.taker_address || trade.taker
-            const makerLabel = maker ? `${maker.slice(0, 6)}...${maker.slice(-4)}` : 'unknown'
-            const amount = parseFloat(trade.size || '0') * parseFloat(trade.price || '0')
+            // Data API format:
+            // - proxyWallet: user address
+            // - side: "BUY" or "SELL"
+            // - size: number of shares
+            // - price: price per share (0-1)
+            // - timestamp: ISO string
+            const userAddress = trade.proxyWallet || trade.user || 'unknown'
+            const userLabel = userAddress !== 'unknown' 
+              ? `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}` 
+              : 'unknown'
+            
+            const size = parseFloat(trade.size || '0')
+            const price = parseFloat(trade.price || '0')
+            const amount = size * price
             
             return {
               id: `${trade.timestamp}-${idx}`,
-              traderAddress: maker || 'unknown',
-              traderName: makerLabel,
+              traderAddress: userAddress,
+              traderName: userLabel,
               tier: amount > 10000 ? 'S' : amount > 1000 ? 'A' : 'B',
               amount,
               outcome: trade.side === 'BUY' ? 'YES' : 'NO',
-              price: parseFloat(trade.price || '0'),
+              price,
               timestamp: new Date(trade.timestamp).getTime(),
-              shares: parseFloat(trade.size || '0'),
+              shares: size,
               isNew: false
             }
           })
