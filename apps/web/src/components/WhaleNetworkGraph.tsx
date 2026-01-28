@@ -80,7 +80,15 @@ export default function WhaleNetworkGraph({
       setLoading(true)
       setError(null)
 
-      // Fetch all trades for this market from our API proxy (NO FAKE DATA!)
+      // Step 1: Fetch market info for hub
+      const marketInfoResponse = await fetch(`https://gamma-api.polymarket.com/markets/${marketId}`)
+      const marketInfo = await marketInfoResponse.json()
+      
+      const marketImage = marketInfo.image || marketInfo.icon || ''
+      const marketTitle = marketInfo.question || 'Market'
+      const marketVolume = parseFloat(marketInfo.volume || marketInfo.volumeNum || '0')
+
+      // Step 2: Fetch all trades for this market from our API proxy
       const response = await fetch(`/api/market-trades?market=${marketId}&limit=1000`)
       const data = await response.json()
 
@@ -139,67 +147,110 @@ export default function WhaleNetworkGraph({
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
 
-      // Create nodes
-      const nodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
+      // Create whale nodes
+      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
         // Determine dominant side
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
+        
+        // Determine tier based on amount
+        let tier = 'B'
+        let color = side === 'YES' ? '#22c55e' : '#ef4444'
+        
+        if (data.amount > 10000) {
+          tier = 'S'
+          color = side === 'YES' ? '#10b981' : '#dc2626' // Brighter for S tier
+        } else if (data.amount > 1000) {
+          tier = 'A'
+          color = side === 'YES' ? '#16a34a' : '#e11d48'
+        }
         
         return {
           id: wallet,
           name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
           val: data.amount,
-          color: side === 'YES' ? '#22c55e' : '#ef4444',
+          color,
           side,
           amount: data.amount
         }
       })
 
-      // Build links (market dynamics visualization)
+      // Calculate max whale size for hub sizing
+      const maxWhaleAmount = Math.max(...whaleNodes.map(n => n.amount), 1000)
+
+      // Create MARKET HUB (центральний node)
+      const marketHub: GraphNode = {
+        id: 'MARKET_HUB',
+        name: marketTitle.length > 30 ? marketTitle.slice(0, 30) + '...' : marketTitle,
+        val: maxWhaleAmount * 5, // 5x bigger than biggest whale!
+        color: '#a855f7', // Purple
+        side: 'YES', // Neutral
+        amount: marketVolume
+      }
+
+      // Combine all nodes
+      const nodes = [marketHub, ...whaleNodes]
+
+      // Build links - HIERARCHICAL STRUCTURE
       const links: GraphLink[] = []
       
-      // Strategy: Show market tension between YES and NO whales
-      const yesNodes = nodes.filter(n => n.side === 'YES').sort((a, b) => b.amount - a.amount)
-      const noNodes = nodes.filter(n => n.side === 'NO').sort((a, b) => b.amount - a.amount)
+      // Separate YES and NO whales (exclude hub)
+      const yesNodes = whaleNodes.filter(n => n.side === 'YES').sort((a, b) => b.amount - a.amount)
+      const noNodes = whaleNodes.filter(n => n.side === 'NO').sort((a, b) => b.amount - a.amount)
 
-      // Connect top whales across sides (market makers vs market takers)
-      const topYesWhales = yesNodes.slice(0, Math.min(8, yesNodes.length))
-      const topNoWhales = noNodes.slice(0, Math.min(8, noNodes.length))
+      // TIER 1: Connect MARKET HUB to all S-tier whales (strongest connections)
+      const sTierWhales = whaleNodes.filter(n => n.amount > 10000)
+      sTierWhales.forEach(whale => {
+        links.push({
+          source: 'MARKET_HUB',
+          target: whale.id,
+          value: 2.0 // Strong connection
+        })
+      })
+
+      // TIER 2: Connect HUB to A-tier whales if no S-tier exists
+      if (sTierWhales.length < 3) {
+        const aTierWhales = whaleNodes.filter(n => n.amount > 1000 && n.amount <= 10000).slice(0, 5)
+        aTierWhales.forEach(whale => {
+          links.push({
+            source: 'MARKET_HUB',
+            target: whale.id,
+            value: 1.0
+          })
+        })
+      }
+
+      // TIER 3: YES ↔️ NO market tension (top whales)
+      const topYesWhales = yesNodes.slice(0, Math.min(5, yesNodes.length))
+      const topNoWhales = noNodes.slice(0, Math.min(5, noNodes.length))
 
       topYesWhales.forEach((yesWhale, i) => {
         topNoWhales.forEach((noWhale, j) => {
-          // Stronger connections between top whales
-          const strength = 1 / (i + j + 1)
-          if (strength > 0.2) {
+          if (i + j < 4) { // Only strongest connections
             links.push({
               source: yesWhale.id,
               target: noWhale.id,
-              value: strength
+              value: 0.5
             })
           }
         })
       })
 
-      // Connect similar-sized whales on same side (whale pods)
+      // TIER 4: Whale pods (same side clusters)
       const connectSimilarWhales = (whaleNodes: GraphNode[]) => {
         whaleNodes.forEach((whale, i) => {
-          const similarWhales = whaleNodes.slice(i + 1, i + 4) // Connect to next 3
+          const similarWhales = whaleNodes.slice(i + 1, i + 3) // Connect to next 2
           similarWhales.forEach(similar => {
-            const sizeDiff = Math.abs(whale.amount - similar.amount)
-            const avgSize = (whale.amount + similar.amount) / 2
-            
-            if (sizeDiff / avgSize < 0.5) {
-              links.push({
-                source: whale.id,
-                target: similar.id,
-                value: 0.3
-              })
-            }
+            links.push({
+              source: whale.id,
+              target: similar.id,
+              value: 0.2
+            })
           })
         })
       }
 
-      connectSimilarWhales(yesNodes)
-      connectSimilarWhales(noNodes)
+      connectSimilarWhales(yesNodes.slice(0, 10))
+      connectSimilarWhales(noNodes.slice(0, 10))
 
       setGraphData({ nodes, links })
       setLoading(false)
@@ -216,9 +267,15 @@ export default function WhaleNetworkGraph({
   }, [fetchWhaleNetwork])
 
   const handleNodeClick = useCallback((node: any) => {
-    // Open Polymarket profile
+    // Market Hub - open market page
+    if (node.id === 'MARKET_HUB') {
+      window.open(`https://polymarket.com/event/${marketId}`, '_blank')
+      return
+    }
+    
+    // Whale - open profile
     window.open(`https://polymarket.com/profile/${node.id}`, '_blank')
-  }, [])
+  }, [marketId])
 
   if (loading) {
     return (
@@ -277,19 +334,46 @@ export default function WhaleNetworkGraph({
           width={graphWidth}
           height={600}
           backgroundColor="rgba(0,0,0,0.8)"
-          nodeLabel={(node: any) => `
-            <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid ${node.color}; border-radius: 4px; font-family: monospace;">
-              <div style="color: ${node.color}; font-weight: bold; margin-bottom: 4px;">${node.side}</div>
-              <div style="color: white; font-size: 12px;">${node.name}</div>
-              <div style="color: #22c55e; font-size: 14px; font-weight: bold;">$${(node.amount / 1000).toFixed(1)}K</div>
-            </div>
-          `}
+          nodeLabel={(node: any) => {
+            // Special label for Market Hub
+            if (node.id === 'MARKET_HUB') {
+              return `
+                <div style="background: rgba(168,85,247,0.2); padding: 12px; border: 2px solid #a855f7; border-radius: 8px; font-family: monospace; backdrop-filter: blur(8px);">
+                  <div style="color: #a855f7; font-weight: bold; font-size: 14px; margin-bottom: 6px;">🎯 MARKET HUB</div>
+                  <div style="color: white; font-size: 12px; margin-bottom: 4px;">${node.name}</div>
+                  <div style="color: #22c55e; font-size: 16px; font-weight: bold;">$${(node.amount / 1000000).toFixed(2)}M</div>
+                  <div style="color: #a855f7; font-size: 10px; margin-top: 4px;">Total Volume</div>
+                </div>
+              `
+            }
+            
+            // Regular whale label
+            return `
+              <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid ${node.color}; border-radius: 4px; font-family: monospace;">
+                <div style="color: ${node.color}; font-weight: bold; margin-bottom: 4px;">${node.side}</div>
+                <div style="color: white; font-size: 12px;">${node.name}</div>
+                <div style="color: #22c55e; font-size: 14px; font-weight: bold;">$${(node.amount / 1000).toFixed(1)}K</div>
+              </div>
+            `
+          }}
           nodeColor={(node: any) => node.color}
           nodeVal={(node: any) => node.val / 100} // Scale down for better visualization
-          nodeRelSize={6}
-          linkColor={() => 'rgba(255,255,255,0.1)'}
+          nodeRelSize={8} // Larger nodes for better visibility
+          linkColor={(link: any) => {
+            // Stronger color for hub connections
+            if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
+              return 'rgba(168,85,247,0.3)'
+            }
+            return 'rgba(255,255,255,0.1)'
+          }}
           linkWidth={(link: any) => link.value}
-          linkDirectionalParticles={2}
+          linkDirectionalParticles={(link: any) => {
+            // More particles for hub connections
+            if (link.source.id === 'MARKET_HUB' || link.target.id === 'MARKET_HUB') {
+              return 3
+            }
+            return 1
+          }}
           linkDirectionalParticleWidth={2}
           linkDirectionalParticleSpeed={0.005}
           onNodeClick={handleNodeClick}
