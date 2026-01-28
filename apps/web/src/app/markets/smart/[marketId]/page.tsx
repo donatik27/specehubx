@@ -677,61 +677,63 @@ export default function SmartMarketDetailPage() {
         </div>
       ) : null}
 
-      {/* Trading Panel - Only show if feature is enabled */}
-      {(() => {
-        // Debug info
-        console.log('🔍 Trading Panel Debug:', {
-          ENABLE_TRADING,
-          hasEventInfo: !!eventInfo,
-          hasMarket: !!market,
-          hasTokens: !!market?.tokens,
-          tokensCount: market?.tokens?.length,
-          tokens: market?.tokens
-        })
-        
-        // Show debug message if trading disabled
-        if (!ENABLE_TRADING) {
-          return (
-            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
-              <p className="text-yellow-500 font-mono text-sm">
-                ⚠️ Trading disabled. Set NEXT_PUBLIC_ENABLE_TRADING=true in Vercel
-              </p>
-            </div>
-          )
-        }
-        
-        // Show trading panel if conditions met
-        if (!eventInfo && market && market.tokens) {
-          return (
-            <div className="mb-6">
-              <TradingPanel
-                marketId={market.id}
-                question={market.question}
-                yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
-                noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-                yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
-                noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
-              />
-            </div>
-          )
-        }
+      {/* TWO COLUMN LAYOUT FOR BINARY MARKETS */}
+      {multiOutcomePositions.length === 0 && !eventInfo ? (
+        // Binary market: Two-column layout (Chart left, Trading right)
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* LEFT COLUMN: Price Chart (60% width = 2 cols) */}
+          <div className="lg:col-span-2">
+            <PriceChart
+              marketId={market.id}
+              yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+              noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+              yesTokenId={market.tokens?.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId}
+            />
+          </div>
 
-        // Show loading/error state when tokens are missing
-        if (!eventInfo && market && !market.tokens) {
-          return (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 pixel-border">
-              <p className="text-red-400 font-mono text-sm">
-                ⚠️ Trading tokens not loaded yet. Refresh the page to retry.
-              </p>
-            </div>
-          )
-        }
-        
-        return null
-      })()}
+          {/* RIGHT COLUMN: Trading Panel (40% width = 1 col, sticky) */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-6">
+              {(() => {
+                // Show debug message if trading disabled
+                if (!ENABLE_TRADING) {
+                  return (
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
+                      <p className="text-yellow-500 font-mono text-sm">
+                        ⚠️ Trading disabled
+                      </p>
+                    </div>
+                  )
+                }
+                
+                // Show trading panel if conditions met
+                if (market && market.tokens) {
+                  return (
+                    <TradingPanel
+                      marketId={market.id}
+                      question={market.question}
+                      yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
+                      noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
+                      yesTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId || ''}
+                      noTokenId={market.tokens.find(t => t.outcome.toLowerCase() === 'no')?.tokenId || ''}
+                    />
+                  )
+                }
 
-      {/* Smart Money Outcomes - Multi-Outcome Markets */}
-      {multiOutcomePositions.length > 0 ? (
+                // Show loading/error state
+                return (
+                  <div className="p-4 bg-red-500/10 border border-red-500/30 pixel-border">
+                    <p className="text-red-400 font-mono text-sm">
+                      ⚠️ Trading tokens not loaded
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      ) : multiOutcomePositions.length > 0 ? (
+        // Multi-outcome market: Show outcomes grid
         <div className="bg-card pixel-border border-[#FFD700]/40 p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <Target className="h-6 w-6 text-[#FFD700] alien-glow" />
@@ -745,7 +747,7 @@ export default function SmartMarketDetailPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {multiOutcomePositions.map((outcome, idx) => {
               const priceCents = (outcome.currentPrice * 100).toFixed(1)
               const totalSharesK = (outcome.totalSmartShares / 1000).toFixed(1)
@@ -773,7 +775,7 @@ export default function SmartMarketDetailPage() {
                         {priceCents}¢
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Current Price
+                        Price
                       </div>
                     </div>
                     <div>
@@ -781,7 +783,7 @@ export default function SmartMarketDetailPage() {
                         {outcome.smartTraderCount}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        S-Tier Traders
+                        Traders
                       </div>
                     </div>
                     <div>
@@ -789,7 +791,7 @@ export default function SmartMarketDetailPage() {
                         {totalSharesK}K
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Total Shares
+                        Shares
                       </div>
                     </div>
                   </div>
@@ -819,7 +821,7 @@ export default function SmartMarketDetailPage() {
                     onClick={() => toggleOutcome(idx)}
                     className="w-full px-3 py-2 pixel-border border-[#FFD700]/30 hover:border-[#FFD700] bg-black/40 hover:bg-[#FFD700]/10 text-[#FFD700] text-xs font-bold transition-all"
                   >
-                    {isExpanded ? '▲ HIDE TRADERS' : '▼ SHOW TRADERS'}
+                    {isExpanded ? '▲ HIDE' : '▼ SHOW'}
                   </button>
                   
                   {/* Expanded Trader List */}
@@ -833,28 +835,23 @@ export default function SmartMarketDetailPage() {
                           <Link
                             key={posIdx}
                             href={`/traders/${pos.traderAddress}`}
-                            className="flex items-center justify-between p-3 bg-black/60 pixel-border border-white/10 hover:border-[#FFD700]/50 transition-all group"
+                            className="flex items-center justify-between p-2 bg-black/60 pixel-border border-white/10 hover:border-[#FFD700]/50 transition-all group"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 flex items-center justify-center text-base font-bold pixel-border ${
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 flex items-center justify-center text-xs font-bold pixel-border ${
                                 pos.tier === 'S' ? 'bg-[#FFD700] text-black' : 'bg-primary text-black'
                               }`}>
                                 {pos.tier}
                               </div>
-                              <span className="text-sm font-bold text-white group-hover:text-[#FFD700] transition-colors">
+                              <span className="text-xs font-bold text-white group-hover:text-[#FFD700] transition-colors truncate">
                                 {pos.traderName}
                               </span>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className="text-right">
-                                <div className="text-base font-bold text-white">
-                                  {(pos.shares / 1000).toFixed(1)}K shares
-                                </div>
-                                <div className="text-xs text-muted-foreground">
-                                  @ {entryCents}¢
-                                </div>
-                              </div>
-                              <div className={`px-3 py-1.5 text-sm font-bold pixel-border ${
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-white">
+                                {(pos.shares / 1000).toFixed(1)}K
+                              </span>
+                              <div className={`px-2 py-0.5 text-xs font-bold pixel-border ${
                                 isYes ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
                               }`}>
                                 {pos.position}
@@ -870,17 +867,7 @@ export default function SmartMarketDetailPage() {
             })}
           </div>
         </div>
-      ) : (
-        // Price Chart for binary markets
-        <div className="mb-6">
-          <PriceChart
-            marketId={market.id}
-            yesPrice={parseFloat(market.outcomePrices?.[0] || '0.5')}
-            noPrice={parseFloat(market.outcomePrices?.[1] || '0.5')}
-            yesTokenId={market.tokens?.find(t => t.outcome.toLowerCase() === 'yes')?.tokenId}
-          />
-        </div>
-      )}
+      ) : null}
 
       {/* Smart Money Positions */}
       <div className="bg-card pixel-border border-[#FFD700]/40 p-6">
@@ -896,7 +883,7 @@ export default function SmartMarketDetailPage() {
         </div>
 
         {multiOutcomePositions.length > 0 ? (
-          // Multi-outcome detailed view
+          // Multi-outcome detailed view with grid
           <div className="space-y-6">
             {multiOutcomePositions.map((outcome, outcomeIdx) => {
               const shortName = extractOutcomeShortName(outcome.outcomeTitle, multiOutcomePositions)
@@ -920,61 +907,54 @@ export default function SmartMarketDetailPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {outcome.smartPositions.map((pos, posIdx) => (
                     <Link
                       key={posIdx}
                       href={`/traders/${pos.traderAddress}`}
-                      className="block bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
+                      className="flex flex-col bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
                     >
-                      <div className="flex items-center gap-3">
-                        {/* Tier Badge */}
+                      {/* Top: Tier + Name */}
+                      <div className="flex items-center gap-2 mb-3">
                         <div 
-                          className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold flex-shrink-0"
+                          className="w-8 h-8 pixel-border flex items-center justify-center text-black font-bold flex-shrink-0"
                           style={{ backgroundColor: '#FFD700' }}
                         >
                           {pos.tier}
                         </div>
-
-                        {/* Trader Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-white group-hover:text-[#FFD700] transition-colors truncate">
+                          <p className="font-bold text-white text-sm group-hover:text-[#FFD700] transition-colors truncate">
                             {pos.traderName}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">
-                            {pos.traderAddress.slice(0, 10)}...{pos.traderAddress.slice(-8)}
+                            {pos.traderAddress.slice(0, 8)}...
                           </p>
                         </div>
+                      </div>
 
-                        {/* Position */}
-                        <div className="text-right flex-shrink-0">
-                          <div className="mb-1">
-                            <span className={`px-2 py-1 pixel-border font-bold text-xs ${
-                              pos.position === 'YES' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
-                            }`}>
-                              {pos.position}
-                            </span>
+                      {/* Bottom: Stats */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-base font-bold text-white">
+                            {(pos.shares / 1000).toFixed(1)}K
                           </div>
-                          <div className="text-sm font-bold text-white">
-                            {(pos.shares / 1000).toFixed(1)}K shares
+                          <div className="text-xs text-muted-foreground">
+                            @ {(pos.entryPrice * 100).toFixed(1)}¢
                           </div>
-                          <div className="text-xs space-y-0.5">
-                            <div className="text-muted-foreground">
-                              Entry: {(pos.entryPrice * 100).toFixed(1)}%
-                            </div>
-                            <div className="text-primary">
-                              Now: {(outcome.currentPrice * 100).toFixed(1)}%
-                            </div>
-                            {(() => {
-                              const pnlPercent = ((outcome.currentPrice - pos.entryPrice) / pos.entryPrice * 100)
-                              const pnlPositive = pnlPercent > 0
-                              return (
-                                <div className={pnlPositive ? 'text-green-400' : 'text-red-400'}>
-                                  {pnlPositive ? '+' : ''}{pnlPercent.toFixed(1)}%
-                                </div>
-                              )
-                            })()}
-                          </div>
+                          {(() => {
+                            const pnlPercent = ((outcome.currentPrice - pos.entryPrice) / pos.entryPrice * 100)
+                            const pnlPositive = pnlPercent > 0
+                            return (
+                              <div className={`text-xs font-bold ${pnlPositive ? 'text-green-400' : 'text-red-400'}`}>
+                                {pnlPositive ? '+' : ''}{pnlPercent.toFixed(1)}%
+                              </div>
+                            )
+                          })()}
+                        </div>
+                        <div className={`px-2 py-1 text-xs font-bold pixel-border ${
+                          pos.position === 'YES' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
+                        }`}>
+                          {pos.position}
                         </div>
                       </div>
                     </Link>
@@ -995,7 +975,7 @@ export default function SmartMarketDetailPage() {
               return acc
             }, {} as Record<string, typeof smartTraders>)
 
-            // If multiple outcomes, show grouped view
+            // If multiple outcomes, show grouped view with grid
             if (Object.keys(groupedByOutcome).length > 1 || eventInfo) {
               return (
                 <div className="space-y-6">
@@ -1017,7 +997,7 @@ export default function SmartMarketDetailPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {traders.map((trader, idx) => {
                             const entryPrice = (trader as any).entryPrice || trader.price
                             const entryCents = (entryPrice * 100).toFixed(1)
@@ -1028,10 +1008,10 @@ export default function SmartMarketDetailPage() {
                               <Link
                                 key={idx}
                                 href={`/traders/${trader.address}`}
-                                className="flex items-center justify-between bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
+                                className="flex flex-col bg-black/40 pixel-border border-white/10 p-3 hover:border-[#FFD700] transition-all group"
                               >
-                                {/* Avatar + Tier */}
-                                <div className="flex items-center gap-2 flex-shrink-0">
+                                {/* Top: Avatar + Tier + Name */}
+                                <div className="flex items-center gap-2 mb-3">
                                   {trader.avatar && (
                                     <img
                                       src={trader.avatar}
@@ -1040,34 +1020,32 @@ export default function SmartMarketDetailPage() {
                                     />
                                   )}
                                   <div 
-                                    className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg"
+                                    className="w-8 h-8 pixel-border flex items-center justify-center text-black font-bold flex-shrink-0"
                                     style={{ backgroundColor: trader.tier === 'S' ? '#FFD700' : '#00ff00' }}
                                   >
                                     {trader.tier}
                                   </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-white text-sm group-hover:text-[#FFD700] transition-colors truncate">
+                                      {trader.displayName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {trader.address.slice(0, 8)}...
+                                    </p>
+                                  </div>
                                 </div>
 
-                                {/* Trader Info */}
-                                <div className="flex-1 px-4 min-w-0">
-                                  <p className="font-bold text-white text-base group-hover:text-[#FFD700] transition-colors truncate">
-                                    {trader.displayName}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {trader.address.slice(0, 10)}...{trader.address.slice(-8)}
-                                  </p>
-                                </div>
-
-                                {/* Shares + Entry + YES/NO */}
-                                <div className="flex items-center gap-4 flex-shrink-0">
-                                  <div className="text-right">
+                                {/* Bottom: Stats */}
+                                <div className="flex items-center justify-between">
+                                  <div>
                                     <div className="text-base font-bold text-white">
-                                      {(shares / 1000).toFixed(1)}K shares
+                                      {(shares / 1000).toFixed(1)}K
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                       @ {entryCents}¢
                                     </div>
                                   </div>
-                                  <div className={`px-3 py-1.5 text-sm font-bold pixel-border ${
+                                  <div className={`px-3 py-1 text-sm font-bold pixel-border ${
                                     isYes ? 'bg-green-500 text-black' : 'bg-red-500 text-white'
                                   }`}>
                                     {trader.outcome}
@@ -1084,9 +1062,9 @@ export default function SmartMarketDetailPage() {
               )
             }
 
-            // Fallback: flat list if only one outcome
+            // Fallback: grid layout for single outcome
             return (
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {smartTraders.map((trader, idx) => {
                   const tierColor = trader.tier === 'S' ? '#FFD700' : '#00ff00'
                   const isYes = trader.outcome.toLowerCase() === 'yes'
@@ -1099,46 +1077,44 @@ export default function SmartMarketDetailPage() {
                     <Link
                       key={idx}
                       href={`/traders/${trader.address}`}
-                      className="flex items-center justify-between bg-black/40 pixel-border border-white/20 p-4 hover:border-[#FFD700] transition-all group"
+                      className="flex flex-col bg-black/40 pixel-border border-white/20 p-4 hover:border-[#FFD700] transition-all group"
                     >
-                      {/* Left: Avatar + Tier */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Top: Avatar + Tier */}
+                      <div className="flex items-center gap-3 mb-3">
                         {trader.avatar && (
                           <img
                             src={trader.avatar}
                             alt={trader.displayName}
-                            className="w-8 h-8 rounded-full pixel-border border-primary/60 object-cover bg-black"
+                            className="w-10 h-10 rounded-full pixel-border border-primary/60 object-cover bg-black"
                           />
                         )}
                         <div 
-                          className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg"
+                          className="w-10 h-10 pixel-border flex items-center justify-center text-black font-bold text-lg flex-shrink-0"
                           style={{ backgroundColor: tierColor }}
                         >
                           {trader.tier}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white text-sm group-hover:text-[#FFD700] transition-colors truncate">
+                            {trader.displayName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {trader.address.slice(0, 8)}...
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Center: Trader Name + Address */}
-                      <div className="flex-1 px-4">
-                        <p className="font-bold text-white text-base group-hover:text-[#FFD700] transition-colors">
-                          {trader.displayName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {trader.address.slice(0, 10)}...{trader.address.slice(-8)}
-                        </p>
-                      </div>
-
-                      {/* Right: Shares + Entry Price + YES/NO Badge */}
-                      <div className="flex items-center gap-4 flex-shrink-0">
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-white">
-                            {(shares / 1000).toFixed(1)}K shares
+                      {/* Bottom: Stats */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-base font-bold text-white">
+                            {(shares / 1000).toFixed(1)}K
                           </div>
                           <div className="text-xs text-muted-foreground">
                             @ {entryCents}¢
                           </div>
                         </div>
-                        <div className={`px-4 py-2 pixel-border font-bold text-base ${
+                        <div className={`px-3 py-1.5 pixel-border font-bold text-sm ${
                           isYes ? 'bg-green-500 text-black' :
                           isNo ? 'bg-red-500 text-white' :
                           'bg-primary text-black'
