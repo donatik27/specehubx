@@ -472,7 +472,7 @@ export default function WhaleNetworkGraph({
         limitToBounds={false}
         centerOnInit={true}
         wheel={{ step: 0.1 }}
-        panning={{ disabled: false }}
+        panning={{ disabled: true }}
         doubleClick={{ disabled: true }}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
