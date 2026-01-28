@@ -28,6 +28,7 @@ import { logger } from '../lib/logger';
 const CTF_CONTRACT = '0x4d97dcd97ec945f40cf65f87097ace5ea0476045' as `0x${string}`;
 const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11' as `0x${string}`;
 const CLOB_API = 'https://clob.polymarket.com';
+const DATA_API = 'https://data-api.polymarket.com';
 
 const CTF_ABI = [{
   inputs: [
@@ -306,7 +307,62 @@ async function discoverAlphaMarkets() {
 }
 
 // ============================================================================
-// FETCH TRADER ENTRY PRICE: Get weighted average from historical trades
+// FETCH TRADER POSITION FROM DATA API: Most accurate avgPrice!
+// ============================================================================
+
+async function fetchTraderPositionFromDataAPI(
+  traderAddress: string,
+  conditionId: string
+): Promise<{ avgPrice: number; size: number } | null> {
+  try {
+    const response = await fetch(
+      `${DATA_API}/positions?user=${traderAddress}&market=${conditionId}&limit=10`,
+      {
+        headers: {
+          'Accept': 'application/json'
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      logger.warn(`Data API error ${response.status} for ${traderAddress.slice(0, 8)}`);
+      return null;
+    }
+    
+    const data = await response.json();
+    const positions = data.data || data || [];
+    
+    if (!positions || positions.length === 0) {
+      return null;
+    }
+    
+    // Find position matching this conditionId
+    const position = positions.find((p: any) => 
+      p.market === conditionId || p.conditionId === conditionId
+    );
+    
+    if (!position) {
+      return null;
+    }
+    
+    const avgPrice = parseFloat(position.avgPrice || position.avg_price || '0');
+    const size = parseFloat(position.size || position.tokens || '0');
+    
+    if (avgPrice > 0 && avgPrice <= 1 && size > 0) {
+      logger.info(`✅ Data API: ${traderAddress.slice(0, 8)} avgPrice=${avgPrice.toFixed(4)} size=${size.toFixed(0)}`);
+      return { avgPrice, size };
+    }
+    
+    return null;
+    
+  } catch (error) {
+    logger.warn(`Data API fetch failed for ${traderAddress.slice(0, 8)}: ${error}`);
+    return null;
+  }
+}
+
+// ============================================================================
+// FETCH TRADER ENTRY PRICE: Get weighted average from historical trades (FALLBACK)
 // ============================================================================
 
 async function fetchTraderEntryPrice(
@@ -466,13 +522,27 @@ async function analyzeMarket(
         const currentPrice = side === 'YES' ? yesPrice : noPrice;
         const tokenId = side === 'YES' ? tokenIds[0] : tokenIds[1];
         
-        // Fetch REAL entry price from historical trades
-        const entryPrice = await fetchTraderEntryPrice(
-          market.id,
+        // Try Data API first (most accurate!), fallback to CLOB API
+        let entryPrice = currentPrice;
+        
+        const dataApiPosition = await fetchTraderPositionFromDataAPI(
           trader.address,
-          tokenId,
-          currentPrice
+          tokenId // Try using tokenId as conditionId
         );
+        
+        if (dataApiPosition && dataApiPosition.avgPrice > 0) {
+          entryPrice = dataApiPosition.avgPrice;
+          logger.info(`✅ Using Data API avgPrice for ${trader.address.slice(0, 8)}: ${entryPrice.toFixed(4)}`);
+        } else {
+          // Fallback to CLOB API
+          entryPrice = await fetchTraderEntryPrice(
+            market.id,
+            trader.address,
+            tokenId,
+            currentPrice
+          );
+          logger.info(`⚠️ Using CLOB API fallback for ${trader.address.slice(0, 8)}: ${entryPrice.toFixed(4)}`);
+        }
         
         tradersWithPositions.push({
           address: trader.address,
@@ -493,13 +563,27 @@ async function analyzeMarket(
         
         // Only add if they have significant position in ONE outcome
         if (maxBalance > 0.1) {
-          // Fetch REAL entry price from historical trades
-          const entryPrice = await fetchTraderEntryPrice(
-            market.id,
+          // Try Data API first (most accurate!), fallback to CLOB API
+          let entryPrice = currentPrice;
+          
+          const dataApiPosition = await fetchTraderPositionFromDataAPI(
             trader.address,
-            tokenId,
-            currentPrice
+            tokenId // Try using tokenId as conditionId
           );
+          
+          if (dataApiPosition && dataApiPosition.avgPrice > 0) {
+            entryPrice = dataApiPosition.avgPrice;
+            logger.info(`✅ Using Data API avgPrice for ${trader.address.slice(0, 8)}: ${entryPrice.toFixed(4)}`);
+          } else {
+            // Fallback to CLOB API
+            entryPrice = await fetchTraderEntryPrice(
+              market.id,
+              trader.address,
+              tokenId,
+              currentPrice
+            );
+            logger.info(`⚠️ Using CLOB API fallback for ${trader.address.slice(0, 8)}: ${entryPrice.toFixed(4)}`);
+          }
           
           tradersWithPositions.push({
             address: trader.address,
