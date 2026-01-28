@@ -142,12 +142,17 @@ export default function WhaleNetworkGraph({
         const maxAmount = Math.max(...filteredWallets.map(([_, d]) => d.amount))
         const size = minSize + ((data.amount / maxAmount) * (maxSize - minSize))
         
-        // Position in circle around hub
+        // Position in circle around hub with random offset for chaos
         const radius = 350 // Distance from center
         const angleStep = (2 * Math.PI) / filteredWallets.length
         const angle = index * angleStep
-        const x = centerX + Math.cos(angle) * radius
-        const y = centerY + Math.sin(angle) * radius
+        // Add random offset for more chaotic look
+        const radiusOffset = (Math.random() - 0.5) * 100 // ±50px
+        const angleOffset = (Math.random() - 0.5) * 0.3 // ±0.15 radians
+        const finalRadius = radius + radiusOffset
+        const finalAngle = angle + angleOffset
+        const x = centerX + Math.cos(finalAngle) * finalRadius
+        const y = centerY + Math.sin(finalAngle) * finalRadius
         
         return {
           id: wallet,
@@ -242,9 +247,9 @@ export default function WhaleNetworkGraph({
         </div>
       </div>
 
-      {/* SVG Overlay for Connection Lines - ARKHAM STYLE (HUB-SPOKE) */}
-      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 1 }}>
-        {/* Lines from Market Hub to each whale */}
+      {/* SVG Overlay for Connection Lines */}
+      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+        {/* Hub-Spoke Lines: from Market Hub to each whale */}
         {allWhales.map((whale) => (
           <line
             key={`hub-${whale.id}`}
@@ -252,15 +257,47 @@ export default function WhaleNetworkGraph({
             y1={marketHub.y}
             x2={whale.x}
             y2={whale.y}
-            stroke={whale.side === 'YES' ? '#22c55e' : '#ef4444'}
-            strokeWidth="2"
-            opacity="0.5"
+            stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
+            strokeWidth="3"
+            opacity="0.7"
           />
         ))}
+        
+        {/* Mesh Network: YES whales connected to each other */}
+        {yesWhales.length > 1 && yesWhales.map((whale1, i) => 
+          yesWhales.slice(i + 1).map((whale2) => (
+            <line
+              key={`yes-mesh-${whale1.id}-${whale2.id}`}
+              x1={whale1.x}
+              y1={whale1.y}
+              x2={whale2.x}
+              y2={whale2.y}
+              stroke="#22c55e"
+              strokeWidth="1"
+              opacity="0.15"
+            />
+          ))
+        )}
+        
+        {/* Mesh Network: NO whales connected to each other */}
+        {noWhales.length > 1 && noWhales.map((whale1, i) => 
+          noWhales.slice(i + 1).map((whale2) => (
+            <line
+              key={`no-mesh-${whale1.id}-${whale2.id}`}
+              x1={whale1.x}
+              y1={whale1.y}
+              x2={whale2.x}
+              y2={whale2.y}
+              stroke="#ef4444"
+              strokeWidth="1"
+              opacity="0.15"
+            />
+          ))
+        )}
       </svg>
 
       {/* Network Container */}
-      <div className="fixed inset-0" style={{ position: 'relative', zIndex: 2 }}>
+      <div className="fixed inset-0" style={{ position: 'relative', zIndex: 5 }}>
         {/* MARKET HUB - Center */}
         <Draggable 
           position={{ x: marketHub.x - 125, y: marketHub.y - 125 }}
@@ -306,12 +343,12 @@ export default function WhaleNetworkGraph({
               style={{ width: `${whale.size}px`, height: `${whale.size}px` }}
             >
               <div
-                className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110"
+                className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110 cursor-pointer"
                 style={{
                   backgroundColor: whale.color,
                   borderColor: `${whale.color}80`
                 }}
-                onClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
+                onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
               >
                 <div className="text-center text-white text-xs font-bold">
                   <div className="text-[10px] opacity-80">
