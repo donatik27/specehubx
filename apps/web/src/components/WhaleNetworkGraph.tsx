@@ -297,63 +297,12 @@ export default function WhaleNetworkGraph({
           width: '100vw',
           height: '100vh',
           pointerEvents: 'none',
-          zIndex: 1, 
-          backgroundColor: 'rgba(255,0,0,0.1)', 
-          border: '5px solid yellow',
+          zIndex: 1,
           overflow: 'visible'
         }}
       >
-        {/* DEBUG INFO */}
-        <text x="10" y="20" fill="white" fontSize="16" fontWeight="bold">
-          Hub: ({marketHub.x.toFixed(0)}, {marketHub.y.toFixed(0)})
-        </text>
-        <text x="10" y="45" fill="white" fontSize="16" fontWeight="bold">
-          Whales: {allWhales.filter(w => w.x > 0).length} / {allWhales.length} positioned
-        </text>
         
-        {/* HARDCODED TEST LINES - CENTER SCREEN - ULTRA THICK! */}
-        <line x1="700" y1="400" x2="1200" y2="400" stroke="red" strokeWidth="20" opacity="1" />
-        <line x1="950" y1="200" x2="950" y2="600" stroke="yellow" strokeWidth="20" opacity="1" />
-        <circle cx="950" cy="400" r="100" stroke="green" strokeWidth="10" fill="none" opacity="1" />
-        
-        {/* SVG FULL SCREEN BORDER - to see SVG bounds */}
-        <rect x="0" y="0" width="100%" height="100%" stroke="cyan" strokeWidth="3" fill="none" opacity="0.5" />
-        
-        <text x="10" y="70" fill="yellow" fontSize="16" fontWeight="bold">
-          ⚠️ If you see RED + (center), SVG WORKS!
-        </text>
-        
-        {/* DEBUG: Show first whale coordinates */}
-        {allWhales.length > 0 && (
-          <>
-            <text x="10" y="95" fill="cyan" fontSize="14" fontWeight="bold">
-              First whale: x={allWhales[0].x.toFixed(0)}, y={allWhales[0].y.toFixed(0)}
-            </text>
-            <text x="10" y="115" fill="cyan" fontSize="14" fontWeight="bold">
-              marketHub: x={marketHub.x.toFixed(0)}, y={marketHub.y.toFixed(0)}
-            </text>
-            
-            {/* TEST LINE from Hub to first whale - ULTRA THICK! */}
-            {allWhales[0].x > 0 && marketHub.x > 0 && (
-              <>
-                <line
-                  x1={marketHub.x}
-                  y1={marketHub.y}
-                  x2={allWhales[0].x}
-                  y2={allWhales[0].y}
-                  stroke="magenta"
-                  strokeWidth="25"
-                  opacity="1"
-                />
-                <text x="10" y="135" fill="magenta" fontSize="14" fontWeight="bold">
-                  ⚠️ MAGENTA line Hub→Whale1 ({marketHub.x.toFixed(0)},{marketHub.y.toFixed(0)})→({allWhales[0].x.toFixed(0)},{allWhales[0].y.toFixed(0)})
-                </text>
-              </>
-            )}
-          </>
-        )}
-        
-        {/* Hub-Spoke Lines: from Market Hub to each whale - THICK! */}
+        {/* Hub-Spoke Lines: from Market Hub to each whale */}
         {marketHub.x > 0 && allWhales.map((whale) => (
           whale.x > 0 && (
             <line
@@ -363,8 +312,8 @@ export default function WhaleNetworkGraph({
               x2={whale.x}
               y2={whale.y}
               stroke={whale.side === 'YES' ? '#10b981' : '#dc2626'}
-              strokeWidth="8"
-              opacity="0.8"
+              strokeWidth="2"
+              opacity="0.6"
             />
           )
         ))}
@@ -379,9 +328,9 @@ export default function WhaleNetworkGraph({
                 y1={whale1.y}
                 x2={whale2.x}
                 y2={whale2.y}
-                stroke="#22c55e"
+                stroke="#10b981"
                 strokeWidth="1"
-                opacity="0.15"
+                opacity="0.2"
               />
             )
           ))
@@ -397,9 +346,9 @@ export default function WhaleNetworkGraph({
                 y1={whale1.y}
                 x2={whale2.x}
                 y2={whale2.y}
-                stroke="#ef4444"
+                stroke="#dc2626"
                 strokeWidth="1"
-                opacity="0.15"
+                opacity="0.2"
               />
             )
           ))
