@@ -301,6 +301,14 @@ export default function WhaleNetworkGraph({
           overflow: 'visible'
         }}
       >
+        {/* Smooth animation for all lines! */}
+        <style>
+          {`
+            line {
+              transition: all 0.15s ease-out;
+            }
+          `}
+        </style>
         
         {/* Hub-Spoke Lines: from Market Hub to each whale */}
         {marketHub.x > 0 && allWhales.map((whale) => (
@@ -363,6 +371,7 @@ export default function WhaleNetworkGraph({
             x: typeof window !== 'undefined' ? window.innerWidth / 2 - 125 : 0, 
             y: typeof window !== 'undefined' ? window.innerHeight / 2 - 125 : 0 
           }}
+          onDrag={updatePositions}
           onStop={updatePositions}
           bounds="parent"
         >
@@ -372,7 +381,12 @@ export default function WhaleNetworkGraph({
             style={{ width: '250px', height: '250px' }}
           >
             <div
-              className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-2xl shadow-purple-500/50 border-4 border-purple-400/50 hover:border-purple-300 transition-all hover:scale-105"
+              className="absolute inset-0 rounded-full flex items-center justify-center shadow-2xl border-4 hover:border-purple-300 transition-all hover:scale-105"
+              style={{
+                background: 'rgba(0, 0, 0, 0.85)',
+                borderColor: '#a855f7',
+                boxShadow: '0 0 30px rgba(168,85,247,0.6)'
+              }}
             >
               <div className="text-center">
                 {marketInfo?.image && (
@@ -416,6 +430,7 @@ export default function WhaleNetworkGraph({
               <Draggable 
                 key={whale.id}
                 defaultPosition={{ x, y }}
+                onDrag={updatePositions}
                 onStop={updatePositions}
                 bounds="parent"
               >
@@ -430,10 +445,11 @@ export default function WhaleNetworkGraph({
                   }}
                 >
                   <div
-                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-2 hover:border-white transition-all hover:scale-110 cursor-pointer"
+                    className="absolute inset-0 rounded-full flex items-center justify-center shadow-lg border-4 hover:border-white transition-all hover:scale-110 cursor-pointer"
                     style={{
-                      backgroundColor: whale.color,
-                      borderColor: `${whale.color}80`
+                      background: 'rgba(0, 0, 0, 0.85)',
+                      borderColor: whale.color,
+                      boxShadow: `0 0 20px ${whale.color}80`
                     }}
                     onDoubleClick={() => window.open(`https://polymarket.com/profile/${whale.wallet}`, '_blank')}
                   >
