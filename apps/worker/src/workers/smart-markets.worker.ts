@@ -317,8 +317,12 @@ async function fetchTraderEntryPrice(
 ): Promise<number> {
   try {
     // Fetch historical trades from CLOB API
+    // NOTE: CLOB API has limitations:
+    // - Max limit is 1000 trades
+    // - May not include ALL historical trades
+    // - For accurate entry prices, need Polymarket Subgraph (on-chain data)
     const response = await fetch(
-      `${CLOB_API}/trades?market=${marketId}&maker=${traderAddress}&limit=100`,
+      `${CLOB_API}/trades?market=${marketId}&maker=${traderAddress}&limit=1000`,
       {
         headers: {
           'Accept': 'application/json'
@@ -366,11 +370,14 @@ async function fetchTraderEntryPrice(
     
     const avgEntry = weightedSum / totalSize;
     
+    logger.info(`Entry price for ${traderAddress.slice(0, 8)}: ${avgEntry.toFixed(4)} (from ${relevantTrades.length} trades, total size: ${totalSize.toFixed(2)})`);
+    
     // Sanity check: entry price should be between 0 and 1
     if (avgEntry > 0 && avgEntry <= 1) {
       return avgEntry;
     }
     
+    logger.warn(`Invalid entry price ${avgEntry} for ${traderAddress.slice(0, 8)}, using current: ${currentPrice}`);
     return currentPrice; // Fallback
     
   } catch (error) {

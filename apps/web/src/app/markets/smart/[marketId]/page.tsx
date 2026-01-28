@@ -915,7 +915,7 @@ export default function SmartMarketDetailPage() {
 
       {/* Smart Money Positions */}
       <div className="bg-card pixel-border border-[#FFD700]/40 p-6">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-3">
           <Users className="h-6 w-6 text-[#FFD700] alien-glow" />
           <h2 className="text-2xl font-bold text-[#FFD700]">SMART_MONEY_POSITIONS</h2>
           <span className="text-muted-foreground text-sm">
@@ -924,6 +924,11 @@ export default function SmartMarketDetailPage() {
               : `(${smartTraders.length} S/A traders)`
             }
           </span>
+        </div>
+        <div className="mb-6 p-2 bg-yellow-500/10 border border-yellow-500/30 pixel-border">
+          <p className="text-xs text-yellow-500 font-mono">
+            ⚠️ NOTE: Smart trader positions are currently simulated. Real on-chain position tracking coming soon via Polymarket API integration.
+          </p>
         </div>
 
         {multiOutcomePositions.length > 0 ? (
