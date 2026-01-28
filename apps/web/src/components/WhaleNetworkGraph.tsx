@@ -157,80 +157,28 @@ export default function WhaleNetworkGraph({
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
 
-      // Create whale nodes and separate by side
-      const whaleNodesData = filteredWallets.map(([wallet, data]) => {
+      // Create whale nodes - ORGANIC FORCE-DIRECTED LAYOUT
+      const whaleNodes: GraphNode[] = filteredWallets.map(([wallet, data]) => {
         const side: 'YES' | 'NO' = data.yesTrades > data.noTrades ? 'YES' : 'NO'
         
-        let tier = 'B'
-        let tierIndex = 3
+        // Color based on side and amount
         let color = side === 'YES' ? '#22c55e' : '#ef4444'
         
         if (data.amount > 10000) {
-          tier = 'S'
-          tierIndex = 1
-          color = side === 'YES' ? '#10b981' : '#dc2626'
+          color = side === 'YES' ? '#10b981' : '#dc2626' // Brighter for big positions
         } else if (data.amount > 1000) {
-          tier = 'A'
-          tierIndex = 2
           color = side === 'YES' ? '#16a34a' : '#e11d48'
         }
         
         return {
-          wallet,
-          data,
-          side,
-          tier,
-          tierIndex,
+          id: wallet,
+          name: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+          val: data.amount, // SIZE = POSITION SIZE!
           color,
+          side,
           amount: data.amount
+          // NO fx/fy - let force simulation position them organically!
         }
-      })
-      
-      // Separate and sort by side and amount
-      const yesWhales = whaleNodesData.filter(w => w.side === 'YES').sort((a, b) => b.amount - a.amount)
-      const noWhales = whaleNodesData.filter(w => w.side === 'NO').sort((a, b) => b.amount - a.amount)
-      
-      // CIRCULAR LAYOUT ALGORITHM
-      const whaleNodes: GraphNode[] = []
-      
-      // Layout YES whales (LEFT semi-circle: 90° to 270°)
-      yesWhales.forEach((whale, index) => {
-        const ringRadius = 150 + (whale.tierIndex * 180) // Inner ring = S-tier, outer = B-tier
-        const angleStart = Math.PI / 2  // 90° (top)
-        const angleEnd = (3 * Math.PI) / 2 // 270° (bottom)
-        const angleRange = angleEnd - angleStart
-        const angle = angleStart + (angleRange * (index / Math.max(yesWhales.length - 1, 1)))
-        
-        whaleNodes.push({
-          id: whale.wallet,
-          name: `${whale.wallet.slice(0, 6)}...${whale.wallet.slice(-4)}`,
-          val: whale.amount,
-          color: whale.color,
-          side: 'YES',
-          amount: whale.amount,
-          fx: Math.cos(angle) * ringRadius,
-          fy: Math.sin(angle) * ringRadius
-        })
-      })
-      
-      // Layout NO whales (RIGHT semi-circle: -90° to 90°)
-      noWhales.forEach((whale, index) => {
-        const ringRadius = 150 + (whale.tierIndex * 180)
-        const angleStart = -Math.PI / 2 // -90° (top)
-        const angleEnd = Math.PI / 2    // 90° (bottom)
-        const angleRange = angleEnd - angleStart
-        const angle = angleStart + (angleRange * (index / Math.max(noWhales.length - 1, 1)))
-        
-        whaleNodes.push({
-          id: whale.wallet,
-          name: `${whale.wallet.slice(0, 6)}...${whale.wallet.slice(-4)}`,
-          val: whale.amount,
-          color: whale.color,
-          side: 'NO',
-          amount: whale.amount,
-          fx: Math.cos(angle) * ringRadius,
-          fy: Math.sin(angle) * ringRadius
-        })
       })
 
       // Calculate max whale size for hub sizing
@@ -239,82 +187,77 @@ export default function WhaleNetworkGraph({
       // Calculate total trade volume from actual trades
       const totalTradeVolume = whaleNodes.reduce((sum, node) => sum + node.amount, 0)
 
-      // Create MARKET HUB (центральний node) - BIGGEST NODE
+      // Create MARKET HUB - DRAGGABLE CENTER
       const marketHub: GraphNode = {
         id: 'MARKET_HUB',
         name: marketTitle.length > 50 ? marketTitle.slice(0, 50) + '...' : marketTitle,
-        val: maxWhaleAmount * 8, // 8x bigger than biggest whale! (was 5x)
+        val: maxWhaleAmount * 10, // 10x bigger - DOMINANT!
         color: '#a855f7', // Purple
         side: 'YES', // Neutral
-        amount: marketVolume > 0 ? marketVolume : totalTradeVolume,
-        fx: 0, // Fixed at center X
-        fy: 0  // Fixed at center Y
+        amount: marketVolume > 0 ? marketVolume : totalTradeVolume
+        // NO fx/fy - can be dragged! But will stay near center due to connections
       }
 
       // Combine all nodes (hub first for rendering order)
       const nodes = [marketHub, ...whaleNodes]
 
-      // Build links - CIRCULAR STRUCTURE
+      // Build links - ORGANIC NETWORK STRUCTURE
       const links: GraphLink[] = []
       
-      // Get YES and NO nodes (already sorted from above)
-      const yesNodes = whaleNodes.filter(n => n.side === 'YES')
-      const noNodes = whaleNodes.filter(n => n.side === 'NO')
+      // Separate YES and NO whales, sort by amount
+      const yesNodes = whaleNodes.filter(n => n.side === 'YES').sort((a, b) => b.amount - a.amount)
+      const noNodes = whaleNodes.filter(n => n.side === 'NO').sort((a, b) => b.amount - a.amount)
 
-      // TIER 1: Connect MARKET HUB to all S-tier whales (strongest connections)
-      const sTierWhales = whaleNodes.filter(n => n.amount > 10000)
-      sTierWhales.forEach(whale => {
+      // STRATEGY 1: Connect ALL whales to MARKET HUB
+      // (це основа - всі позиції пов'язані з маркетом)
+      whaleNodes.forEach(whale => {
+        const strength = Math.min(whale.amount / 5000, 3) // Stronger link for bigger positions
         links.push({
           source: 'MARKET_HUB',
           target: whale.id,
-          value: 2.0 // Strong connection
+          value: strength
         })
       })
 
-      // TIER 2: Connect HUB to A-tier whales if no S-tier exists
-      if (sTierWhales.length < 3) {
-        const aTierWhales = whaleNodes.filter(n => n.amount > 1000 && n.amount <= 10000).slice(0, 5)
-        aTierWhales.forEach(whale => {
+      // STRATEGY 2: Connect similar-sized whales (pods)
+      // Це створює кластери схожих позицій
+      const connectSimilarSized = (nodes: GraphNode[]) => {
+        nodes.forEach((whale, i) => {
+          // Connect to next 2-3 similar sized whales
+          const similar = nodes.slice(i + 1, i + 4)
+          similar.forEach(other => {
+            const sizeDiff = Math.abs(whale.amount - other.amount)
+            const avgSize = (whale.amount + other.amount) / 2
+            
+            // Only connect if sizes are within 50% of each other
+            if (sizeDiff / avgSize < 0.5) {
+              links.push({
+                source: whale.id,
+                target: other.id,
+                value: 0.3
+              })
+            }
+          })
+        })
+      }
+      
+      connectSimilarSized(yesNodes)
+      connectSimilarSized(noNodes)
+
+      // STRATEGY 3: Connect top YES vs top NO (market tension)
+      // Показує протистояння між сторонами
+      const topYes = yesNodes.slice(0, 3)
+      const topNo = noNodes.slice(0, 3)
+      
+      topYes.forEach(yesWhale => {
+        topNo.forEach(noWhale => {
           links.push({
-            source: 'MARKET_HUB',
-            target: whale.id,
-            value: 1.0
+            source: yesWhale.id,
+            target: noWhale.id,
+            value: 0.2 // Weak tension link
           })
-        })
-      }
-
-      // TIER 3: YES ↔️ NO market tension (top whales)
-      const topYesWhales = yesNodes.slice(0, Math.min(5, yesNodes.length))
-      const topNoWhales = noNodes.slice(0, Math.min(5, noNodes.length))
-
-      topYesWhales.forEach((yesWhale, i) => {
-        topNoWhales.forEach((noWhale, j) => {
-          if (i + j < 4) { // Only strongest connections
-            links.push({
-              source: yesWhale.id,
-              target: noWhale.id,
-              value: 0.5
-            })
-          }
         })
       })
-
-      // TIER 4: Whale pods (same side clusters)
-      const connectSimilarWhales = (whaleNodes: GraphNode[]) => {
-        whaleNodes.forEach((whale, i) => {
-          const similarWhales = whaleNodes.slice(i + 1, i + 3) // Connect to next 2
-          similarWhales.forEach(similar => {
-            links.push({
-              source: whale.id,
-              target: similar.id,
-              value: 0.2
-            })
-          })
-        })
-      }
-
-      connectSimilarWhales(yesNodes.slice(0, 10))
-      connectSimilarWhales(noNodes.slice(0, 10))
 
       setGraphData({ nodes, links })
       setLoading(false)
@@ -462,11 +405,13 @@ export default function WhaleNetworkGraph({
           onNodeHover={(node: any) => {
             document.body.style.cursor = node ? 'pointer' : 'default'
           }}
-          enableNodeDrag={false} // Disable drag to keep circular layout
+          enableNodeDrag={true} // ПЛАСТИЧНИЙ - можна рухати всі nodes!
           enableZoomInteraction={true}
           enablePanInteraction={true}
-          cooldownTicks={0} // No simulation needed - we have fixed positions
-          warmupTicks={0}
+          cooldownTicks={200} // Let simulation settle
+          warmupTicks={100}
+          d3VelocityDecay={0.4} // Smooth movement
+          d3AlphaDecay={0.02} // Slower cooldown for organic look
         />
       </div>
     </div>
