@@ -289,7 +289,20 @@ export default function WhaleNetworkGraph({
       </div>
 
       {/* SVG Overlay for Connection Lines - BEHIND bubbles! */}
-      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 1, backgroundColor: 'rgba(255,0,0,0.1)', border: '5px solid yellow' }}>
+      <svg 
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          pointerEvents: 'none',
+          zIndex: 1, 
+          backgroundColor: 'rgba(255,0,0,0.1)', 
+          border: '5px solid yellow',
+          overflow: 'visible'
+        }}
+      >
         {/* DEBUG INFO */}
         <text x="10" y="20" fill="white" fontSize="16" fontWeight="bold">
           Hub: ({marketHub.x.toFixed(0)}, {marketHub.y.toFixed(0)})
