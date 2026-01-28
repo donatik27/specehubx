@@ -289,13 +289,22 @@ export default function WhaleNetworkGraph({
       </div>
 
       {/* SVG Overlay for Connection Lines */}
-      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+      <svg className="fixed inset-0 pointer-events-none" style={{ zIndex: 10, backgroundColor: 'rgba(255,0,0,0.1)' }}>
         {/* DEBUG INFO */}
-        <text x="10" y="20" fill="white" fontSize="12">
+        <text x="10" y="20" fill="white" fontSize="16" fontWeight="bold">
           Hub: ({marketHub.x.toFixed(0)}, {marketHub.y.toFixed(0)})
         </text>
-        <text x="10" y="40" fill="white" fontSize="12">
+        <text x="10" y="45" fill="white" fontSize="16" fontWeight="bold">
           Whales: {allWhales.filter(w => w.x > 0).length} / {allWhales.length} positioned
+        </text>
+        
+        {/* HARDCODED TEST LINES - Should ALWAYS show! */}
+        <line x1="100" y1="100" x2="500" y2="500" stroke="red" strokeWidth="5" opacity="1" />
+        <line x1="500" y1="100" x2="100" y2="500" stroke="yellow" strokeWidth="5" opacity="1" />
+        <circle cx="300" cy="300" r="50" stroke="green" strokeWidth="3" fill="none" opacity="1" />
+        
+        <text x="10" y="70" fill="yellow" fontSize="16" fontWeight="bold">
+          ⚠️ If you see this, SVG WORKS!
         </text>
         
         {/* Hub-Spoke Lines: from Market Hub to each whale */}
