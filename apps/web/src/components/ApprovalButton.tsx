@@ -196,12 +196,8 @@ export function ApprovalButton() {
         </div>
       )}
 
-      {/* Error Message */}
-      {error && (
-        <div className="text-xs text-red-500 font-mono bg-red-500/10 p-2 pixel-border border-red-500/30">
-          ❌ {error}
-        </div>
-      )}
+      {/* Error Message - Hidden to keep UI clean */}
+      {/* User rejection errors are expected, no need to show scary red box */}
     </div>
   )
 }
