@@ -350,6 +350,12 @@ export default function WhaleNetworkGraph({
     hubNode.fx = centerX
     hubNode.fy = centerY
     
+    // BOOST LINK STRENGTH during hub drag! (whales follow hub)
+    const linkForce = simulationRef.current.force('link') as any
+    if (linkForce) {
+      linkForce.strength(0.12) // STRONGER during hub drag!
+    }
+    
     // RELEASE ALL WHALES! Let them trail behind through link force! 🔗
     simulationRef.current.nodes().forEach((node: any) => {
       if (node.type === 'whale') {
@@ -477,28 +483,28 @@ export default function WhaleNetworkGraph({
       })()
     }))
     
-    // Create D3 Force Simulation - SMOOTH ROPE DRAG! 🔗🌊
+    // Create D3 Force Simulation - ARKHAM FREEDOM! 🔥🌊
     const simulation = d3.forceSimulation(nodes)
-      // ROPE-LIKE LINK FORCE: Whales follow hub with delay!
+      // ULTRA-WEAK LINK: Only active during HUB drag!
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
-        .distance((d: any) => d.distance) // Tier-based distance!
-        .strength(0.08) // MEDIUM strength = smooth rope-like follow!
+        .distance((d: any) => d.distance) // Tier-based distance
+        .strength(0.01) // ULTRA WEAK! Whales can escape tier circles!
       )
-      // SOFT COLLISION: Let whales pass through each other smoothly
+      // SOFT COLLISION: Smooth group movement
       .force('collision', d3.forceCollide()
         .radius((d: any) => d.radius + 10)
-        .strength(0.2) // VERY SOFT! (smooth group movement)
-        .iterations(1) // Single pass = fluid
+        .strength(0.3) // Soft avoidance
+        .iterations(1)
       )
-      // WEAK CHARGE: Minimal repulsion for organic clustering
+      // MODERATE CHARGE: Push whales apart in groups
       .force('charge', d3.forceManyBody()
-        .strength(-15) // WEAK! Less pushing = more following
-        .distanceMax(400) // Shorter range
+        .strength(-30) // Medium repulsion for spacing
+        .distanceMax(500)
       )
-      // VELOCITY DECAY: Add friction for smooth, damped movement!
-      .velocityDecay(0.15) // LOW decay = more inertia, smoother trailing!
-      // NO CENTER FORCE - pure rope physics!
+      // VELOCITY DECAY: Smooth damped movement!
+      .velocityDecay(0.2) // Moderate friction
+      // FULL FREEDOM: Whales can go anywhere!
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
@@ -856,8 +862,13 @@ export default function WhaleNetworkGraph({
           onStop={() => {
             // After hub drag: FIX ALL NODES at their current positions!
             if (simulationRef.current) {
+              // RESTORE WEAK LINK STRENGTH (whales free again!)
+              const linkForce = simulationRef.current.force('link') as any
+              if (linkForce) {
+                linkForce.strength(0.01) // Back to ultra weak!
+              }
+              
               // Hub stays fixed where dropped
-              const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
               // (hub.fx/fy already set during drag)
               
               // FIX ALL WHALES at their current positions (stop drifting!)
