@@ -178,11 +178,11 @@ export default function WhaleNetworkGraph({
         }
       })
 
-      // Filter and sort - TOP 30 whales for cleaner look
+      // Filter and sort - TOP 50 whales for more chaos! 🌀
       const filteredWallets = Array.from(walletMap.entries())
         .filter(([_, data]) => data.amount >= minAmount)
         .sort(([_, a], [__, b]) => b.amount - a.amount)
-        .slice(0, 30)
+        .slice(0, 50) // MORE WHALES = MORE CHAOS!
 
       console.log(`🐋 Showing top ${filteredWallets.length} whales (min $${minAmount})`)
 
@@ -366,27 +366,29 @@ export default function WhaleNetworkGraph({
       y: screenCenterY - 125 
     })
     
-    // Initialize each whale position based on tier
+    // Initialize each whale position - FULL CHAOS MODE! 🌀💥
     currentWhales.forEach((whale, index) => {
       const tierConfig = TIER_CONFIGS.find(t => t.name === whale.tier) || TIER_CONFIGS[2]
+      
+      // CHAOTIC RADIUS: Wide range based on tier + massive random offset!
       const baseRadius = (tierConfig.radiusMin + tierConfig.radiusMax) / 2
-      
-      const angleStep = (2 * Math.PI) / currentWhales.length
-      const angle = index * angleStep
-      
-      const radiusOffset = (Math.random() - 0.5) * (tierConfig.radiusMax - tierConfig.radiusMin) * 3 // 3x chaos!
-      const angleOffset = (Math.random() - 0.5) * 2.0 // 2x angular chaos!
+      const radiusSpread = tierConfig.radiusMax - tierConfig.radiusMin
+      const radiusOffset = (Math.random() - 0.5) * radiusSpread * 6 // 6x chaos! (was 3x)
       const finalRadius = baseRadius + radiusOffset
-      const finalAngle = angle + angleOffset
       
-      // Additional XY randomness to prevent overlapping!
-      const extraXOffset = (Math.random() - 0.5) * 100 // ±50px X
-      const extraYOffset = (Math.random() - 0.5) * 100 // ±50px Y
+      // COMPLETELY RANDOM ANGLE: No symmetry! Pure chaos!
+      const randomAngle = Math.random() * 2 * Math.PI // 0 to 360 degrees
       
-      const x = screenCenterX + Math.cos(finalAngle) * finalRadius - whale.size / 2 + extraXOffset
-      const y = screenCenterY + Math.sin(finalAngle) * finalRadius - whale.size / 2 + extraYOffset
+      // MASSIVE XY CHAOS: Big random offsets for organic feel!
+      const extraXOffset = (Math.random() - 0.5) * 250 // ±125px X (was ±50px)
+      const extraYOffset = (Math.random() - 0.5) * 250 // ±125px Y (was ±50px)
       
-      newWhalePositions.set(whale.id, { x, y })
+      // TIER VARIANCE: Bigger tiers get more spread
+      const tierMultiplier = whale.tier === 'S' ? 1.2 : whale.tier === 'A' ? 1.1 : 1.0
+      const finalX = screenCenterX + Math.cos(randomAngle) * finalRadius * tierMultiplier - whale.size / 2 + extraXOffset
+      const finalY = screenCenterY + Math.sin(randomAngle) * finalRadius * tierMultiplier - whale.size / 2 + extraYOffset
+      
+      newWhalePositions.set(whale.id, { x: finalX, y: finalY })
     })
     
     setWhalePositions(newWhalePositions)

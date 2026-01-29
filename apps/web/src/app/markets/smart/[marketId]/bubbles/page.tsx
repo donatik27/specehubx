@@ -87,7 +87,7 @@ export default function BubblesPage() {
           
           {/* Stats */}
           <div className="text-[10px] text-purple-400/80 pt-2 border-t border-purple-500/20">
-            📊 Top 30 whales • Min $1K trades
+            📊 Top 50 whales • Min $1K trades
           </div>
           
           {/* Controls */}
