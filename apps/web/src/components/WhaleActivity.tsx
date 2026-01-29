@@ -115,11 +115,15 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
   }, [marketId])
 
   const formatTime = (timestamp: number) => {
-    const diff = Date.now() - timestamp
+    // Fix: Handle both seconds and milliseconds timestamps
+    const ts = timestamp < 10000000000 ? timestamp * 1000 : timestamp
+    const diff = Date.now() - ts
     const seconds = Math.floor(diff / 1000)
     const minutes = Math.floor(diff / 60000)
     const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
     
+    if (days > 0) return `${days}d`
     if (hours > 0) return `${hours}h`
     if (minutes > 0) return `${minutes}m`
     if (seconds > 5) return `${seconds}s`
@@ -245,32 +249,49 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
         )}
       </div>
 
-      {/* Footer with Bubbles Button */}
-      <div className="mt-3 pt-3 border-t border-purple-500/20">
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-[10px] text-muted-foreground font-mono">
-            {trades.length} trades • Min $100
-          </div>
-          
-          <Link 
-            href={`/markets/smart/${marketId}/bubbles`}
-            className="group relative flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold pixel-border transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50"
-          >
-            {/* Animated bubbles background */}
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="absolute top-1 left-2 w-2 h-2 bg-white/30 rounded-full animate-ping" />
-              <div className="absolute top-2 right-3 w-1.5 h-1.5 bg-white/40 rounded-full animate-ping animation-delay-200" />
-              <div className="absolute bottom-1 left-4 w-1 h-1 bg-white/20 rounded-full animate-ping animation-delay-400" />
-            </div>
-            
-            <span className="relative z-10">🫧</span>
-            <span className="relative z-10 font-mono">VIEW NETWORK</span>
-            <span className="relative z-10 text-yellow-300">→</span>
-          </Link>
+      {/* Footer with MEGA BUBBLES BUTTON 🫧 */}
+      <div className="mt-4 pt-3 border-t border-purple-500/30">
+        <div className="text-[10px] text-muted-foreground font-mono text-center mb-3">
+          {trades.length} trades • Min $100
         </div>
         
-        <div className="text-[9px] text-purple-400/60 font-mono text-center">
-          💡 Click to see whale network graph
+        {/* MEGA ANIMATED BUTTON - Center stage! 🌟 */}
+        <Link 
+          href={`/markets/smart/${marketId}/bubbles`}
+          className="group relative block"
+        >
+          {/* Outer glow container */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-pink-600 to-purple-600 rounded-lg blur-md opacity-75 group-hover:opacity-100 animate-pulse"></div>
+          
+          {/* Main button */}
+          <div className="relative px-6 py-4 bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 hover:from-purple-500 hover:via-pink-500 hover:to-purple-600 text-white pixel-border border-2 border-purple-400 transition-all group-hover:scale-105 group-hover:shadow-2xl group-hover:shadow-purple-500/60 active:scale-95 cursor-pointer">
+            {/* Animated background bubbles */}
+            <div className="absolute inset-0 overflow-hidden rounded opacity-30">
+              <div className="absolute top-2 left-4 w-4 h-4 bg-white rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+              <div className="absolute top-4 right-6 w-3 h-3 bg-white rounded-full animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }} />
+              <div className="absolute bottom-3 left-8 w-2 h-2 bg-white rounded-full animate-ping" style={{ animationDuration: '3s', animationDelay: '1s' }} />
+              <div className="absolute bottom-4 right-4 w-3 h-3 bg-white rounded-full animate-ping" style={{ animationDuration: '2.2s', animationDelay: '0.3s' }} />
+            </div>
+            
+            {/* Button content */}
+            <div className="relative flex items-center justify-center gap-3">
+              <span className="text-2xl animate-bounce" style={{ animationDuration: '2s' }}>🫧</span>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-black tracking-wider uppercase">View Whale Network</span>
+                <span className="text-[10px] text-purple-200/80 font-mono">Interactive 3D Bubble Graph</span>
+              </div>
+              <span className="text-2xl text-yellow-300 group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+            
+            {/* Shine effect on hover */}
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shine"></div>
+            </div>
+          </div>
+        </Link>
+        
+        <div className="text-[10px] text-purple-400/80 font-mono text-center mt-3 animate-pulse">
+          ⚡ See who's trading & how they connect
         </div>
       </div>
     </div>
