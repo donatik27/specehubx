@@ -291,7 +291,7 @@ export function WhaleActivity({ marketId }: WhaleActivityProps) {
         </Link>
         
         <div className="text-[10px] text-purple-400/80 font-mono text-center mt-3 animate-pulse">
-          ⚡ See who's trading & how they connect
+          ⚡ See who&apos;s trading & how they connect
         </div>
       </div>
     </div>
