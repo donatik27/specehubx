@@ -324,19 +324,19 @@ export default function WhaleNetworkGraph({
     node.fx = centerX
     node.fy = centerY
     
-    // RELEASE OTHER WHALES! Let them be pushed by collision/charge! 🔗
+    // RELEASE OTHER WHALES! Let them flow away smoothly! 🌊
     simulationRef.current.nodes().forEach((n: any) => {
       if (n.type === 'whale' && n.id !== whale.id) {
-        n.fx = null // Not fixed = can move away!
+        n.fx = null // Not fixed = can flow!
         n.fy = null
       }
     })
     
-    // HIGH ENERGY simulation = smooth group push effect!
-    simulationRef.current.alpha(1).alphaTarget(0.7).restart()
+    // MODERATE ENERGY = smooth organic movement!
+    simulationRef.current.alpha(0.8).alphaTarget(0.3).restart()
   }, [])
 
-  // Handle hub drag - GROUP DRAG! 🧲 Whales follow hub!
+  // Handle hub drag - ROPE DRAG! 🔗 Whales trail behind smoothly!
   const handleHubDrag = useCallback((data: DraggableData) => {
     if (!simulationRef.current) return
     
@@ -350,16 +350,16 @@ export default function WhaleNetworkGraph({
     hubNode.fx = centerX
     hubNode.fy = centerY
     
-    // RELEASE ALL WHALES! Let them follow hub through link force! 🔗
+    // RELEASE ALL WHALES! Let them trail behind through link force! 🔗
     simulationRef.current.nodes().forEach((node: any) => {
       if (node.type === 'whale') {
-        node.fx = null // Not fixed = can move!
+        node.fx = null // Not fixed = can trail!
         node.fy = null
       }
     })
     
-    // HIGH ENERGY simulation = smooth group drag!
-    simulationRef.current.alpha(1).alphaTarget(0.7).restart()
+    // MODERATE ENERGY = smooth trailing with inertia!
+    simulationRef.current.alpha(0.8).alphaTarget(0.3).restart()
   }, [])
 
   useEffect(() => {
@@ -477,27 +477,28 @@ export default function WhaleNetworkGraph({
       })()
     }))
     
-    // Create D3 Force Simulation - ARKHAM GROUP DRAG! 🔥🧲
+    // Create D3 Force Simulation - SMOOTH ROPE DRAG! 🔗🌊
     const simulation = d3.forceSimulation(nodes)
-      // Link force (Hub ↔ Whales) - STRONGER for group drag!
+      // ROPE-LIKE LINK FORCE: Whales follow hub with delay!
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
         .distance((d: any) => d.distance) // Tier-based distance!
-        .strength(0.15) // STRONGER! (0.15 = whales follow hub smoothly!)
+        .strength(0.08) // MEDIUM strength = smooth rope-like follow!
       )
-      // Collision force - Smooth avoidance during group drag
+      // SOFT COLLISION: Let whales pass through each other smoothly
       .force('collision', d3.forceCollide()
-        .radius((d: any) => d.radius + 15) // More padding for smooth group movement
-        .strength(0.5) // Medium strength (push others away during drag)
-        .iterations(2) // 2 iterations = smoother group movement
+        .radius((d: any) => d.radius + 10)
+        .strength(0.2) // VERY SOFT! (smooth group movement)
+        .iterations(1) // Single pass = fluid
       )
-      // Many-body force (charge) - Push whales away from each other
+      // WEAK CHARGE: Minimal repulsion for organic clustering
       .force('charge', d3.forceManyBody()
-        .strength(-50) // STRONGER repulsion for group drag effect!
-        .distanceMax(800) // Longer range influence
+        .strength(-15) // WEAK! Less pushing = more following
+        .distanceMax(400) // Shorter range
       )
-      // NO CENTER FORCE - pure freedom!
-      // But strong link force = whales follow hub like a group!
+      // VELOCITY DECAY: Add friction for smooth, damped movement!
+      .velocityDecay(0.15) // LOW decay = more inertia, smoother trailing!
+      // NO CENTER FORCE - pure rope physics!
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
