@@ -909,27 +909,33 @@ export default function WhaleNetworkGraph({
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
           onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
           onStop={() => {
-            // After hub drag: FIX ALL NODES at their current positions!
+            // After hub drag: FIX AND FREEZE IMMEDIATELY!
             if (simulationRef.current) {
               // RESTORE WEAK LINK STRENGTH (whales free again!)
               const linkForce = simulationRef.current.force('link') as any
               if (linkForce) {
-                linkForce.strength(0.01) // Back to ultra weak!
+                linkForce.strength((d: any) => {
+                  if (d.type === 'hub-whale') return 0.01
+                  if (d.type === 'tier-group') return 0.015
+                  return 0.01
+                })
               }
               
               // Hub stays fixed where dropped
               // (hub.fx/fy already set during drag)
               
-              // FIX ALL WHALES at their current positions (stop drifting!)
+              // FIX ALL WHALES at their EXACT current positions!
               simulationRef.current.nodes().forEach((node: any) => {
                 if (node.type === 'whale') {
-                  node.fx = node.x // Fix at current position
+                  node.fx = node.x // Fix at EXACT position
                   node.fy = node.y
+                  node.vx = 0 // ZERO velocity!
+                  node.vy = 0
                 }
               })
               
-              // Cool simulation (low energy, everything fixed)
-              simulationRef.current.alpha(0.1).alphaTarget(0)
+              // STOP simulation IMMEDIATELY! No drifting!
+              simulationRef.current.alpha(0).alphaTarget(0).stop()
             }
           }}
         >
@@ -998,7 +1004,7 @@ export default function WhaleNetworkGraph({
                   // Reset drag state (hover can work again!)
                   setIsDragging(false)
                   
-                  // After whale drag: FIX ALL WHALES at their current positions!
+                  // After whale drag: FIX AND FREEZE IMMEDIATELY!
                   if (simulationRef.current) {
                     // RESTORE WEAK TIER GROUP LINK STRENGTH
                     const linkForce = simulationRef.current.force('link') as any
@@ -1010,16 +1016,18 @@ export default function WhaleNetworkGraph({
                       })
                     }
                     
-                    // Fix ALL WHALES at their current positions (stop drifting!)
+                    // Fix ALL WHALES at their EXACT current positions!
                     simulationRef.current.nodes().forEach((node: any) => {
                       if (node.type === 'whale') {
-                        node.fx = node.x // Fix at current position
+                        node.fx = node.x // Fix at EXACT position
                         node.fy = node.y
+                        node.vx = 0 // ZERO velocity!
+                        node.vy = 0
                       }
                     })
                     
-                    // Cool simulation (low energy, everything fixed)
-                    simulationRef.current.alpha(0.1).alphaTarget(0)
+                    // STOP simulation IMMEDIATELY! No drifting!
+                    simulationRef.current.alpha(0).alphaTarget(0).stop()
                   }
                 }}
               >
