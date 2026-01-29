@@ -117,6 +117,53 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
 
   const volumeDisplay = '$11.84M Vol.' // TODO: Get from market data
 
+  // 🎯 DYNAMIC Y-AXIS SCALE based on data range!
+  const calculateDomain = (): [number, number] => {
+    if (priceHistory.length === 0) return [0, 1]
+    
+    const prices = priceHistory.map(p => p.price)
+    const minPrice = Math.min(...prices)
+    const maxPrice = Math.max(...prices)
+    const range = maxPrice - minPrice
+    
+    // Add 20% padding above and below
+    const padding = Math.max(range * 0.2, 0.02) // Min 2% padding
+    
+    let domainMin = Math.max(0, minPrice - padding)
+    let domainMax = Math.min(1, maxPrice + padding)
+    
+    // Ensure minimum visible range (at least 5% range)
+    if (domainMax - domainMin < 0.05) {
+      const center = (domainMin + domainMax) / 2
+      domainMin = Math.max(0, center - 0.025)
+      domainMax = Math.min(1, center + 0.025)
+    }
+    
+    return [domainMin, domainMax]
+  }
+  
+  const yDomain = calculateDomain()
+  
+  // Generate smart ticks based on domain
+  const generateTicks = (min: number, max: number): number[] => {
+    const range = max - min
+    let tickCount = 5
+    
+    // For very small ranges, use more precise ticks
+    if (range < 0.1) tickCount = 6
+    
+    const step = range / (tickCount - 1)
+    const ticks: number[] = []
+    
+    for (let i = 0; i < tickCount; i++) {
+      ticks.push(min + (step * i))
+    }
+    
+    return ticks
+  }
+  
+  const yTicks = generateTicks(yDomain[0], yDomain[1])
+
   return (
     <div className="bg-card pixel-border border-primary/40 p-6">
       {/* Header */}
@@ -204,9 +251,14 @@ export function PriceChart({ marketId, yesPrice, noPrice, yesTokenId }: PriceCha
               }}
             />
             <YAxis 
-              domain={[0, 1]}
-              ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
-              tickFormatter={(value) => `${(value * 100).toFixed(0)}%`}
+              domain={yDomain}
+              ticks={yTicks}
+              tickFormatter={(value) => {
+                // Smart formatting based on range
+                const range = yDomain[1] - yDomain[0]
+                const decimals = range < 0.01 ? 2 : range < 0.1 ? 1 : 0
+                return `${(value * 100).toFixed(decimals)}%`
+              }}
               stroke="#333"
               tick={{ fill: '#666', fontSize: 10 }}
               tickLine={false}
