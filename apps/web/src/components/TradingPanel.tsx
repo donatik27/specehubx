@@ -178,8 +178,8 @@ export function TradingPanel({
         />
       </div>
 
-      {/* Trade Summary */}
-      <div className="bg-black/40 pixel-border border-white/10 p-4 mb-6 space-y-3 text-sm font-mono">
+      {/* Trade Summary - FOCUS ON WINNING! 💰 */}
+      <div className="bg-black/40 pixel-border border-white/10 p-4 mb-4 space-y-3 text-sm font-mono">
         <div className="flex justify-between items-center">
           <span className="text-muted-foreground uppercase">Price:</span>
           <span className="text-white font-bold">{(currentPrice * 100).toFixed(1)}¢</span>
@@ -188,14 +188,18 @@ export function TradingPanel({
           <span className="text-muted-foreground uppercase">Shares:</span>
           <span className="text-white font-bold">{shares.toFixed(2)}</span>
         </div>
-        <div className="border-t border-white/10 pt-3"></div>
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground uppercase">Potential Win:</span>
-          <span className="text-green-400 font-bold">+${potentialWin.toFixed(2)}</span>
+      </div>
+
+      {/* POTENTIAL WIN - BIG & BRIGHT! 💰✨ */}
+      <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 pixel-border border-green-500/50 p-6 mb-6 text-center">
+        <div className="text-xs text-green-400/80 uppercase tracking-widest mb-2 font-mono">
+          💰 Your Potential Profit
         </div>
-        <div className="flex justify-between items-center">
-          <span className="text-muted-foreground uppercase">Max Loss:</span>
-          <span className="text-red-400 font-bold">-${amount}</span>
+        <div className="text-4xl font-black text-green-400 mb-1 animate-pulse">
+          +${potentialWin.toFixed(2)}
+        </div>
+        <div className="text-xs text-green-400/60 font-mono">
+          If {side} wins, you earn this! 🚀
         </div>
       </div>
 
