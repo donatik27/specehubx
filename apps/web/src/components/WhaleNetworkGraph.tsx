@@ -285,7 +285,7 @@ export default function WhaleNetworkGraph({
     })
   }, []) // EMPTY DEPENDENCIES - no infinite loop!
 
-  // Handle whale drag - D3 FORCE-BASED (Arkham-style! 🔥)
+  // Handle whale drag - GROUP DRAG! 🧲 Others follow!
   const handleWhaleDrag = useCallback((whale: WhaleBubble, data: DraggableData) => {
     if (!simulationRef.current) return
     
@@ -320,15 +320,23 @@ export default function WhaleNetworkGraph({
     const centerY = data.y + whale.size / 2
     lastPositionsRef.current.set(whale.id, { x: centerX, y: centerY, timestamp: now })
     
-    // Update D3 node fixed position (D3 will handle the rest! 🔥)
+    // Update THIS whale position (fixed during drag)
     node.fx = centerX
     node.fy = centerY
     
-    // Reheat simulation with HIGH ENERGY (smooth dragging!)
-    simulationRef.current.alpha(1).alphaTarget(0.5).restart()
+    // RELEASE OTHER WHALES! Let them be pushed by collision/charge! 🔗
+    simulationRef.current.nodes().forEach((n: any) => {
+      if (n.type === 'whale' && n.id !== whale.id) {
+        n.fx = null // Not fixed = can move away!
+        n.fy = null
+      }
+    })
+    
+    // HIGH ENERGY simulation = smooth group push effect!
+    simulationRef.current.alpha(1).alphaTarget(0.7).restart()
   }, [])
 
-  // Handle hub drag - D3 FORCE-BASED (Arkham-style! 🔥)
+  // Handle hub drag - GROUP DRAG! 🧲 Whales follow hub!
   const handleHubDrag = useCallback((data: DraggableData) => {
     if (!simulationRef.current) return
     
@@ -336,14 +344,22 @@ export default function WhaleNetworkGraph({
     const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
     if (!hubNode) return
     
-    // Update D3 hub node fixed position
+    // Update hub position (fixed during drag)
     const centerX = data.x + 125 // Hub size = 250px, center = 125px
     const centerY = data.y + 125
     hubNode.fx = centerX
     hubNode.fy = centerY
     
-    // Reheat simulation with HIGH ENERGY (all whales follow smoothly!)
-    simulationRef.current.alpha(1).alphaTarget(0.5).restart()
+    // RELEASE ALL WHALES! Let them follow hub through link force! 🔗
+    simulationRef.current.nodes().forEach((node: any) => {
+      if (node.type === 'whale') {
+        node.fx = null // Not fixed = can move!
+        node.fy = null
+      }
+    })
+    
+    // HIGH ENERGY simulation = smooth group drag!
+    simulationRef.current.alpha(1).alphaTarget(0.7).restart()
   }, [])
 
   useEffect(() => {
@@ -461,27 +477,27 @@ export default function WhaleNetworkGraph({
       })()
     }))
     
-    // Create D3 Force Simulation - ARKHAM STYLE! 🔥
+    // Create D3 Force Simulation - ARKHAM GROUP DRAG! 🔥🧲
     const simulation = d3.forceSimulation(nodes)
-      // Link force (Hub ↔ Whales) - VERY WEAK elastic band (freedom to move!)
+      // Link force (Hub ↔ Whales) - STRONGER for group drag!
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
         .distance((d: any) => d.distance) // Tier-based distance!
-        .strength(0.02) // ULTRA WEAK! (0.02 = maximum freedom!)
+        .strength(0.15) // STRONGER! (0.15 = whales follow hub smoothly!)
       )
-      // Collision force - SOFT collision (no hard walls!)
+      // Collision force - Smooth avoidance during group drag
       .force('collision', d3.forceCollide()
-        .radius((d: any) => d.radius + 10) // Bubble radius + padding
-        .strength(0.3) // SOFT! (0.3 = smooth avoidance, no "walls")
-        .iterations(1) // Single iteration = smoother, less rigid
+        .radius((d: any) => d.radius + 15) // More padding for smooth group movement
+        .strength(0.5) // Medium strength (push others away during drag)
+        .iterations(2) // 2 iterations = smoother group movement
       )
-      // Many-body force (charge) - MINIMAL repulsion!
+      // Many-body force (charge) - Push whales away from each other
       .force('charge', d3.forceManyBody()
-        .strength(-20) // MINIMAL! (even weaker for more freedom)
-        .distanceMax(500) // Max distance for force
+        .strength(-50) // STRONGER repulsion for group drag effect!
+        .distanceMax(800) // Longer range influence
       )
       // NO CENTER FORCE - pure freedom!
-      // Nodes go wherever you drag them - Arkham style!
+      // But strong link force = whales follow hub like a group!
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
@@ -837,10 +853,21 @@ export default function WhaleNetworkGraph({
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
           onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
           onStop={() => {
-            // ARKHAM STYLE: Keep hub where dropped! Don't reset fx/fy!
-            // Hub stays fixed at drop position until next drag
+            // After hub drag: FIX ALL NODES at their current positions!
             if (simulationRef.current) {
-              // Just reduce simulation energy, don't release position
+              // Hub stays fixed where dropped
+              const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
+              // (hub.fx/fy already set during drag)
+              
+              // FIX ALL WHALES at their current positions (stop drifting!)
+              simulationRef.current.nodes().forEach((node: any) => {
+                if (node.type === 'whale') {
+                  node.fx = node.x // Fix at current position
+                  node.fy = node.y
+                }
+              })
+              
+              // Cool simulation (low energy, everything fixed)
               simulationRef.current.alpha(0.1).alphaTarget(0)
             }
           }}
@@ -910,10 +937,18 @@ export default function WhaleNetworkGraph({
                   // Reset drag state (hover can work again!)
                   setIsDragging(false)
                   
-                  // ARKHAM STYLE: Keep node where dropped! Don't reset fx/fy!
-                  // Node stays fixed at drop position until next drag
+                  // After whale drag: FIX ALL WHALES at their current positions!
                   if (simulationRef.current) {
-                    // Just reduce simulation energy, don't release position
+                    // Fix THIS whale where dropped (already set during drag)
+                    // Fix ALL OTHER WHALES at their current positions (stop drifting!)
+                    simulationRef.current.nodes().forEach((node: any) => {
+                      if (node.type === 'whale') {
+                        node.fx = node.x // Fix at current position
+                        node.fy = node.y
+                      }
+                    })
+                    
+                    // Cool simulation (low energy, everything fixed)
                     simulationRef.current.alpha(0.1).alphaTarget(0)
                   }
                 }}
