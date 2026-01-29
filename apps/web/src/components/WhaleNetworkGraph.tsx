@@ -324,15 +324,33 @@ export default function WhaleNetworkGraph({
     node.fx = centerX
     node.fy = centerY
     
-    // RELEASE OTHER WHALES! Let them flow away smoothly! 🌊
+    // BOOST TIER GROUP LINKS! Same tier whales follow! 🔗
+    const linkForce = simulationRef.current.force('link') as any
+    if (linkForce) {
+      linkForce.strength((d: any) => {
+        // Hub links stay weak
+        if (d.type === 'hub-whale') return 0.01
+        // BOOST tier group links! (whales follow their tier buddy!)
+        if (d.type === 'tier-group') {
+          // If this link involves the dragged whale → BOOST IT!
+          if (d.source.id === whale.id || d.target.id === whale.id) {
+            return 0.15 // STRONG! Tier group follows!
+          }
+          return 0.05 // Normal tier links
+        }
+        return 0.01
+      })
+    }
+    
+    // RELEASE OTHER WHALES! Let them follow through tier links! 🌊
     simulationRef.current.nodes().forEach((n: any) => {
       if (n.type === 'whale' && n.id !== whale.id) {
-        n.fx = null // Not fixed = can flow!
+        n.fx = null // Not fixed = can follow!
         n.fy = null
       }
     })
     
-    // MODERATE ENERGY = smooth organic movement!
+    // MODERATE ENERGY = smooth tier group drag!
     simulationRef.current.alpha(0.8).alphaTarget(0.3).restart()
   }, [])
 
@@ -472,39 +490,68 @@ export default function WhaleNetworkGraph({
       })
     ]
     
-    // Create D3 links (Hub → Whales)
-    const links = currentWhales.map(whale => ({
-      source: 'hub',
-      target: whale.id,
-      distance: (() => {
-        // Distance based on tier!
-        const tierConfig = TIER_CONFIGS.find(t => t.name === whale.tier) || TIER_CONFIGS[2]
-        return (tierConfig.radiusMin + tierConfig.radiusMax) / 2
-      })()
-    }))
+    // Create D3 links - NO TIER CONSTRAINTS! 🔓
+    const links: any[] = []
     
-    // Create D3 Force Simulation - ARKHAM FREEDOM! 🔥🌊
+    // Hub → Whales links (weak, for hub drag only)
+    currentWhales.forEach(whale => {
+      links.push({
+        source: 'hub',
+        target: whale.id,
+        distance: 600, // SAME for all! No tier circles!
+        type: 'hub-whale'
+      })
+    })
+    
+    // Tier Group Links: S→S, A→A, B→B (whales of same tier pull each other!)
+    const tierGroups: Record<string, WhaleBubble[]> = {
+      'S': currentWhales.filter(w => w.tier === 'S'),
+      'A': currentWhales.filter(w => w.tier === 'A'),
+      'B': currentWhales.filter(w => w.tier === 'B')
+    }
+    
+    // Create mesh links within each tier group
+    Object.values(tierGroups).forEach(group => {
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          links.push({
+            source: group[i].id,
+            target: group[j].id,
+            distance: 150, // Keep tier groups clustered loosely
+            type: 'tier-group'
+          })
+        }
+      }
+    })
+    
+    // Create D3 Force Simulation - TIER GROUP DRAG! 🔗🔥
     const simulation = d3.forceSimulation(nodes)
-      // ULTRA-WEAK LINK: Only active during HUB drag!
+      // SMART LINK FORCE: Hub links weak, Tier links medium!
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
-        .distance((d: any) => d.distance) // Tier-based distance
-        .strength(0.01) // ULTRA WEAK! Whales can escape tier circles!
+        .distance((d: any) => d.distance)
+        .strength((d: any) => {
+          // Hub→Whale links: ULTRA WEAK (only for hub drag)
+          if (d.type === 'hub-whale') return 0.01
+          // Tier group links: MEDIUM (S pulls S, A pulls A, B pulls B!)
+          if (d.type === 'tier-group') return 0.05
+          return 0.01
+        })
       )
       // SOFT COLLISION: Smooth group movement
       .force('collision', d3.forceCollide()
         .radius((d: any) => d.radius + 10)
-        .strength(0.3) // Soft avoidance
+        .strength(0.3)
         .iterations(1)
       )
-      // MODERATE CHARGE: Push whales apart in groups
+      // WEAK CHARGE: Less repulsion for tighter tier groups
       .force('charge', d3.forceManyBody()
-        .strength(-30) // Medium repulsion for spacing
-        .distanceMax(500)
+        .strength(-20) // Weaker for grouping
+        .distanceMax(400)
       )
       // VELOCITY DECAY: Smooth damped movement!
-      .velocityDecay(0.2) // Moderate friction
-      // FULL FREEDOM: Whales can go anywhere!
+      .velocityDecay(0.2)
+      // TIER GROUPS: Whales of same tier move together!
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
@@ -951,8 +998,17 @@ export default function WhaleNetworkGraph({
                   
                   // After whale drag: FIX ALL WHALES at their current positions!
                   if (simulationRef.current) {
-                    // Fix THIS whale where dropped (already set during drag)
-                    // Fix ALL OTHER WHALES at their current positions (stop drifting!)
+                    // RESTORE NORMAL TIER GROUP LINK STRENGTH
+                    const linkForce = simulationRef.current.force('link') as any
+                    if (linkForce) {
+                      linkForce.strength((d: any) => {
+                        if (d.type === 'hub-whale') return 0.01
+                        if (d.type === 'tier-group') return 0.05 // Back to normal
+                        return 0.01
+                      })
+                    }
+                    
+                    // Fix ALL WHALES at their current positions (stop drifting!)
                     simulationRef.current.nodes().forEach((node: any) => {
                       if (node.type === 'whale') {
                         node.fx = node.x // Fix at current position
