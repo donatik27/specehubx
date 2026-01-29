@@ -324,8 +324,8 @@ export default function WhaleNetworkGraph({
     node.fx = centerX
     node.fy = centerY
     
-    // Reheat simulation (make it active again!)
-    simulationRef.current.alphaTarget(0.3).restart()
+    // Reheat simulation with HIGH ENERGY (smooth dragging!)
+    simulationRef.current.alpha(1).alphaTarget(0.5).restart()
   }, [])
 
   // Handle hub drag - D3 FORCE-BASED (Arkham-style! 🔥)
@@ -342,8 +342,8 @@ export default function WhaleNetworkGraph({
     hubNode.fx = centerX
     hubNode.fy = centerY
     
-    // Reheat simulation (all whales will follow through links! 🔥)
-    simulationRef.current.alphaTarget(0.3).restart()
+    // Reheat simulation with HIGH ENERGY (all whales follow smoothly!)
+    simulationRef.current.alpha(1).alphaTarget(0.5).restart()
   }, [])
 
   useEffect(() => {
@@ -459,26 +459,27 @@ export default function WhaleNetworkGraph({
       })()
     }))
     
-    // Create D3 Force Simulation
+    // Create D3 Force Simulation - ARKHAM STYLE! 🔥
     const simulation = d3.forceSimulation(nodes)
-      // Link force (Hub ↔ Whales) - WEAK spring (node stays where you drop!)
+      // Link force (Hub ↔ Whales) - VERY WEAK elastic band (freedom to move!)
       .force('link', d3.forceLink(links)
         .id((d: any) => d.id)
         .distance((d: any) => d.distance) // Tier-based distance!
-        .strength(0.05) // WEAK! (0.05 = node stays where dropped!)
+        .strength(0.02) // ULTRA WEAK! (0.02 = maximum freedom!)
       )
-      // Collision force - Prevent overlapping!
+      // Collision force - SOFT collision (no hard walls!)
       .force('collision', d3.forceCollide()
         .radius((d: any) => d.radius + 10) // Bubble radius + padding
-        .strength(0.7) // Strong collision avoidance
+        .strength(0.3) // SOFT! (0.3 = smooth avoidance, no "walls")
+        .iterations(1) // Single iteration = smoother, less rigid
       )
-      // Many-body force (charge) - WEAK repulsion!
+      // Many-body force (charge) - MINIMAL repulsion!
       .force('charge', d3.forceManyBody()
-        .strength(-30) // WEAK! (was -100, now -30)
+        .strength(-20) // MINIMAL! (even weaker for more freedom)
         .distanceMax(500) // Max distance for force
       )
-      // NO CENTER FORCE - nodes stay where you drop them!
-      // (removed d3.forceCenter)
+      // NO CENTER FORCE - pure freedom!
+      // Nodes go wherever you drag them - Arkham style!
       // Tick handler - Update React state from D3 positions!
       .on('tick', () => {
         // Update Hub position
@@ -834,14 +835,11 @@ export default function WhaleNetworkGraph({
           position={positionsInitialized ? hubPosition : { x: 0, y: 0 }}
           onDrag={(e, data) => positionsInitialized && handleHubDrag(data)}
           onStop={() => {
-            // Release hub node & cool simulation (D3 force-based! 🔥)
+            // ARKHAM STYLE: Keep hub where dropped! Don't reset fx/fy!
+            // Hub stays fixed at drop position until next drag
             if (simulationRef.current) {
-              const hubNode = simulationRef.current.nodes().find((n: any) => n.id === 'hub')
-              if (hubNode) {
-                hubNode.fx = null
-                hubNode.fy = null
-              }
-              simulationRef.current.alphaTarget(0) // Cool simulation
+              // Just reduce simulation energy, don't release position
+              simulationRef.current.alpha(0.1).alphaTarget(0)
             }
           }}
         >
@@ -910,14 +908,11 @@ export default function WhaleNetworkGraph({
                   // Reset drag state (hover can work again!)
                   setIsDragging(false)
                   
-                  // Release whale node & cool simulation (D3 force-based! 🔥)
+                  // ARKHAM STYLE: Keep node where dropped! Don't reset fx/fy!
+                  // Node stays fixed at drop position until next drag
                   if (simulationRef.current) {
-                    const node = simulationRef.current.nodes().find((n: any) => n.id === whale.id)
-                    if (node) {
-                      node.fx = null
-                      node.fy = null
-                    }
-                    simulationRef.current.alphaTarget(0) // Cool simulation
+                    // Just reduce simulation energy, don't release position
+                    simulationRef.current.alpha(0.1).alphaTarget(0)
                   }
                 }}
               >
