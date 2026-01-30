@@ -154,10 +154,16 @@ export default function TraderProfilePage() {
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
     
-    const result = categories.map(cat => ({
-      category: cat,
-      value: dataMap.get(cat) || 0
-    }))
+    // Add minimum value for better visualization if category has data
+    const result = categories.map(cat => {
+      const count = dataMap.get(cat) || 0
+      // If has data but very small, boost it for visibility
+      const boostedValue = count > 0 && count < 5 ? Math.max(count, 3) : count
+      return {
+        category: cat,
+        value: boostedValue
+      }
+    })
     
     console.log('🔵 Most Traded Categories data:', result)
     return result
@@ -173,10 +179,16 @@ export default function TraderProfilePage() {
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.volume]))
     
-    const result = categories.map(cat => ({
-      category: cat,
-      value: Math.round(dataMap.get(cat) || 0)
-    }))
+    // Add minimum volume for better visualization
+    const result = categories.map(cat => {
+      const volume = Math.round(dataMap.get(cat) || 0)
+      // If has volume but very small, boost it for visibility
+      const boostedValue = volume > 0 && volume < 1000 ? Math.max(volume, 500) : volume
+      return {
+        category: cat,
+        value: boostedValue
+      }
+    })
     
     console.log('🟢 Volume by Category data:', result)
     return result
@@ -231,11 +243,17 @@ export default function TraderProfilePage() {
       // Fallback: if category has trades but no finished trades yet,
       // estimate with trader's overall win rate or default to 50%
       if (hasTradesInCategory) {
-        const estimatedWinRate = trader?.winRate ? parseFloat(trader.winRate.toString()) : 50
+        // IMPORTANT: trader.winRate is 0-1 range (0.5 = 50%), convert to percentage!
+        let estimatedWinRate = 50 // default
+        if (trader?.winRate) {
+          const rawWinRate = parseFloat(trader.winRate.toString())
+          // If winRate is 0-1 range, multiply by 100 to get percentage
+          estimatedWinRate = rawWinRate <= 1 ? rawWinRate * 100 : rawWinRate
+        }
         console.log(`   ${cat}: ${estimatedWinRate.toFixed(1)}% (estimated fallback)`)
         return {
           category: cat,
-          value: Math.max(10, estimatedWinRate) // Minimum 10% for visibility
+          value: Math.max(20, estimatedWinRate) // Minimum 20% for better visibility
         }
       }
       
@@ -265,6 +283,16 @@ export default function TraderProfilePage() {
         category: t.category
       }))
       .slice(0, 50) // Show last 50 finished trades
+  }
+
+  // Calculate optimal domain for radar charts (with padding)
+  const getRadarDomain = (data: any[], padding: number = 1.2) => {
+    if (!data || data.length === 0) return [0, 100]
+    const maxValue = Math.max(...data.map(d => d.value || 0))
+    if (maxValue === 0) return [0, 100]
+    // Add padding to max value (20% by default) for better visualization
+    const domainMax = Math.ceil(maxValue * padding)
+    return [0, domainMax]
   }
 
   if (loading) {
@@ -585,7 +613,7 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={[0, 'auto']} 
+                    domain={getRadarDomain(getMostTradedCategories(), 1.3)} 
                     tick={{ fill: '#60a5fa', fontSize: 10 }} 
                     stroke="#1e40af"
                     strokeOpacity={0.3}
@@ -628,7 +656,7 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={[0, 'auto']} 
+                    domain={getRadarDomain(getVolumeByCategory(), 1.3)} 
                     tick={{ fill: '#4ade80', fontSize: 10 }} 
                     stroke="#15803d"
                     strokeOpacity={0.3}
@@ -671,7 +699,7 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={[0, 100]} 
+                    domain={getRadarDomain(getWinRateByCategory(), 1.2)} 
                     tick={{ fill: '#fb923c', fontSize: 10 }} 
                     stroke="#c2410c"
                     strokeOpacity={0.3}
