@@ -723,6 +723,71 @@ export default function TraderProfilePage() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Top Category Stats - Key Insights 💎 */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            {activity.categoryBreakdown.slice(0, 3).map((cat, idx) => {
+              const colors = [
+                { border: 'border-blue-500/30', text: 'text-blue-400' },
+                { border: 'border-green-500/30', text: 'text-green-400' },
+                { border: 'border-orange-500/30', text: 'text-orange-400' }
+              ]
+              const color = colors[idx] || colors[0]
+              
+              return (
+                <div key={cat.category} className={`bg-black/60 pixel-border ${color.border} p-4`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className={`text-sm font-bold ${color.text}`}>{cat.category}</h4>
+                    <span className="text-xs text-muted-foreground">{cat.count} trades</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground mb-1">Win Rate</p>
+                      <p className={`font-bold ${cat.winRate >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
+                        {cat.winRate > 0 ? `${cat.winRate.toFixed(1)}%` : 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-muted-foreground mb-1">ROI</p>
+                      <p className={`font-bold ${cat.roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {cat.roi !== 0 ? `${cat.roi > 0 ? '+' : ''}${cat.roi.toFixed(1)}%` : '0%'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-muted-foreground mb-1">Avg Profit</p>
+                      <p className={`font-bold ${cat.avgProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {cat.avgProfit !== 0 ? `${cat.avgProfit > 0 ? '+' : ''}$${Math.abs(cat.avgProfit).toFixed(0)}` : '$0'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-muted-foreground mb-1">Biggest Win</p>
+                      <p className="font-bold text-green-400">
+                        {cat.biggestWin > 0 ? `+$${cat.biggestWin.toFixed(0)}` : '$0'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-muted-foreground mb-1">Avg Hold</p>
+                      <p className="font-bold text-blue-400">
+                        {cat.avgHoldTime > 0 ? `${cat.avgHoldTime.toFixed(1)}h` : 'N/A'}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-muted-foreground mb-1">Consistency</p>
+                      <p className={`font-bold ${cat.consistency >= 70 ? 'text-green-400' : cat.consistency >= 40 ? 'text-yellow-400' : 'text-orange-400'}`}>
+                        {cat.consistency > 0 ? `${cat.consistency.toFixed(0)}%` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
