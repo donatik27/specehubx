@@ -1114,6 +1114,8 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       biggestLoss: number;
       avgHoldTime: number;
       holdTimes: number[];
+      totalWinDollars: number;   // ✅ NEW: Total $ from wins
+      totalLossDollars: number;  // ✅ NEW: Total $ from losses
     }>();
     
     let filteredCount = 0; // Count of insignificant trades
@@ -1128,7 +1130,9 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           biggestWin: 0,
           biggestLoss: 0,
           avgHoldTime: 0,
-          holdTimes: []
+          holdTimes: [],
+          totalWinDollars: 0,   // ✅ NEW
+          totalLossDollars: 0   // ✅ NEW
         });
       }
       
@@ -1147,11 +1151,13 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       
       if (trade.profit > 0) {
         metrics.wins++;
+        metrics.totalWinDollars += trade.profit;  // ✅ Track $ from wins
         if (trade.profit > metrics.biggestWin) {
           metrics.biggestWin = trade.profit;
         }
       } else if (trade.profit < 0) {
         metrics.losses++;
+        metrics.totalLossDollars += Math.abs(trade.profit);  // ✅ Track $ from losses (positive number)
         if (trade.profit < metrics.biggestLoss) {
           metrics.biggestLoss = trade.profit;
         }
@@ -1168,9 +1174,14 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`📊 Category Win Rates (only PnL >= $${MIN_SIGNIFICANT_PNL}):`);
     for (const [category, metrics] of categoryMetrics.entries()) {
       const total = metrics.wins + metrics.losses;
-      const winRate = total > 0 ? (metrics.wins / total * 100).toFixed(1) : '0.0';
+      const tradeWinRate = total > 0 ? (metrics.wins / total * 100).toFixed(1) : '0.0';
+      
+      // ✅ Calculate DOLLAR win rate (what % of dollars are from wins)
+      const totalDollars = metrics.totalWinDollars + metrics.totalLossDollars;
+      const dollarWinRate = totalDollars > 0 ? (metrics.totalWinDollars / totalDollars * 100).toFixed(1) : '0.0';
+      
       const totalPnL = metrics.totalProfit >= 0 ? `+$${metrics.totalProfit.toFixed(0)}` : `-$${Math.abs(metrics.totalProfit).toFixed(0)}`;
-      console.log(`  ${category}: ${winRate}% (${metrics.wins}W / ${metrics.losses}L from ${total} significant trades, PnL: ${totalPnL})`);
+      console.log(`  ${category}: Trade WR: ${tradeWinRate}% | Dollar WR: ${dollarWinRate}% (${metrics.wins}W/$${metrics.totalWinDollars.toFixed(0)} vs ${metrics.losses}L/$${metrics.totalLossDollars.toFixed(0)}, PnL: ${totalPnL})`);
     }
     
     // ENHANCED: Calculate estimated metrics from ALL trades (not just finished)
@@ -1219,19 +1230,32 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     // Calculate total volume for proportional PnL distribution
     const totalVolume = Array.from(categoryMap.values()).reduce((sum, stats) => sum + stats.volume, 0);
     
-    // Calculate OVERALL win rate from finished trades
+    // Calculate OVERALL win rates from finished trades
     let totalWins = 0;
     let totalLosses = 0;
+    let totalWinDollars = 0;  // ✅ NEW
+    let totalLossDollars = 0; // ✅ NEW
+    
     for (const metrics of categoryMetrics.values()) {
       totalWins += metrics.wins;
       totalLosses += metrics.losses;
+      totalWinDollars += metrics.totalWinDollars;     // ✅ NEW
+      totalLossDollars += metrics.totalLossDollars;   // ✅ NEW
     }
+    
     const overallTotal = totalWins + totalLosses;
-    const overallWinRateCalc = overallTotal > 0 ? (totalWins / overallTotal) : (traderWinRate || 0.5);
+    const overallTradeWinRate = overallTotal > 0 ? (totalWins / overallTotal) : (traderWinRate || 0.5);
+    const overallWinRateCalc = overallTradeWinRate; // For backwards compatibility
+    
+    // ✅ Calculate overall DOLLAR win rate
+    const totalDollars = totalWinDollars + totalLossDollars;
+    const overallDollarWinRate = totalDollars > 0 ? (totalWinDollars / totalDollars) : 0;
     
     console.log(`📊 CategoryMap has ${categoryMap.size} categories:`, Array.from(categoryMap.keys()));
     console.log(`💰 Total volume: $${totalVolume.toFixed(2)}`);
-    console.log(`🎯 OVERALL WIN RATE: ${(overallWinRateCalc * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${overallTotal} finished trades)`);
+    console.log(`🎯 OVERALL WIN RATES:`);
+    console.log(`   Trade Win Rate: ${(overallTradeWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${overallTotal} finished trades)`);
+    console.log(`   Dollar Win Rate: ${(overallDollarWinRate * 100).toFixed(1)}% ($${totalWinDollars.toFixed(0)} wins vs $${totalLossDollars.toFixed(0)} losses)`);
     
     // IMPORTANT: Always include ALL 5 categories for complete radar charts!
     const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other'];
@@ -1250,25 +1274,40 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         const estimated = estimatedMetrics.get(category);
         const avgTradeSize = stats.count > 0 ? stats.volume / stats.count : 0;
         
-        // ✅ Calculate REAL win rate from finished trades
-        let winRate = 0;
+        // ✅ Calculate REAL win rate from finished trades (by trade count)
+        let tradeWinRate = 0;
+        let dollarWinRate = 0; // ✅ NEW: Dollar-weighted win rate
         const categoryFinishedTrades = (metrics?.wins || 0) + (metrics?.losses || 0);
         
         if (metrics && categoryFinishedTrades >= 3) {
-          // ✅ Use REAL win rate (minimum 3 finished trades for reliability)
-          winRate = (metrics.wins / categoryFinishedTrades) * 100;
-          console.log(`  ${category}: REAL Win Rate ${winRate.toFixed(1)}% (${metrics.wins}W / ${metrics.losses}L from ${categoryFinishedTrades} trades)`);
+          // ✅ Use REAL win rates (minimum 3 finished trades for reliability)
+          tradeWinRate = (metrics.wins / categoryFinishedTrades) * 100;
+          
+          // ✅ Calculate dollar win rate
+          const totalDollars = metrics.totalWinDollars + metrics.totalLossDollars;
+          dollarWinRate = totalDollars > 0 ? (metrics.totalWinDollars / totalDollars) * 100 : 0;
+          
+          console.log(`  ${category}: REAL Trade WR ${tradeWinRate.toFixed(1)}% | Dollar WR ${dollarWinRate.toFixed(1)}% (${metrics.wins}W / ${metrics.losses}L from ${categoryFinishedTrades} trades)`);
         } else if (categoryFinishedTrades > 0) {
           // Mix real + overall for categories with 1-2 finished trades
           const realWR = (metrics!.wins / categoryFinishedTrades) * 100;
           const fallbackWR = overallWinRateCalc * 100;
-          winRate = (realWR * 0.7) + (fallbackWR * 0.3);
-          console.log(`  ${category}: MIXED Win Rate ${winRate.toFixed(1)}% (${categoryFinishedTrades} trades, mixing ${realWR.toFixed(1)}% real + ${fallbackWR.toFixed(1)}% overall)`);
+          tradeWinRate = (realWR * 0.7) + (fallbackWR * 0.3);
+          
+          // Dollar win rate (no mixing, use real data even with few trades)
+          const totalDollars = (metrics?.totalWinDollars || 0) + (metrics?.totalLossDollars || 0);
+          dollarWinRate = totalDollars > 0 ? ((metrics?.totalWinDollars || 0) / totalDollars) * 100 : 0;
+          
+          console.log(`  ${category}: MIXED Trade WR ${tradeWinRate.toFixed(1)}% | Dollar WR ${dollarWinRate.toFixed(1)}% (${categoryFinishedTrades} trades, mixing trade WR with overall)`);
         } else {
           // Use overall win rate as fallback for categories with no finished trades
-          winRate = overallWinRateCalc * 100;
-          console.log(`  ${category}: FALLBACK Win Rate ${winRate.toFixed(1)}% (no finished trades, using overall)`);
+          tradeWinRate = overallWinRateCalc * 100;
+          dollarWinRate = 0; // No data
+          console.log(`  ${category}: FALLBACK Win Rate ${tradeWinRate.toFixed(1)}% (no finished trades, using overall)`);
         }
+        
+        // For backwards compatibility, keep 'winRate' as trade win rate
+        const winRate = tradeWinRate;
         
         // Calculate total profit and ROI using REAL data from closed positions! 💰
         let totalProfit = metrics?.totalProfit || 0;
@@ -1344,7 +1383,8 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           percentage: safeNumber((stats.count / totalTrades) * 100),
           // ENHANCED METRICS with fallbacks! 🚀
           avgTradeSize: safeNumber(avgTradeSize),
-          winRate: safeNumber(winRate),
+          winRate: safeNumber(winRate),  // Trade win rate (by count)
+          dollarWinRate: safeNumber(dollarWinRate),  // ✅ NEW: Dollar win rate (by $)
           totalProfit: safeNumber(totalProfit),
           roi: safeNumber(roi),
           avgProfit: safeNumber(avgProfit),
@@ -1369,7 +1409,11 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       _metadata: {
         closedPositionsCount: closedPositions.length,
         finishedTradesCount: finishedTrades.length,
-        overallWinRate: overallWinRateCalc,
+        overallTradeWinRate: overallTradeWinRate,     // ✅ Trade win rate (by count)
+        overallDollarWinRate: overallDollarWinRate,   // ✅ NEW: Dollar win rate (by $)
+        overallWinRate: overallWinRateCalc,           // For backwards compatibility
+        totalWinDollars: totalWinDollars,             // ✅ NEW
+        totalLossDollars: totalLossDollars,           // ✅ NEW
         dataSource: closedPositions.length > 0 ? 'closed-positions' : 'trades-matching'
       }
     };

@@ -1659,10 +1659,21 @@ export default function TraderProfilePage() {
 
           <div className="bg-black/40 pixel-border border-white/20 p-4">
             <p className="text-xs text-muted-foreground mb-2 uppercase">Win Rate</p>
-            <p className="text-3xl font-bold text-white">
-              {(trader.winRate * 100).toFixed(1)}%
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Based on last 1000 trades</p>
+            <div className="flex items-baseline gap-2 mb-1">
+              <p className="text-3xl font-bold text-white">
+                {(trader.winRate * 100).toFixed(1)}%
+              </p>
+              <span className="text-xs text-muted-foreground">trades</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Based on last 1000 trades</p>
+            {activity?._metadata?.overallDollarWinRate !== undefined && (
+              <div className="mt-2 pt-2 border-t border-white/10">
+                <p className="text-sm font-bold text-green-400">
+                  {(activity._metadata.overallDollarWinRate * 100).toFixed(1)}% dollars
+                </p>
+                <p className="text-xs text-muted-foreground">$ won vs $ lost</p>
+              </div>
+            )}
           </div>
 
           <div className="bg-black/40 pixel-border border-white/20 p-4">
