@@ -914,10 +914,9 @@ export default function TraderProfilePage() {
               </div>
             </button>
           </div>
-        </div>
 
-        {/* NEON ARCADE Animations */}
-        <style jsx>{`
+          {/* NEON ARCADE Animations */}
+          <style jsx>{`
             @keyframes borderFlow {
               0% {
                 transform: translateX(-100%);
