@@ -77,10 +77,12 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
       }
 
       // Fetch open positions via proxy endpoint
-      console.log('🔍 Fetching open positions via proxy...')
+      console.log(`🔍 Fetching open positions via proxy for: ${address}`)
       const positionsRes = await fetch(
         `/api/trader-positions?address=${address}`
       )
+      
+      console.log(`📡 Proxy response status: ${positionsRes.status}`)
 
       if (!positionsRes.ok) {
         throw new Error('Failed to fetch positions')
