@@ -254,25 +254,35 @@ export default function TraderProfilePage() {
             finishedTrades: activityData.trades?.length || 0
           })
 
-            // ✅ Primary source: finished trades from backend (most accurate)
+            // ✅ PRIMARY: Use finished trades from backend (from closed-positions API)
             const finishedTrades = Array.isArray(activityData.trades) ? activityData.trades : []
-            if (finishedTrades.length > 0) {
+            console.log(`📥 Received ${finishedTrades.length} finished trades from backend`)
+            
+            if (finishedTrades.length >= 5) {
+              // ✅ Calculate win rate from REAL closed positions (minimum 5 for reliability)
               let wins = 0
               let losses = 0
+              let breakEven = 0
+              
               for (const trade of finishedTrades) {
                 const profit = parseFloat(trade.profit || '0')
                 if (profit > 0) wins++
                 else if (profit < 0) losses++
+                else breakEven++
               }
 
               const total = wins + losses
               if (total > 0) {
                 const overallWinRate = wins / total
                 foundTrader.winRate = overallWinRate
-                console.log(`✅ OVERALL WIN RATE (BACKEND TRADES): ${(overallWinRate * 100).toFixed(1)}% (${wins}W / ${losses}L from ${total} finished trades)`)
+                console.log(`✅ OVERALL WIN RATE (CLOSED POSITIONS): ${(overallWinRate * 100).toFixed(1)}% (${wins}W / ${losses}L / ${breakEven} break-even from ${finishedTrades.length} closed positions)`)
+              } else {
+                console.log(`⚠️ No wins/losses found in ${finishedTrades.length} finished trades`)
               }
+            } else if (finishedTrades.length > 0) {
+              console.log(`⚠️ Only ${finishedTrades.length} finished trades - using backend win rate with fallback`)
             } else {
-              console.log('⚠️ No finished trades from backend - using Polymarket fallback')
+              console.log('⚠️ No finished trades from backend - will try Polymarket fallback')
             }
           
           // FRONTEND FALLBACK: Fetch TRADES + POSITIONS DIRECTLY from Polymarket! 🚀

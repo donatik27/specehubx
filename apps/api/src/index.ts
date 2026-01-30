@@ -925,12 +925,28 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`🎯 Using PnL: $${finalPnL.toFixed(2)} (closed: $${closedPositionsPnL.toFixed(2)}, db: $${traderPnL.toFixed(2)})`);
     console.log(`🎯 Has closed positions data: ${closedPositionsByCategory.size} categories`);
     
-    // Fetch last 1000 trades from Polymarket for accurate Win Rate calculation
-    const tradesRes = await fetch(
-      `https://data-api.polymarket.com/v1/trades?user=${address}&limit=1000`
+    // ✅ PRIMARY: Fetch CLOSED POSITIONS for accurate Win Rate (includes all P&L)
+    console.log(`🎯 Fetching closed positions for ${address}...`);
+    const closedPositionsRes = await fetch(
+      `https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000&sortBy=TIMESTAMP&sortDirection=DESC`
     );
     
-    if (!tradesRes.ok) {
+    let closedPositions: any[] = [];
+    if (closedPositionsRes.ok) {
+      closedPositions = await closedPositionsRes.json() as any[];
+      console.log(`✅ Fetched ${closedPositions.length} closed positions with PnL`);
+    } else {
+      console.log(`⚠️ Closed positions API failed: ${closedPositionsRes.status}`);
+    }
+    
+    // ✅ FALLBACK: Fetch trades for activity stats (correct endpoint without /v1/)
+    console.log(`🔍 Fetching trades for ${address}...`);
+    const tradesRes = await fetch(
+      `https://data-api.polymarket.com/trades?user=${address}&limit=1000`
+    );
+    
+    if (!tradesRes.ok && closedPositions.length === 0) {
+      console.log(`❌ Both APIs failed - returning empty data`);
       return res.json({
         lastTrade: null,
         totalTrades: 0,
@@ -940,17 +956,20 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       });
     }
     
-    const trades = await tradesRes.json() as any[];
+    const trades = tradesRes.ok ? (await tradesRes.json() as any[]) : [];
+    console.log(`📊 Fetched ${trades.length} trades for activity stats`);
     
-    // Calculate stats
+    // Calculate stats from trades (for activity)
     const lastTrade = trades.length > 0 ? trades[0].timestamp : null;
     const totalTrades = trades.length;
     
     // Count unique days with trades
     const tradeDays = new Set(
-      trades.map((t: any) => new Date(t.timestamp).toDateString())
+      trades.map((t: any) => new Date(t.timestamp * 1000).toDateString())
     );
     const activeDays = tradeDays.size;
+    
+    console.log(`📊 Activity stats: ${totalTrades} trades, ${activeDays} active days`);
     
     // Helper to detect category from trade title
     const detectCategory = (title: string): string => {
@@ -1008,67 +1027,47 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       }
     }
     
-    // Calculate finished trades with profit/loss
-    // Group trades by market + outcome
-    const positionMap = new Map<string, { buys: any[], sells: any[] }>();
-    
-    for (const trade of trades) {
-      const key = `${trade.market_id || trade.asset_id}_${trade.outcome}`;
-      if (!positionMap.has(key)) {
-        positionMap.set(key, { buys: [], sells: [] });
-      }
-      
-      const position = positionMap.get(key)!;
-      if (trade.side === 'BUY') {
-        position.buys.push(trade);
-      } else if (trade.side === 'SELL') {
-        position.sells.push(trade);
-      }
-    }
-    
-    // Match buys with sells to calculate profit
+    // ✅ PRIMARY SOURCE: Use CLOSED POSITIONS for finished trades (most accurate!)
+    console.log(`🎯 Processing ${closedPositions.length} closed positions for win rate...`);
     const finishedTrades = [];
     
-    for (const [key, position] of positionMap.entries()) {
-      const { buys, sells } = position;
+    for (const pos of closedPositions) {
+      const pnl = parseFloat(pos.realizedPnl || '0');
+      const avgPrice = parseFloat(pos.avgPrice || '0');
+      const totalBought = parseFloat(pos.totalBought || '0');
+      const curPrice = parseFloat(pos.curPrice || '0');
+      const timestamp = pos.timestamp || Date.now() / 1000;
       
-      // Simple matching: pair oldest buy with oldest sell
-      const pairs = Math.min(buys.length, sells.length);
-      
-      for (let i = 0; i < pairs; i++) {
-        const buy = buys[i];
-        const sell = sells[i];
-        
-        const buyPrice = parseFloat(buy.price || '0');
-        const sellPrice = parseFloat(sell.price || '0');
-        const size = Math.min(parseFloat(buy.size || '0'), parseFloat(sell.size || '0'));
-        
-        // Calculate profit: (sell_price - buy_price) * size
-        const profit = (sellPrice - buyPrice) * size;
-        
-        // Calculate hold time (time between buy and sell)
-        const buyTime = new Date(buy.timestamp).getTime();
-        const sellTime = new Date(sell.timestamp).getTime();
-        const holdTime = (sellTime - buyTime) / (1000 * 60 * 60); // hours
-        
-        finishedTrades.push({
-          id: `${buy.id}_${sell.id}`,
-          timestamp: sell.timestamp,
-          title: buy.title || sell.title,
-          outcome: buy.outcome || sell.outcome,
-          side: 'CLOSED',
-          size: size,
-          buyPrice: buyPrice,
-          sellPrice: sellPrice,
-          price: sellPrice, // For compatibility
-          profit: profit,
-          holdTime: holdTime,
-          category: detectCategory(buy.title || sell.title || ''),
-        });
+      // Skip positions with no PnL data
+      if (isNaN(pnl) || totalBought === 0) {
+        console.log(`⚠️ Skipping position with no PnL: ${pos.title?.substring(0, 30)}...`);
+        continue;
       }
+      
+      const category = detectCategory(pos.title || '');
+      
+      finishedTrades.push({
+        id: `closed_${pos.asset}`,
+        timestamp: timestamp,
+        title: pos.title || 'Unknown',
+        outcome: pos.outcome || 'Unknown',
+        side: 'CLOSED',
+        size: totalBought,
+        buyPrice: avgPrice,
+        sellPrice: curPrice,
+        price: curPrice,
+        profit: pnl, // ✅ Real PnL from API!
+        holdTime: 0, // Not available from closed-positions
+        category: category,
+      });
+      
+      console.log(`  ${category}: ${pos.title?.substring(0, 40)}... | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
     }
     
-    // Calculate enhanced metrics per category using finished trades
+    console.log(`✅ Created ${finishedTrades.length} finished trades from closed positions`);
+    
+    // ✅ Calculate WIN RATE metrics per category from closed positions
+    console.log(`📊 Calculating category metrics from ${finishedTrades.length} finished trades...`);
     const categoryMetrics = new Map<string, {
       wins: number;
       losses: number;
@@ -1098,21 +1097,31 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       metrics.totalProfit += trade.profit;
       metrics.profits.push(trade.profit);
       
+      // ✅ Count wins/losses based on REAL PnL
       if (trade.profit > 0) {
         metrics.wins++;
         if (trade.profit > metrics.biggestWin) {
           metrics.biggestWin = trade.profit;
         }
-      } else {
+      } else if (trade.profit < 0) {
         metrics.losses++;
         if (trade.profit < metrics.biggestLoss) {
           metrics.biggestLoss = trade.profit;
         }
       }
+      // Note: profit === 0 (break-even) not counted in win rate
       
       if (trade.holdTime) {
         metrics.holdTimes.push(trade.holdTime);
       }
+    }
+    
+    // Log category win rates
+    console.log(`📊 Category Win Rates:`);
+    for (const [category, metrics] of categoryMetrics.entries()) {
+      const total = metrics.wins + metrics.losses;
+      const winRate = total > 0 ? (metrics.wins / total * 100).toFixed(1) : '0.0';
+      console.log(`  ${category}: ${winRate}% (${metrics.wins}W / ${metrics.losses}L from ${total} trades)`);
     }
     
     // ENHANCED: Calculate estimated metrics from ALL trades (not just finished)
@@ -1161,8 +1170,19 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     // Calculate total volume for proportional PnL distribution
     const totalVolume = Array.from(categoryMap.values()).reduce((sum, stats) => sum + stats.volume, 0);
     
+    // Calculate OVERALL win rate from finished trades
+    let totalWins = 0;
+    let totalLosses = 0;
+    for (const metrics of categoryMetrics.values()) {
+      totalWins += metrics.wins;
+      totalLosses += metrics.losses;
+    }
+    const overallTotal = totalWins + totalLosses;
+    const overallWinRateCalc = overallTotal > 0 ? (totalWins / overallTotal) : (traderWinRate || 0.5);
+    
     console.log(`📊 CategoryMap has ${categoryMap.size} categories:`, Array.from(categoryMap.keys()));
     console.log(`💰 Total volume: $${totalVolume.toFixed(2)}`);
+    console.log(`🎯 OVERALL WIN RATE: ${(overallWinRateCalc * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${overallTotal} finished trades)`);
     
     // IMPORTANT: Always include ALL 5 categories for complete radar charts!
     const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other'];
@@ -1179,16 +1199,26 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       .map(([category, stats]) => {
         const metrics = categoryMetrics.get(category);
         const estimated = estimatedMetrics.get(category);
-        const avgTradeSize = stats.volume / stats.count;
+        const avgTradeSize = stats.count > 0 ? stats.volume / stats.count : 0;
         
-        // Calculate win rate from finished trades OR use trader's overall win rate
+        // ✅ Calculate REAL win rate from finished trades
         let winRate = 0;
-        if (metrics && (metrics.wins + metrics.losses) > 0) {
-          // Use real win rate from finished trades
-          winRate = (metrics.wins / (metrics.wins + metrics.losses)) * 100;
+        const categoryFinishedTrades = (metrics?.wins || 0) + (metrics?.losses || 0);
+        
+        if (metrics && categoryFinishedTrades >= 3) {
+          // ✅ Use REAL win rate (minimum 3 finished trades for reliability)
+          winRate = (metrics.wins / categoryFinishedTrades) * 100;
+          console.log(`  ${category}: REAL Win Rate ${winRate.toFixed(1)}% (${metrics.wins}W / ${metrics.losses}L from ${categoryFinishedTrades} trades)`);
+        } else if (categoryFinishedTrades > 0) {
+          // Mix real + overall for categories with 1-2 finished trades
+          const realWR = (metrics!.wins / categoryFinishedTrades) * 100;
+          const fallbackWR = overallWinRateCalc * 100;
+          winRate = (realWR * 0.7) + (fallbackWR * 0.3);
+          console.log(`  ${category}: MIXED Win Rate ${winRate.toFixed(1)}% (${categoryFinishedTrades} trades, mixing ${realWR.toFixed(1)}% real + ${fallbackWR.toFixed(1)}% overall)`);
         } else {
-          // Use trader's overall win rate from DB
-          winRate = traderWinRate * 100;
+          // Use overall win rate as fallback for categories with no finished trades
+          winRate = overallWinRateCalc * 100;
+          console.log(`  ${category}: FALLBACK Win Rate ${winRate.toFixed(1)}% (no finished trades, using overall)`);
         }
         
         // Calculate total profit and ROI using REAL data from closed positions! 💰
@@ -1280,13 +1310,29 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       })
       .sort((a, b) => b.volume - a.volume); // Sort by volume (highest first)
     
-    res.json({
+    // ✅ Return enhanced data with win rate from closed positions
+    const response = {
       lastTrade,
       totalTrades,
       activeDays,
       categoryBreakdown,
       trades: finishedTrades,
+      _metadata: {
+        closedPositionsCount: closedPositions.length,
+        finishedTradesCount: finishedTrades.length,
+        overallWinRate: overallWinRateCalc,
+        dataSource: closedPositions.length > 0 ? 'closed-positions' : 'trades-matching'
+      }
+    };
+    
+    console.log(`✅ Returning activity data:`, {
+      finishedTrades: response.trades.length,
+      categories: response.categoryBreakdown.length,
+      overallWinRate: `${(overallWinRateCalc * 100).toFixed(1)}%`,
+      dataSource: response._metadata.dataSource
     });
+    
+    res.json(response);
   } catch (error: any) {
     console.error('Error fetching activity:', error);
     res.json({
