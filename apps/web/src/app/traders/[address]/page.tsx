@@ -35,16 +35,29 @@ interface Trade {
   category: string
 }
 
+interface CategoryMetrics {
+  category: string
+  count: number
+  volume: number
+  percentage: number
+  // NEW ENHANCED METRICS! 🚀
+  avgTradeSize: number
+  winRate: number
+  totalProfit: number
+  roi: number
+  avgProfit: number
+  biggestWin: number
+  biggestLoss: number
+  avgHoldTime: number
+  consistency: number
+  finishedTradesCount: number
+}
+
 interface ActivityStats {
   lastTrade: number | null
   totalTrades: number
   activeDays: number
-  categoryBreakdown: {
-    category: string
-    count: number
-    volume: number
-    percentage: number
-  }[]
+  categoryBreakdown: CategoryMetrics[]
   trades?: Trade[]
 }
 
@@ -169,37 +182,35 @@ export default function TraderProfilePage() {
     return result
   }
 
-  // Calculate Volume by Category (dollar amount)
-  const getVolumeByCategory = () => {
+  // Calculate ROI by Category (Return on Investment %)
+  const getROIByCategory = () => {
     if (!activity?.categoryBreakdown) {
       console.log('🔴 No categoryBreakdown data!')
       return []
     }
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
-    const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.volume]))
+    const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.roi]))
     
-    // Add minimum volume for better visualization
+    // ROI can be negative, so handle that
     const result = categories.map(cat => {
-      const volume = Math.round(dataMap.get(cat) || 0)
-      // If has volume but very small, boost it for visibility
-      const boostedValue = volume > 0 && volume < 1000 ? Math.max(volume, 500) : volume
+      const roi = dataMap.get(cat) || 0
+      // Boost small positive ROI for visibility, but keep negatives as-is
+      const boostedValue = roi > 0 && roi < 5 ? Math.max(roi, 5) : (roi < 0 ? Math.max(roi, -100) : roi)
       return {
         category: cat,
-        value: boostedValue
+        value: Math.round(boostedValue * 10) / 10, // Round to 1 decimal
+        isNegative: roi < 0
       }
     })
     
-    console.log('🟢 Volume by Category data:', result)
+    console.log('🟢 ROI by Category data:', result)
     return result
   }
 
-  // Calculate Win Rate by Category (percentage)
+  // Calculate Win Rate by Category (percentage) - NOW USES BACKEND DATA! 🚀
   const getWinRateByCategory = () => {
     console.log('🟠 Win Rate calculation started')
-    console.log('   activity?.trades:', activity?.trades?.length || 0, 'trades')
-    console.log('   activity?.categoryBreakdown:', activity?.categoryBreakdown?.length || 0, 'categories')
-    console.log('   trader?.winRate:', trader?.winRate)
     
     if (!activity?.categoryBreakdown) {
       console.log('🔴 No categoryBreakdown - returning empty')
@@ -207,61 +218,53 @@ export default function TraderProfilePage() {
     }
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
-    const categoryStats = new Map<string, { wins: number; total: number }>()
+    // Use backend-calculated winRate directly!
+    const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, {
+      winRate: c.winRate,
+      consistency: c.consistency,
+      finishedTrades: c.finishedTradesCount
+    }]))
     
-    // Calculate win rate from finished trades
-    if (activity?.trades) {
-      activity.trades.forEach(trade => {
-        if (trade.profit !== undefined) {
-          const stats = categoryStats.get(trade.category) || { wins: 0, total: 0 }
-          stats.total++
-          if (trade.profit > 0) stats.wins++
-          categoryStats.set(trade.category, stats)
-        }
-      })
-      console.log('   categoryStats from trades:', Object.fromEntries(categoryStats))
-    }
-    
-    // Create breakdown map to check which categories have trades
-    const breakdownMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
-    console.log('   breakdownMap:', Object.fromEntries(breakdownMap))
+    console.log('   Backend data:', Object.fromEntries(dataMap))
     
     const result = categories.map(cat => {
-      const stats = categoryStats.get(cat)
-      const hasTradesInCategory = breakdownMap.has(cat) && breakdownMap.get(cat)! > 0
+      const data = dataMap.get(cat)
       
-      // If we have finished trades stats, use them
-      if (stats && stats.total > 0) {
-        const winRate = (stats.wins / stats.total) * 100
-        console.log(`   ${cat}: ${winRate.toFixed(1)}% (${stats.wins}/${stats.total} wins)`)
+      if (data && data.finishedTrades > 0) {
+        // Use backend-calculated win rate!
+        console.log(`   ${cat}: ${data.winRate.toFixed(1)}% (${data.finishedTrades} finished trades, consistency: ${data.consistency.toFixed(1)})`)
         return {
           category: cat,
-          value: winRate
+          value: data.winRate,
+          consistency: data.consistency,
+          finishedTrades: data.finishedTrades
         }
       }
       
-      // Fallback: if category has trades but no finished trades yet,
-      // estimate with trader's overall win rate or default to 50%
-      if (hasTradesInCategory) {
-        // IMPORTANT: trader.winRate is 0-1 range (0.5 = 50%), convert to percentage!
-        let estimatedWinRate = 50 // default
+      // Fallback for categories with trades but no finished trades
+      const categoryData = activity.categoryBreakdown.find(c => c.category === cat)
+      if (categoryData && categoryData.count > 0) {
+        // Use trader's overall win rate as estimate
+        let estimatedWinRate = 50
         if (trader?.winRate) {
           const rawWinRate = parseFloat(trader.winRate.toString())
-          // If winRate is 0-1 range, multiply by 100 to get percentage
           estimatedWinRate = rawWinRate <= 1 ? rawWinRate * 100 : rawWinRate
         }
-        console.log(`   ${cat}: ${estimatedWinRate.toFixed(1)}% (estimated fallback)`)
+        console.log(`   ${cat}: ${estimatedWinRate.toFixed(1)}% (estimated, ${categoryData.count} trades)`)
         return {
           category: cat,
-          value: Math.max(20, estimatedWinRate) // Minimum 20% for better visibility
+          value: Math.max(20, estimatedWinRate),
+          consistency: 0,
+          finishedTrades: 0
         }
       }
       
-      // No trades in this category
       console.log(`   ${cat}: 0% (no trades)`)
       return {
         category: cat,
-        value: 0
+        value: 0,
+        consistency: 0,
+        finishedTrades: 0
       }
     })
     
@@ -634,15 +637,15 @@ export default function TraderProfilePage() {
               </ResponsiveContainer>
             </div>
 
-            {/* Volume by Category - Green */}
+            {/* ROI by Category - Green */}
             <div className="bg-black/40 pixel-border border-green-500/20 p-4">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <h3 className="text-sm font-bold text-green-400 text-center">Volume by Category</h3>
+                <h3 className="text-sm font-bold text-green-400 text-center">ROI by Category</h3>
               </div>
-              <p className="text-xs text-center text-muted-foreground mb-3">Total dollar volume</p>
+              <p className="text-xs text-center text-muted-foreground mb-3">Return on Investment %</p>
               <ResponsiveContainer width="100%" height={240}>
-                <RadarChart data={getVolumeByCategory()}>
+                <RadarChart data={getROIByCategory()}>
                   <defs>
                     <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#22c55e" stopOpacity={0.9} />
@@ -656,13 +659,13 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={getRadarDomain(getVolumeByCategory(), 1.3)} 
+                    domain={getRadarDomain(getROIByCategory(), 1.3)} 
                     tick={{ fill: '#4ade80', fontSize: 10 }} 
                     stroke="#15803d"
                     strokeOpacity={0.3}
                   />
                   <Radar 
-                    name="Volume" 
+                    name="ROI %" 
                     dataKey="value" 
                     stroke="#22c55e" 
                     fill="url(#greenGradient)" 
