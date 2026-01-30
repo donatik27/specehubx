@@ -367,6 +367,29 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
     }, 500)
   }, [])
 
+  // ✅ NEW: Handle click on HUB - open trader profile on Polymarket!
+  const handleHubClick = useCallback((e: React.MouseEvent) => {
+    // Only trigger if not dragging (check if mouse moved)
+    const isDragging = hubRef.current?.getAttribute('data-dragging') === 'true'
+    if (isDragging) return
+    
+    // Open Polymarket profile in new tab
+    const polymarketUrl = `https://polymarket.com/profile/${address}`
+    window.open(polymarketUrl, '_blank', 'noopener,noreferrer')
+  }, [address])
+
+  // ✅ NEW: Handle click on Position bubble - open trader profile!
+  const handleBubbleClick = useCallback((e: React.MouseEvent, positionId: string) => {
+    // Only trigger if not dragging
+    const element = positionRefs.current.get(positionId)
+    const isDragging = element?.getAttribute('data-dragging') === 'true'
+    if (isDragging) return
+    
+    // Open Polymarket profile in new tab
+    const polymarketUrl = `https://polymarket.com/profile/${address}`
+    window.open(polymarketUrl, '_blank', 'noopener,noreferrer')
+  }, [address])
+
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">
@@ -431,11 +454,23 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
           <Draggable
             position={hubPosition}
             onDrag={handleHubDrag}
+            onStart={() => {
+              if (hubRef.current) {
+                hubRef.current.setAttribute('data-dragging', 'true')
+              }
+            }}
+            onStop={() => {
+              if (hubRef.current) {
+                setTimeout(() => {
+                  hubRef.current?.setAttribute('data-dragging', 'false')
+                }, 100)
+              }
+            }}
             nodeRef={hubRef}
           >
             <div
               ref={hubRef}
-              className="absolute cursor-move draggable-element"
+              className="absolute cursor-pointer draggable-element hover:scale-110 transition-transform"
               style={{
                 left: `calc(50vw - 64px)`, // Center hub (128px / 2)
                 top: `calc(50vh - 64px)`,
@@ -444,6 +479,8 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 zIndex: 100, // Above everything!
                 willChange: 'transform'
               }}
+              onClick={handleHubClick}
+              data-dragging="false"
             >
               <motion.div
                 className="absolute inset-0"
@@ -498,17 +535,38 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 key={position.id}
                 position={positionsInitialized ? pos : { x: 0, y: 0 }}
                 onDrag={handlePositionDrag(position)}
-                onStop={handleDragStop(position.id)}
+                onStart={() => {
+                  const element = positionRefs.current.get(position.id)
+                  if (element) {
+                    element.setAttribute('data-dragging', 'true')
+                  }
+                }}
+                onStop={() => {
+                  handleDragStop(position.id)()
+                  const element = positionRefs.current.get(position.id)
+                  if (element) {
+                    setTimeout(() => {
+                      element.setAttribute('data-dragging', 'false')
+                    }, 100)
+                  }
+                }}
               >
                 <div 
-                  className="absolute cursor-move draggable-element"
+                  ref={(el) => {
+                    if (el) {
+                      positionRefs.current.set(position.id, el)
+                    }
+                  }}
+                  className="absolute cursor-pointer draggable-element hover:scale-110 transition-transform"
                   style={{ 
                     width: `${position.size}px`, 
                     height: `${position.size}px`,
                     zIndex: isHovered ? 1000 : 10 // Above lines, below hub
                   }}
+                  onClick={(e) => handleBubbleClick(e, position.id)}
                   onMouseEnter={() => setHoveredPositionId(position.id)}
                   onMouseLeave={() => setHoveredPositionId(null)}
+                  data-dragging="false"
                 >
                   <motion.div
                     className="absolute inset-0"
