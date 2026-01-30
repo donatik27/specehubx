@@ -87,6 +87,12 @@ export default function TraderProfilePage() {
       
       if (traderRes.ok) {
         const foundTrader: Trader = await traderRes.json()
+        console.log('👤 Trader data received:', {
+          address: foundTrader.address,
+          displayName: foundTrader.displayName,
+          winRate: foundTrader.winRate,
+          tier: foundTrader.tier
+        })
         setTrader(foundTrader)
         
         // Fetch activity (includes trades) from Railway API
@@ -94,7 +100,15 @@ export default function TraderProfilePage() {
         
         if (activityRes.ok) {
           const activityData = await activityRes.json()
+          console.log('📥 Activity data received:', {
+            lastTrade: activityData.lastTrade,
+            totalTrades: activityData.totalTrades,
+            categoryBreakdown: activityData.categoryBreakdown,
+            finishedTrades: activityData.trades?.length || 0
+          })
           setActivity(activityData)
+        } else {
+          console.error('❌ Failed to fetch activity:', activityRes.status)
         }
         
         return
@@ -130,61 +144,87 @@ export default function TraderProfilePage() {
 
   // Calculate radar chart data for Most Traded Categories (count)
   const getMostTradedCategories = () => {
-    if (!activity?.categoryBreakdown) return []
+    if (!activity?.categoryBreakdown) {
+      console.log('🔴 No categoryBreakdown data!')
+      return []
+    }
+    
+    console.log('📊 categoryBreakdown:', activity.categoryBreakdown)
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
     
-    // Always show all 5 categories for complete radar shape
-    return categories.map(cat => ({
+    const result = categories.map(cat => ({
       category: cat,
       value: dataMap.get(cat) || 0
     }))
+    
+    console.log('🔵 Most Traded Categories data:', result)
+    return result
   }
 
   // Calculate Volume by Category (dollar amount)
   const getVolumeByCategory = () => {
-    if (!activity?.categoryBreakdown) return []
+    if (!activity?.categoryBreakdown) {
+      console.log('🔴 No categoryBreakdown data!')
+      return []
+    }
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.volume]))
     
-    // Always show all 5 categories for complete radar shape
-    return categories.map(cat => ({
+    const result = categories.map(cat => ({
       category: cat,
       value: Math.round(dataMap.get(cat) || 0)
     }))
+    
+    console.log('🟢 Volume by Category data:', result)
+    return result
   }
 
   // Calculate Win Rate by Category (percentage)
   const getWinRateByCategory = () => {
-    if (!activity?.trades || !activity?.categoryBreakdown) return []
+    console.log('🟠 Win Rate calculation started')
+    console.log('   activity?.trades:', activity?.trades?.length || 0, 'trades')
+    console.log('   activity?.categoryBreakdown:', activity?.categoryBreakdown?.length || 0, 'categories')
+    console.log('   trader?.winRate:', trader?.winRate)
+    
+    if (!activity?.categoryBreakdown) {
+      console.log('🔴 No categoryBreakdown - returning empty')
+      return []
+    }
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const categoryStats = new Map<string, { wins: number; total: number }>()
     
     // Calculate win rate from finished trades
-    activity.trades.forEach(trade => {
-      if (trade.profit !== undefined) {
-        const stats = categoryStats.get(trade.category) || { wins: 0, total: 0 }
-        stats.total++
-        if (trade.profit > 0) stats.wins++
-        categoryStats.set(trade.category, stats)
-      }
-    })
+    if (activity?.trades) {
+      activity.trades.forEach(trade => {
+        if (trade.profit !== undefined) {
+          const stats = categoryStats.get(trade.category) || { wins: 0, total: 0 }
+          stats.total++
+          if (trade.profit > 0) stats.wins++
+          categoryStats.set(trade.category, stats)
+        }
+      })
+      console.log('   categoryStats from trades:', Object.fromEntries(categoryStats))
+    }
     
     // Create breakdown map to check which categories have trades
     const breakdownMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
+    console.log('   breakdownMap:', Object.fromEntries(breakdownMap))
     
-    return categories.map(cat => {
+    const result = categories.map(cat => {
       const stats = categoryStats.get(cat)
       const hasTradesInCategory = breakdownMap.has(cat) && breakdownMap.get(cat)! > 0
       
       // If we have finished trades stats, use them
       if (stats && stats.total > 0) {
+        const winRate = (stats.wins / stats.total) * 100
+        console.log(`   ${cat}: ${winRate.toFixed(1)}% (${stats.wins}/${stats.total} wins)`)
         return {
           category: cat,
-          value: (stats.wins / stats.total) * 100
+          value: winRate
         }
       }
       
@@ -192,6 +232,7 @@ export default function TraderProfilePage() {
       // estimate with trader's overall win rate or default to 50%
       if (hasTradesInCategory) {
         const estimatedWinRate = trader?.winRate ? parseFloat(trader.winRate.toString()) : 50
+        console.log(`   ${cat}: ${estimatedWinRate.toFixed(1)}% (estimated fallback)`)
         return {
           category: cat,
           value: Math.max(10, estimatedWinRate) // Minimum 10% for visibility
@@ -199,11 +240,15 @@ export default function TraderProfilePage() {
       }
       
       // No trades in this category
+      console.log(`   ${cat}: 0% (no trades)`)
       return {
         category: cat,
         value: 0
       }
     })
+    
+    console.log('🟠 Final Win Rate data:', result)
+    return result
   }
 
   // Get finished trades for bubble chart
