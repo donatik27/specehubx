@@ -162,18 +162,48 @@ export default function TraderProfilePage() {
               
               console.log('💰 PnL by category:', Object.fromEntries(categoryPnL))
               
-              // Update categoryBreakdown with REAL ROI!
+              // Calculate REAL win rate from closed positions!
+              const categoryWinRate = new Map<string, { wins: number; losses: number }>()
+              
+              for (const pos of closedPositions) {
+                const category = detectCategory(pos.title || '')
+                const pnl = parseFloat(pos.realizedPnl || '0')
+                
+                if (!categoryWinRate.has(category)) {
+                  categoryWinRate.set(category, { wins: 0, losses: 0 })
+                }
+                
+                const stats = categoryWinRate.get(category)!
+                if (pnl > 0) {
+                  stats.wins++
+                } else if (pnl < 0) {
+                  stats.losses++
+                }
+              }
+              
+              console.log('🎯 Win/Loss stats:', Object.fromEntries(categoryWinRate))
+              
+              // Update categoryBreakdown with REAL ROI and Win Rate!
               const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
               const enhancedBreakdown = allCategories.map(cat => {
                 const existing = activityData.categoryBreakdown.find((c: any) => c.category === cat)
                 const closedData = categoryPnL.get(cat)
+                const winLossData = categoryWinRate.get(cat)
+                
+                // Calculate REAL win rate from closed positions
+                let realWinRate = existing?.winRate || 0
+                if (winLossData && (winLossData.wins + winLossData.losses) > 0) {
+                  realWinRate = (winLossData.wins / (winLossData.wins + winLossData.losses)) * 100
+                  console.log(`  ${cat}: REAL Win Rate ${realWinRate.toFixed(1)}% (${winLossData.wins}W / ${winLossData.losses}L)`)
+                }
                 
                 if (closedData && closedData.volume > 0) {
                   const roi = (closedData.pnl / closedData.volume) * 100
-                  const avgProfit = closedData.pnl / (closedData.volume / 100) // estimate
+                  const avgProfit = closedData.pnl / ((winLossData?.wins || 1) + (winLossData?.losses || 1))
                   const biggestWin = closedData.pnl > 0 ? closedData.pnl * 0.25 : 0
+                  const consistency = realWinRate > 0 ? Math.min(realWinRate, 85) : 0
                   
-                  console.log(`  ${cat}: ROI ${roi.toFixed(2)}%, PnL $${closedData.pnl.toFixed(2)}`)
+                  console.log(`  ${cat}: ROI ${roi.toFixed(2)}%, Win Rate ${realWinRate.toFixed(1)}%, PnL $${closedData.pnl.toFixed(2)}`)
                   
                   return {
                     ...(existing || { category: cat, count: 0, volume: 0, percentage: 0 }),
@@ -181,8 +211,9 @@ export default function TraderProfilePage() {
                     totalProfit: closedData.pnl,
                     avgProfit,
                     biggestWin,
-                    winRate: roi > 0 ? 55 : 45,
-                    consistency: roi > 0 ? 60 : 40
+                    winRate: realWinRate,
+                    consistency,
+                    finishedTradesCount: (winLossData?.wins || 0) + (winLossData?.losses || 0)
                   }
                 }
                 
@@ -196,7 +227,8 @@ export default function TraderProfilePage() {
                   avgProfit: 0,
                   biggestWin: 0,
                   winRate: 0,
-                  consistency: 0
+                  consistency: 0,
+                  finishedTradesCount: 0
                 }
               })
               
