@@ -33,6 +33,8 @@ interface Trade {
   sellPrice: number
   profit?: number
   category: string
+  conditionId?: string       // ✅ NEW: Market ID (for aggregated trades)
+  positionsCount?: number    // ✅ NEW: Number of positions aggregated into this trade
 }
 
 interface CategoryMetrics {
@@ -265,12 +267,14 @@ export default function TraderProfilePage() {
             finishedTrades: activityData.trades?.length || 0
           })
 
-            // ✅ PRIMARY: Use finished trades from backend (from closed-positions API)
+            // ✅ PRIMARY: Use finished trades from backend (aggregated by MARKET, not individual positions!)
+            // Backend groups positions by conditionId and calculates net PnL per market
             const finishedTrades = Array.isArray(activityData.trades) ? activityData.trades : []
-            console.log(`📥 Received ${finishedTrades.length} finished trades from backend`)
+            console.log(`📥 Received ${finishedTrades.length} finished markets from backend (aggregated by conditionId)`)
             
             if (finishedTrades.length >= 5) {
-              // ✅ Calculate win rate from REAL closed positions (minimum 5 for reliability)
+              // ✅ Calculate win rate from MARKETS (not individual positions!)
+              // A market is "won" if net PnL > 0, "lost" if net PnL < 0
               let wins = 0
               let losses = 0
               let breakEven = 0
@@ -286,14 +290,14 @@ export default function TraderProfilePage() {
               if (total > 0) {
                 const overallWinRate = wins / total
                 foundTrader.winRate = overallWinRate
-                console.log(`✅ OVERALL WIN RATE (CLOSED POSITIONS): ${(overallWinRate * 100).toFixed(1)}% (${wins}W / ${losses}L / ${breakEven} break-even from ${finishedTrades.length} closed positions)`)
+                console.log(`✅ WIN RATE BY MARKETS: ${(overallWinRate * 100).toFixed(1)}% (${wins} markets won / ${losses} markets lost / ${breakEven} break-even from ${finishedTrades.length} unique markets)`)
               } else {
-                console.log(`⚠️ No wins/losses found in ${finishedTrades.length} finished trades`)
+                console.log(`⚠️ No wins/losses found in ${finishedTrades.length} markets`)
               }
             } else if (finishedTrades.length > 0) {
-              console.log(`⚠️ Only ${finishedTrades.length} finished trades - using backend win rate with fallback`)
+              console.log(`⚠️ Only ${finishedTrades.length} markets - using backend win rate with fallback`)
             } else {
-              console.log('⚠️ No finished trades from backend - will try Polymarket fallback')
+              console.log('⚠️ No finished markets from backend - will try Polymarket fallback')
             }
           
           // FRONTEND FALLBACK: Fetch TRADES + POSITIONS DIRECTLY from Polymarket! 🚀
