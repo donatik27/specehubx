@@ -501,10 +501,34 @@ export default function TraderProfilePage() {
               <p className="text-xs text-center text-muted-foreground mb-3">Number of trades</p>
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getMostTradedCategories()}>
-                  <PolarGrid stroke="#1e40af" strokeOpacity={0.3} />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#93c5fd', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#3b82f6', fontSize: 10 }} />
-                  <Radar name="Trades" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} strokeWidth={2} />
+                  <defs>
+                    <linearGradient id="blueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#1e40af" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <PolarGrid stroke="#1e3a8a" strokeOpacity={0.2} strokeWidth={1} />
+                  <PolarAngleAxis 
+                    dataKey="category" 
+                    tick={{ fill: '#93c5fd', fontSize: 12, fontWeight: 600 }} 
+                  />
+                  <PolarRadiusAxis 
+                    angle={90} 
+                    domain={[0, 'dataMax']} 
+                    tick={{ fill: '#60a5fa', fontSize: 10 }} 
+                    stroke="#1e40af"
+                    strokeOpacity={0.3}
+                  />
+                  <Radar 
+                    name="Trades" 
+                    dataKey="value" 
+                    stroke="#3b82f6" 
+                    fill="url(#blueGradient)" 
+                    fillOpacity={0.85} 
+                    strokeWidth={3}
+                    dot={{ fill: '#3b82f6', r: 4 }}
+                    activeDot={{ fill: '#60a5fa', r: 6 }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -518,10 +542,34 @@ export default function TraderProfilePage() {
               <p className="text-xs text-center text-muted-foreground mb-3">Total dollar volume</p>
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getVolumeByCategory()}>
-                  <PolarGrid stroke="#15803d" strokeOpacity={0.3} />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#86efac', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#22c55e', fontSize: 10 }} />
-                  <Radar name="Volume" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} strokeWidth={2} />
+                  <defs>
+                    <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#15803d" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <PolarGrid stroke="#14532d" strokeOpacity={0.2} strokeWidth={1} />
+                  <PolarAngleAxis 
+                    dataKey="category" 
+                    tick={{ fill: '#86efac', fontSize: 12, fontWeight: 600 }} 
+                  />
+                  <PolarRadiusAxis 
+                    angle={90} 
+                    domain={[0, 'dataMax']} 
+                    tick={{ fill: '#4ade80', fontSize: 10 }} 
+                    stroke="#15803d"
+                    strokeOpacity={0.3}
+                  />
+                  <Radar 
+                    name="Volume" 
+                    dataKey="value" 
+                    stroke="#22c55e" 
+                    fill="url(#greenGradient)" 
+                    fillOpacity={0.85} 
+                    strokeWidth={3}
+                    dot={{ fill: '#22c55e', r: 4 }}
+                    activeDot={{ fill: '#4ade80', r: 6 }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -535,10 +583,34 @@ export default function TraderProfilePage() {
               <p className="text-xs text-center text-muted-foreground mb-3">Percentage profitable</p>
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getWinRateByCategory()}>
-                  <PolarGrid stroke="#c2410c" strokeOpacity={0.3} />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#fdba74', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#f97316', fontSize: 10 }} />
-                  <Radar name="Win %" dataKey="value" stroke="#f97316" fill="#f97316" fillOpacity={0.6} strokeWidth={2} />
+                  <defs>
+                    <linearGradient id="orangeGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.9} />
+                      <stop offset="100%" stopColor="#c2410c" stopOpacity={0.4} />
+                    </linearGradient>
+                  </defs>
+                  <PolarGrid stroke="#7c2d12" strokeOpacity={0.2} strokeWidth={1} />
+                  <PolarAngleAxis 
+                    dataKey="category" 
+                    tick={{ fill: '#fdba74', fontSize: 12, fontWeight: 600 }} 
+                  />
+                  <PolarRadiusAxis 
+                    angle={90} 
+                    domain={[0, 100]} 
+                    tick={{ fill: '#fb923c', fontSize: 10 }} 
+                    stroke="#c2410c"
+                    strokeOpacity={0.3}
+                  />
+                  <Radar 
+                    name="Win %" 
+                    dataKey="value" 
+                    stroke="#f97316" 
+                    fill="url(#orangeGradient)" 
+                    fillOpacity={0.85} 
+                    strokeWidth={3}
+                    dot={{ fill: '#f97316', r: 4 }}
+                    activeDot={{ fill: '#fb923c', r: 6 }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
