@@ -258,25 +258,50 @@ export default function TraderProfilePage() {
           try {
             console.log('🔍 Fetching closed positions from Polymarket...')
             const closedRes = await fetch(
-              `https://data-api.polymarket.com/closed-positions?user=${address}&limit=100&sortBy=REALIZEDPNL`
+              `https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000`
             )
             
             if (closedRes.ok) {
               const closedPositions = await closedRes.json() as any[]
-              console.log(`📊 Fetched ${closedPositions.length} closed positions!`)
+              console.log(`📊 Fetched ${closedPositions.length} closed positions! (limit: 1000, NO sortBy)`)
+              
+              // DEBUG: Show PnL distribution
+              const pnlDistribution = {
+                profitable: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') > 0).length,
+                unprofitable: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') < 0).length,
+                breakEven: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') === 0).length
+              }
+              console.log('💰 PnL Distribution:', pnlDistribution)
               
               // Enhance categoryBreakdown with REAL PnL from closed positions
               const categoryPnL = new Map<string, { pnl: number; volume: number }>()
               
               const detectCategory = (title: string): string => {
                 const t = title.toLowerCase()
+                
+                // CRYPTO (most specific first)
                 if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
-                    t.includes('eth') || t.includes('crypto') || t.includes('solana')) return 'Crypto'
+                    t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
+                    t.includes('doge') || t.includes('cardano') || t.includes('polygon') ||
+                    t.includes('xrp') || t.includes('bnb') || t.includes('avax')) return 'Crypto'
+                
+                // POLITICS
                 if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
-                    t.includes('president') || t.includes('congress')) return 'Politics'
+                    t.includes('president') || t.includes('congress') || t.includes('senate') ||
+                    t.includes('governor') || t.includes('vote') || t.includes('republican') ||
+                    t.includes('democrat') || t.includes('harris') || t.includes('desantis')) return 'Politics'
+                
+                // SPORTS
                 if (t.includes('nfl') || t.includes('nba') || t.includes('football') || 
-                    t.includes('basketball') || t.includes('soccer')) return 'Sports'
-                if (t.includes('movie') || t.includes('oscars') || t.includes('grammy')) return 'Culture'
+                    t.includes('basketball') || t.includes('soccer') || t.includes('mlb') ||
+                    t.includes('nhl') || t.includes('ufc') || t.includes('f1') || 
+                    t.includes('tennis') || t.includes('boxing') || t.includes('champions league')) return 'Sports'
+                
+                // CULTURE
+                if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
+                    t.includes('emmy') || t.includes('taylor swift') || t.includes('kanye') ||
+                    t.includes('kardashian') || t.includes('netflix') || t.includes('spotify')) return 'Culture'
+                
                 return 'Other'
               }
               
@@ -307,16 +332,19 @@ export default function TraderProfilePage() {
                 const category = detectCategory(pos.title || '')
                 const pnl = parseFloat(pos.realizedPnl || '0')
                 
-                // DEBUG: Log first 5 positions
-                if (closedPositions.indexOf(pos) < 5) {
-                  console.log(`  Position #${closedPositions.indexOf(pos) + 1}:`, {
-                    title: pos.title?.substring(0, 50),
+                // DEBUG: Log first position FULLY to see structure
+                if (closedPositions.indexOf(pos) === 0) {
+                  console.log(`📍 FIRST POSITION (full structure):`, JSON.stringify(pos, null, 2))
+                }
+                
+                // DEBUG: Log first 10 positions summary
+                if (closedPositions.indexOf(pos) < 10) {
+                  console.log(`  #${closedPositions.indexOf(pos) + 1}:`, {
+                    title: pos.title?.substring(0, 40),
                     category,
                     realizedPnl: pos.realizedPnl,
-                    parsedPnl: pnl,
-                    isWin: pnl > 0,
-                    isLoss: pnl < 0,
-                    isBreakEven: pnl === 0
+                    parsedPnl: pnl.toFixed(2),
+                    result: pnl > 0 ? '✅ WIN' : pnl < 0 ? '❌ LOSS' : '➖ BREAK-EVEN'
                   })
                 }
                 
@@ -340,11 +368,23 @@ export default function TraderProfilePage() {
               console.log(`📊 TOTAL: ${totalWins} wins, ${totalLosses} losses, ${breakEven} break-even`)
               
               // Calculate OVERALL win rate from closed positions
-              const overallWinRate = (totalWins + totalLosses) > 0 
-                ? (totalWins / (totalWins + totalLosses)) 
-                : (foundTrader.winRate || 0.5)
+              const totalTrades = totalWins + totalLosses
+              let overallWinRate = foundTrader.winRate || 0.5 // Default fallback
               
-              console.log(`✅ OVERALL WIN RATE: ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L)`)
+              if (totalTrades >= 10) {
+                // Use REAL win rate if we have enough data (10+ trades)
+                overallWinRate = totalWins / totalTrades
+                console.log(`✅ OVERALL WIN RATE (REAL): ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${totalTrades} trades)`)
+              } else if (totalTrades > 0) {
+                // Mix real data with backend estimate if < 10 trades
+                const realWinRate = totalWins / totalTrades
+                const backendWinRate = foundTrader.winRate || 0.5
+                overallWinRate = (realWinRate * 0.7) + (backendWinRate * 0.3) // 70% real, 30% estimate
+                console.log(`⚠️ OVERALL WIN RATE (MIXED): ${(overallWinRate * 100).toFixed(1)}% (only ${totalTrades} trades, mixing real ${(realWinRate * 100).toFixed(1)}% with backend ${(backendWinRate * 100).toFixed(1)}%)`)
+              } else {
+                // Use backend estimate if no closed positions
+                console.log(`⚠️ OVERALL WIN RATE (BACKEND): ${(overallWinRate * 100).toFixed(1)}% (no closed positions found)`)
+              }
               
               // Update trader with REAL win rate!
               foundTrader.winRate = overallWinRate
@@ -356,11 +396,24 @@ export default function TraderProfilePage() {
                 const closedData = categoryPnL.get(cat)
                 const winLossData = categoryWinRate.get(cat)
                 
-                // Calculate REAL win rate from closed positions
+                // Calculate REAL win rate from closed positions with smart fallback
                 let realWinRate = existing?.winRate || 0
-                if (winLossData && (winLossData.wins + winLossData.losses) > 0) {
-                  realWinRate = (winLossData.wins / (winLossData.wins + winLossData.losses)) * 100
-                  console.log(`  ${cat}: REAL Win Rate ${realWinRate.toFixed(1)}% (${winLossData.wins}W / ${winLossData.losses}L)`)
+                const categoryTrades = (winLossData?.wins || 0) + (winLossData?.losses || 0)
+                
+                if (categoryTrades >= 5) {
+                  // Use REAL win rate if we have enough data (5+ trades per category)
+                  realWinRate = (winLossData!.wins / categoryTrades) * 100
+                  console.log(`  ${cat}: REAL Win Rate ${realWinRate.toFixed(1)}% (${winLossData!.wins}W / ${winLossData!.losses}L from ${categoryTrades} trades)`)
+                } else if (categoryTrades > 0) {
+                  // Mix real data with backend/overall estimate if < 5 trades
+                  const categoryRealWinRate = (winLossData!.wins / categoryTrades) * 100
+                  const fallbackWinRate = existing?.winRate || (overallWinRate * 100)
+                  realWinRate = (categoryRealWinRate * 0.6) + (fallbackWinRate * 0.4) // 60% real, 40% estimate
+                  console.log(`  ${cat}: MIXED Win Rate ${realWinRate.toFixed(1)}% (only ${categoryTrades} trades, mixing real ${categoryRealWinRate.toFixed(1)}% with fallback ${fallbackWinRate.toFixed(1)}%)`)
+                } else {
+                  // Use overall win rate as fallback if no trades in this category
+                  realWinRate = (overallWinRate * 100)
+                  console.log(`  ${cat}: FALLBACK Win Rate ${realWinRate.toFixed(1)}% (no trades in this category)`)
                 }
                 
                 if (closedData && closedData.volume > 0) {
