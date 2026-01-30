@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // Proxy endpoint for Polymarket CLOB positions API
 // Avoids CORS issues when fetching from client-side
+// Force rebuild
 
 export async function GET(request: NextRequest) {
   try {
