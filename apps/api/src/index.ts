@@ -840,9 +840,9 @@ app.get('/api/trader/:address/activity', async (req, res) => {
   const { address } = req.params;
   
   try {
-    // Fetch recent trades from Polymarket
+    // Fetch last 1000 trades from Polymarket for accurate Win Rate calculation
     const tradesRes = await fetch(
-      `https://data-api.polymarket.com/v1/trades?user=${address}&limit=100`
+      `https://data-api.polymarket.com/v1/trades?user=${address}&limit=1000`
     );
     
     if (!tradesRes.ok) {
@@ -926,7 +926,7 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         percentage: (stats.count / totalTrades) * 100,
       }))
       .sort((a, b) => b.volume - a.volume)
-      .slice(0, 5); // Top 5 categories
+      .slice(0, 5); // Top 5 categories by volume
     
     // Calculate finished trades with profit/loss
     // Group trades by market + outcome

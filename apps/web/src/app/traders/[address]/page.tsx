@@ -469,7 +469,7 @@ export default function TraderProfilePage() {
             <p className="text-3xl font-bold text-white">
               {(trader.winRate * 100).toFixed(1)}%
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Estimated from volume/PnL</p>
+            <p className="text-xs text-muted-foreground mt-1">Based on last 1000 trades</p>
           </div>
 
           <div className="bg-black/40 pixel-border border-white/20 p-4">
@@ -477,7 +477,7 @@ export default function TraderProfilePage() {
             <p className="text-3xl font-bold text-primary">
               {trader.tradeCount || '~'}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Activity level</p>
+            <p className="text-xs text-muted-foreground mt-1">All-time activity</p>
           </div>
         </div>
       </div>
