@@ -746,58 +746,212 @@ export default function TraderProfilePage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex-shrink-0 flex flex-col gap-3">
-            {/* View Bubbles Button */}
+          {/* Action Buttons - NEON ARCADE STYLE! 🎮 */}
+          <div className="flex-shrink-0 flex flex-col gap-4">
+            {/* View Bubbles Button - NEON GREEN! */}
             <Link
               href={`/traders/${trader.address}/bubbles`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold pixel-border border-green-400 transition-all group animate-pulse hover:animate-none"
+              className="group relative inline-flex items-center gap-3 px-8 py-4 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #22c55e 0%, #10b981 50%, #059669 100%)',
+                boxShadow: '0 0 40px rgba(34, 197, 94, 0.6), 0 0 80px rgba(34, 197, 94, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)',
+                border: '3px solid rgba(134, 239, 172, 0.5)',
+                borderRadius: '12px',
+                transform: 'translateZ(0)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) rotate(1deg) translateZ(0)'
+                e.currentTarget.style.boxShadow = '0 0 60px rgba(34, 197, 94, 0.9), 0 0 120px rgba(34, 197, 94, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.2)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) rotate(0deg) translateZ(0)'
+                e.currentTarget.style.boxShadow = '0 0 40px rgba(34, 197, 94, 0.6), 0 0 80px rgba(34, 197, 94, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)'
+              }}
             >
-              <span className="text-2xl">🫧</span>
-              <div className="text-left">
-                <div className="text-xs uppercase tracking-wider opacity-90">View Position</div>
-                <div className="text-sm font-bold">BUBBLES</div>
+              {/* Animated border gradient */}
+              <div className="absolute inset-0 opacity-50" style={{
+                background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                animation: 'borderFlow 3s linear infinite'
+              }} />
+              
+              {/* Pulse ring */}
+              <div className="absolute inset-0 rounded-xl" style={{
+                border: '2px solid rgba(134, 239, 172, 0.6)',
+                animation: 'pulseRing 2s ease-out infinite'
+              }} />
+
+              <span className="text-3xl relative z-10 group-hover:scale-110 transition-transform">🫧</span>
+              <div className="text-left relative z-10">
+                <div className="text-xs uppercase tracking-wider font-bold" style={{ 
+                  textShadow: '0 0 10px rgba(255, 255, 255, 0.8)' 
+                }}>
+                  View Position
+                </div>
+                <div className="text-lg font-black" style={{ 
+                  textShadow: '0 0 15px rgba(255, 255, 255, 1)' 
+                }}>
+                  BUBBLES
+                </div>
               </div>
             </Link>
 
-            {/* BOT SCAN Button 🤖 */}
+            {/* BOT SCAN Button - NEON CYAN! 🤖 */}
             <button
               onClick={runBotScan}
               disabled={isScanning}
-              className={`inline-flex items-center gap-2 px-6 py-3 font-bold pixel-border transition-all group ${
-                isScanning
-                  ? 'bg-cyan-600 border-cyan-400 cursor-wait'
-                  : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 border-cyan-400'
-              } text-white`}
+              className="group relative inline-flex items-center gap-3 px-8 py-4 overflow-hidden"
+              style={{
+                background: isScanning 
+                  ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%)'
+                  : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 50%, #0e7490 100%)',
+                boxShadow: '0 0 40px rgba(6, 182, 212, 0.6), 0 0 80px rgba(6, 182, 212, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)',
+                border: '3px solid rgba(103, 232, 249, 0.5)',
+                borderRadius: '12px',
+                transform: 'translateZ(0)',
+                transition: 'all 0.3s ease',
+                cursor: isScanning ? 'wait' : 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                if (!isScanning) {
+                  e.currentTarget.style.transform = 'scale(1.05) rotate(-1deg) translateZ(0)'
+                  e.currentTarget.style.boxShadow = '0 0 60px rgba(6, 182, 212, 0.9), 0 0 120px rgba(6, 182, 212, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.2)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) rotate(0deg) translateZ(0)'
+                e.currentTarget.style.boxShadow = '0 0 40px rgba(6, 182, 212, 0.6), 0 0 80px rgba(6, 182, 212, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)'
+              }}
             >
-              <span className="text-2xl">{isScanning ? '🔍' : '🤖'}</span>
-              <div className="text-left">
-                <div className="text-xs uppercase tracking-wider opacity-90">
+              {/* Scanning lines animation */}
+              {isScanning && (
+                <div className="absolute inset-0">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className="absolute w-full h-0.5 bg-white/50"
+                      style={{
+                        animation: `scanMove 1.5s ease-in-out ${i * 0.5}s infinite`,
+                        boxShadow: '0 0 10px rgba(255, 255, 255, 0.8)'
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Animated border gradient */}
+              <div className="absolute inset-0 opacity-50" style={{
+                background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                animation: 'borderFlow 3s linear infinite reverse'
+              }} />
+
+              <span className={`text-3xl relative z-10 transition-transform ${isScanning ? 'animate-spin' : 'group-hover:scale-110'}`}>
+                {isScanning ? '🔍' : '🤖'}
+              </span>
+              <div className="text-left relative z-10">
+                <div className="text-xs uppercase tracking-wider font-bold" style={{ 
+                  textShadow: '0 0 10px rgba(255, 255, 255, 0.8)' 
+                }}>
                   {isScanning ? 'Scanning...' : 'Run'}
                 </div>
-                <div className="text-sm font-bold">
+                <div className="text-lg font-black" style={{ 
+                  textShadow: '0 0 15px rgba(255, 255, 255, 1)' 
+                }}>
                   {isScanning ? 'ANALYZING' : 'BOT SCAN'}
                 </div>
               </div>
             </button>
 
-            {/* Polymarket Profile Button */}
+            {/* Polymarket Profile Button - NEON PURPLE! */}
             <a
               href={`https://polymarket.com/profile/${trader.address}?via=01k`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold pixel-border border-purple-400 transition-all group"
+              className="group relative inline-flex items-center gap-3 px-8 py-4 overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #7c3aed 100%)',
+                boxShadow: '0 0 40px rgba(168, 85, 247, 0.6), 0 0 80px rgba(168, 85, 247, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)',
+                border: '3px solid rgba(196, 181, 253, 0.5)',
+                borderRadius: '12px',
+                transform: 'translateZ(0)',
+                transition: 'all 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05) rotate(1deg) translateZ(0)'
+                e.currentTarget.style.boxShadow = '0 0 60px rgba(168, 85, 247, 0.9), 0 0 120px rgba(168, 85, 247, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.2)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1) rotate(0deg) translateZ(0)'
+                e.currentTarget.style.boxShadow = '0 0 40px rgba(168, 85, 247, 0.6), 0 0 80px rgba(168, 85, 247, 0.3), inset 0 0 20px rgba(255, 255, 255, 0.1)'
+              }}
             >
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              {/* Animated border gradient */}
+              <div className="absolute inset-0 opacity-50" style={{
+                background: 'linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%)',
+                animation: 'borderFlow 3s linear infinite'
+              }} />
+
+              <svg className="h-7 w-7 relative z-10 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="currentColor" style={{
+                filter: 'drop-shadow(0 0 8px rgba(255, 255, 255, 0.8))'
+              }}>
                 <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
                 <path d="M2 17L12 22L22 17V12L12 17L2 12V17Z"/>
               </svg>
-              <div className="text-left">
-                <div className="text-xs uppercase tracking-wider opacity-80">View on</div>
-                <div className="text-sm font-bold">POLYMARKET</div>
+              <div className="text-left relative z-10">
+                <div className="text-xs uppercase tracking-wider font-bold" style={{ 
+                  textShadow: '0 0 10px rgba(255, 255, 255, 0.8)' 
+                }}>
+                  View on
+                </div>
+                <div className="text-lg font-black" style={{ 
+                  textShadow: '0 0 15px rgba(255, 255, 255, 1)' 
+                }}>
+                  POLYMARKET
+                </div>
               </div>
             </a>
           </div>
+
+          {/* NEON ARCADE Animations */}
+          <style jsx>{`
+            @keyframes borderFlow {
+              0% {
+                transform: translateX(-100%);
+              }
+              100% {
+                transform: translateX(100%);
+              }
+            }
+
+            @keyframes pulseRing {
+              0% {
+                transform: scale(1);
+                opacity: 0.6;
+              }
+              50% {
+                transform: scale(1.05);
+                opacity: 0.3;
+              }
+              100% {
+                transform: scale(1);
+                opacity: 0.6;
+              }
+            }
+
+            @keyframes scanMove {
+              0% {
+                top: 0%;
+                opacity: 0;
+              }
+              50% {
+                opacity: 1;
+              }
+              100% {
+                top: 100%;
+                opacity: 0;
+              }
+            }
+          `}</style>
         </div>
       </div>
 
