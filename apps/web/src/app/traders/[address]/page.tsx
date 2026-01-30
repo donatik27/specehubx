@@ -43,6 +43,7 @@ interface CategoryMetrics {
   // NEW ENHANCED METRICS! 🚀
   avgTradeSize: number
   winRate: number
+  dollarWinRate: number  // ✅ NEW: Dollar-weighted win rate
   totalProfit: number
   roi: number
   avgProfit: number
@@ -60,6 +61,16 @@ interface ActivityStats {
   activeDays: number
   categoryBreakdown: CategoryMetrics[]
   trades?: Trade[]
+  _metadata?: {
+    closedPositionsCount: number
+    finishedTradesCount: number
+    overallTradeWinRate: number
+    overallDollarWinRate: number
+    overallWinRate: number
+    totalWinDollars: number
+    totalLossDollars: number
+    dataSource: string
+  }
 }
 
 // Format currency in a clear way
