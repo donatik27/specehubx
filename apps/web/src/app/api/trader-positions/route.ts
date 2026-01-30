@@ -18,11 +18,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔍 Fetching positions for trader: ${address}`)
 
-    // Fetch from Polymarket CLOB API
-    const clobUrl = `https://clob.polymarket.com/positions?user=${address}`
-    console.log(`📡 CLOB URL: ${clobUrl}`)
+    // Fetch from Polymarket Data API (not CLOB!)
+    const dataApiUrl = `https://data-api.polymarket.com/positions?user=${address}`
+    console.log(`📡 Data API URL: ${dataApiUrl}`)
     
-    const response = await fetch(clobUrl, {
+    const response = await fetch(dataApiUrl, {
       headers: {
         'Accept': 'application/json',
       },

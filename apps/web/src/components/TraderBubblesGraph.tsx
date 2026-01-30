@@ -17,11 +17,13 @@ interface Trader {
 }
 
 interface Position {
-  market_id: string
-  market_title: string
+  title: string
   outcome: string
   size: number
-  unrealized_pnl: number
+  cashPnl: number // unrealized P&L
+  currentValue: number
+  initialValue: number
+  redeemable: boolean
 }
 
 interface PositionBubble {
@@ -103,13 +105,13 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
       const losing: PositionBubble[] = []
 
       positionsData.forEach((pos, idx) => {
-        const pnl = pos.unrealized_pnl || 0
+        const pnl = pos.cashPnl || 0
         const bubble: PositionBubble = {
           id: `pos-${idx}`,
-          title: pos.market_title,
+          title: pos.title,
           outcome: pos.outcome,
           pnl,
-          size: Math.min(Math.max(Math.abs(pnl) / 10, 30), 80),
+          size: Math.min(Math.max(Math.abs(pnl) / 50, 30), 80), // Adjusted size calculation
           color: pnl >= 0 ? '#22c55e' : '#ef4444',
           x: 0,
           y: 0
