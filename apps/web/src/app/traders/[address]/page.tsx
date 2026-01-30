@@ -558,7 +558,7 @@ export default function TraderProfilePage() {
             <h2 className="text-2xl font-bold text-cyan-400">FINISHED_TRADES: 🍉 CHART</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Trades in the <span className="text-green-500">■</span> green area are profitable, while those in the <span className="text-red-500">■</span> red area are losses. Circle size represents the trade's dollar value.
+            Trades in the <span className="text-green-500">■</span> green area are profitable, while those in the <span className="text-red-500">■</span> red area are losses. Circle size represents the trade&apos;s dollar value.
           </p>
           
           <ResponsiveContainer width="100%" height={400}>
