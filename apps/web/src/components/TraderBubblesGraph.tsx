@@ -300,10 +300,6 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 key={position.id}
                 position={pos}
                 onDrag={handlePositionDrag(position.id)}
-                nodeRef={(ref) => {
-                  if (ref) positionRefs.current.set(position.id, ref as HTMLDivElement)
-                  return ref
-                }}
               >
                 <motion.div
                   className="absolute cursor-move"
