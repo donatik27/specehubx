@@ -859,13 +859,20 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     let closedPositionsByCategory = new Map<string, { pnl: number; volume: number; count: number }>();
     
     try {
-      const closedRes = await fetch(
-        `https://data-api.polymarket.com/closed-positions?user=${address}&limit=100&sortBy=REALIZEDPNL`
-      );
+      console.log(`🔍 Fetching closed positions for ${address}...`);
+      const closedUrl = `https://data-api.polymarket.com/closed-positions?user=${address}&limit=100&sortBy=REALIZEDPNL`;
+      console.log(`📡 URL: ${closedUrl}`);
+      
+      const closedRes = await fetch(closedUrl);
+      console.log(`📡 Response status: ${closedRes.status} ${closedRes.statusText}`);
       
       if (closedRes.ok) {
         const closedPositions = await closedRes.json() as any[];
-        console.log(`📊 Fetched ${closedPositions.length} closed positions for ${address}`);
+        console.log(`📊 Fetched ${closedPositions.length} closed positions`);
+        
+        if (closedPositions.length > 0) {
+          console.log(`📝 First position sample:`, JSON.stringify(closedPositions[0], null, 2));
+        }
         
         const detectCategory = (title: string): string => {
           const t = title.toLowerCase();
@@ -889,6 +896,8 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           const volume = parseFloat(pos.totalBought || '0') * parseFloat(pos.avgPrice || '0');
           const category = detectCategory(pos.title || '');
           
+          console.log(`  📊 ${category}: ${pos.title?.substring(0, 40)}... | PnL: $${pnl.toFixed(2)} | Vol: $${volume.toFixed(2)}`);
+          
           closedPositionsPnL += pnl;
           
           if (!closedPositionsByCategory.has(category)) {
@@ -902,15 +911,19 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         }
         
         console.log(`💰 Total PnL from closed positions: $${closedPositionsPnL.toFixed(2)}`);
-        console.log(`📊 Categories:`, Object.fromEntries(closedPositionsByCategory));
+        console.log(`📊 Categories breakdown:`, Object.fromEntries(closedPositionsByCategory));
+      } else {
+        const errorText = await closedRes.text();
+        console.error(`❌ Closed positions API failed: ${closedRes.status}`, errorText);
       }
-    } catch (err) {
-      console.error('Failed to fetch closed positions:', err);
+    } catch (err: any) {
+      console.error('❌ Failed to fetch closed positions:', err.message);
     }
     
     // Use closed positions PnL if available, otherwise use DB PnL
     const finalPnL = closedPositionsPnL !== 0 ? closedPositionsPnL : traderPnL;
     console.log(`🎯 Using PnL: $${finalPnL.toFixed(2)} (closed: $${closedPositionsPnL.toFixed(2)}, db: $${traderPnL.toFixed(2)})`);
+    console.log(`🎯 Has closed positions data: ${closedPositionsByCategory.size} categories`);
     
     // Fetch last 1000 trades from Polymarket for accurate Win Rate calculation
     const tradesRes = await fetch(
@@ -1148,6 +1161,19 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     // Calculate total volume for proportional PnL distribution
     const totalVolume = Array.from(categoryMap.values()).reduce((sum, stats) => sum + stats.volume, 0);
     
+    console.log(`📊 CategoryMap has ${categoryMap.size} categories:`, Array.from(categoryMap.keys()));
+    console.log(`💰 Total volume: $${totalVolume.toFixed(2)}`);
+    
+    // IMPORTANT: Always include ALL 5 categories for complete radar charts!
+    const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other'];
+    
+    // Ensure all categories exist in categoryMap (even with 0 trades)
+    for (const cat of allCategories) {
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, { count: 0, volume: 0, trades: [] });
+      }
+    }
+    
     // Calculate enhanced category breakdown with all metrics
     const categoryBreakdown = Array.from(categoryMap.entries())
       .map(([category, stats]) => {
@@ -1252,8 +1278,7 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           isEstimated: !metrics || (metrics.wins + metrics.losses) === 0
         };
       })
-      .sort((a, b) => b.volume - a.volume)
-      .slice(0, 5); // Top 5 categories by volume
+      .sort((a, b) => b.volume - a.volume); // Sort by volume (highest first)
     
     res.json({
       lastTrade,
