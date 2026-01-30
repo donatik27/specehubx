@@ -840,6 +840,20 @@ app.get('/api/trader/:address/activity', async (req, res) => {
   const { address } = req.params;
   
   try {
+    // Fetch trader from DB to get real PnL
+    const trader = await prisma.trader.findUnique({
+      where: { address: address.toLowerCase() },
+      select: {
+        totalPnl: true,
+        realizedPnl: true,
+        winRate: true,
+        tradeCount: true
+      }
+    });
+    
+    const traderPnL = trader ? Number(trader.totalPnl) : 0;
+    const traderWinRate = trader ? Number(trader.winRate) : 0.5;
+    
     // Fetch last 1000 trades from Polymarket for accurate Win Rate calculation
     const tradesRes = await fetch(
       `https://data-api.polymarket.com/v1/trades?user=${address}&limit=1000`
@@ -1073,6 +1087,9 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       est.totalSize += size;
     }
     
+    // Calculate total volume for proportional PnL distribution
+    const totalVolume = Array.from(categoryMap.values()).reduce((sum, stats) => sum + stats.volume, 0);
+    
     // Calculate enhanced category breakdown with all metrics
     const categoryBreakdown = Array.from(categoryMap.entries())
       .map(([category, stats]) => {
@@ -1080,28 +1097,28 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         const estimated = estimatedMetrics.get(category);
         const avgTradeSize = stats.volume / stats.count;
         
-        // Calculate win rate from finished trades OR estimate from price patterns
+        // Calculate win rate from finished trades OR use trader's overall win rate
         let winRate = 0;
         if (metrics && (metrics.wins + metrics.losses) > 0) {
           // Use real win rate from finished trades
           winRate = (metrics.wins / (metrics.wins + metrics.losses)) * 100;
-        } else if (estimated && estimated.buyCount > 0 && estimated.sellCount > 0) {
-          // ESTIMATE: If avg sell price > avg buy price, likely profitable
-          const estimatedProfit = estimated.avgSellPrice - estimated.avgBuyPrice;
-          winRate = estimatedProfit > 0 ? 55 : 45; // Conservative estimate
+        } else {
+          // Use trader's overall win rate from DB
+          winRate = traderWinRate * 100;
         }
         
-        // Calculate total profit and ROI
+        // Calculate total profit and ROI using REAL trader PnL
         let totalProfit = metrics?.totalProfit || 0;
         let roi = 0;
         
         if (metrics && metrics.totalProfit !== 0) {
           // Use real profit from finished trades
+          totalProfit = metrics.totalProfit;
           roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
-        } else if (estimated && estimated.buyVolume > 0 && estimated.sellVolume > 0) {
-          // ESTIMATE: profit from price difference × average size
-          const avgProfit = (estimated.avgSellPrice - estimated.avgBuyPrice) * (estimated.totalSize / stats.count);
-          totalProfit = avgProfit * Math.min(estimated.buyCount, estimated.sellCount);
+        } else if (traderPnL !== 0 && totalVolume > 0) {
+          // DISTRIBUTE trader's real PnL proportionally by volume
+          const categoryProportion = stats.volume / totalVolume;
+          totalProfit = traderPnL * categoryProportion;
           roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
         }
         
@@ -1110,13 +1127,17 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         if (metrics && (metrics.wins + metrics.losses) > 0) {
           avgProfit = metrics.totalProfit / (metrics.wins + metrics.losses);
         } else if (totalProfit !== 0 && stats.count > 0) {
+          // Distribute total profit across all trades
           avgProfit = totalProfit / stats.count;
         }
         
         // Calculate biggest win (use estimated if no finished trades)
         let biggestWin = metrics?.biggestWin || 0;
-        if (biggestWin === 0 && totalProfit > 0) {
-          // Estimate: assume best trade is 3x average profit
+        if (biggestWin === 0 && totalProfit > 0 && stats.count > 0) {
+          // Estimate: assume best trade captured 20-30% of total profit
+          biggestWin = totalProfit * 0.25;
+        } else if (biggestWin === 0 && avgProfit > 0) {
+          // Fallback: 3x average profit
           biggestWin = Math.abs(avgProfit) * 3;
         }
         
@@ -1134,8 +1155,9 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           const cv = mean !== 0 ? Math.abs(stdDev / mean) : 0;
           consistency = Math.max(0, 100 - cv * 100);
         } else if (winRate > 0) {
-          // Estimate consistency from win rate
-          consistency = winRate > 50 ? 60 : 40;
+          // Estimate consistency from win rate (higher win rate = more consistent)
+          // Win rate 50% = consistency 50%, win rate 70% = consistency 70%
+          consistency = Math.min(winRate, 85);
         }
         
         // Ensure all numbers are valid (no NaN, no Infinity)
