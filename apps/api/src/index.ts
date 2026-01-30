@@ -1099,7 +1099,12 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`✅ Created ${finishedTrades.length} finished trades from closed positions`);
     
     // ✅ Calculate WIN RATE metrics per category from closed positions
+    // 🎯 FILTER: Only count SIGNIFICANT trades (abs PnL >= threshold)
+    // Can be configured via MIN_PNL_THRESHOLD env var (default: $10)
+    const MIN_SIGNIFICANT_PNL = parseFloat(process.env.MIN_PNL_THRESHOLD || '10');
     console.log(`📊 Calculating category metrics from ${finishedTrades.length} finished trades...`);
+    console.log(`🎯 Filtering trades: only counting PnL >= $${MIN_SIGNIFICANT_PNL} (ignoring small noise)`);
+    
     const categoryMetrics = new Map<string, {
       wins: number;
       losses: number;
@@ -1110,6 +1115,8 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       avgHoldTime: number;
       holdTimes: number[];
     }>();
+    
+    let filteredCount = 0; // Count of insignificant trades
     
     for (const trade of finishedTrades) {
       if (!categoryMetrics.has(trade.category)) {
@@ -1129,7 +1136,15 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       metrics.totalProfit += trade.profit;
       metrics.profits.push(trade.profit);
       
-      // ✅ Count wins/losses based on REAL PnL
+      // ✅ Only count SIGNIFICANT wins/losses (filter out ±$10 noise)
+      const absPnl = Math.abs(trade.profit);
+      
+      if (absPnl < MIN_SIGNIFICANT_PNL) {
+        // Skip insignificant trades (too small to count)
+        filteredCount++;
+        continue;
+      }
+      
       if (trade.profit > 0) {
         metrics.wins++;
         if (trade.profit > metrics.biggestWin) {
@@ -1141,19 +1156,21 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           metrics.biggestLoss = trade.profit;
         }
       }
-      // Note: profit === 0 (break-even) not counted in win rate
       
       if (trade.holdTime) {
         metrics.holdTimes.push(trade.holdTime);
       }
     }
     
-    // Log category win rates
-    console.log(`📊 Category Win Rates:`);
+    console.log(`🎯 Filtered ${filteredCount} insignificant trades (PnL < $${MIN_SIGNIFICANT_PNL})`);
+    
+    // Log category win rates (only SIGNIFICANT trades)
+    console.log(`📊 Category Win Rates (only PnL >= $${MIN_SIGNIFICANT_PNL}):`);
     for (const [category, metrics] of categoryMetrics.entries()) {
       const total = metrics.wins + metrics.losses;
       const winRate = total > 0 ? (metrics.wins / total * 100).toFixed(1) : '0.0';
-      console.log(`  ${category}: ${winRate}% (${metrics.wins}W / ${metrics.losses}L from ${total} trades)`);
+      const totalPnL = metrics.totalProfit >= 0 ? `+$${metrics.totalProfit.toFixed(0)}` : `-$${Math.abs(metrics.totalProfit).toFixed(0)}`;
+      console.log(`  ${category}: ${winRate}% (${metrics.wins}W / ${metrics.losses}L from ${total} significant trades, PnL: ${totalPnL})`);
     }
     
     // ENHANCED: Calculate estimated metrics from ALL trades (not just finished)
