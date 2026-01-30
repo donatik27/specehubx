@@ -734,6 +734,14 @@ export default function TraderProfilePage() {
               ]
               const color = colors[idx] || colors[0]
               
+              // NULL SAFETY! 🛡️
+              const winRate = typeof cat.winRate === 'number' && !isNaN(cat.winRate) ? cat.winRate : 0
+              const roi = typeof cat.roi === 'number' && !isNaN(cat.roi) ? cat.roi : 0
+              const avgProfit = typeof cat.avgProfit === 'number' && !isNaN(cat.avgProfit) ? cat.avgProfit : 0
+              const biggestWin = typeof cat.biggestWin === 'number' && !isNaN(cat.biggestWin) ? cat.biggestWin : 0
+              const avgHoldTime = typeof cat.avgHoldTime === 'number' && !isNaN(cat.avgHoldTime) ? cat.avgHoldTime : 0
+              const consistency = typeof cat.consistency === 'number' && !isNaN(cat.consistency) ? cat.consistency : 0
+              
               return (
                 <div key={cat.category} className={`bg-black/60 pixel-border ${color.border} p-4`}>
                   <div className="flex items-center justify-between mb-3">
@@ -744,43 +752,43 @@ export default function TraderProfilePage() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <p className="text-muted-foreground mb-1">Win Rate</p>
-                      <p className={`font-bold ${cat.winRate >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
-                        {cat.winRate > 0 ? `${cat.winRate.toFixed(1)}%` : 'N/A'}
+                      <p className={`font-bold ${winRate >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
+                        {winRate > 0 ? `${winRate.toFixed(1)}%` : 'N/A'}
                       </p>
                     </div>
                     
                     <div>
                       <p className="text-muted-foreground mb-1">ROI</p>
-                      <p className={`font-bold ${cat.roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {cat.roi !== 0 ? `${cat.roi > 0 ? '+' : ''}${cat.roi.toFixed(1)}%` : '0%'}
+                      <p className={`font-bold ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {roi !== 0 ? `${roi > 0 ? '+' : ''}${roi.toFixed(1)}%` : '0%'}
                       </p>
                     </div>
                     
                     <div>
                       <p className="text-muted-foreground mb-1">Avg Profit</p>
-                      <p className={`font-bold ${cat.avgProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {cat.avgProfit !== 0 ? `${cat.avgProfit > 0 ? '+' : ''}$${Math.abs(cat.avgProfit).toFixed(0)}` : '$0'}
+                      <p className={`font-bold ${avgProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {avgProfit !== 0 ? `${avgProfit > 0 ? '+' : ''}$${Math.abs(avgProfit).toFixed(0)}` : '$0'}
                       </p>
                     </div>
                     
                     <div>
                       <p className="text-muted-foreground mb-1">Biggest Win</p>
                       <p className="font-bold text-green-400">
-                        {cat.biggestWin > 0 ? `+$${cat.biggestWin.toFixed(0)}` : '$0'}
+                        {biggestWin > 0 ? `+$${biggestWin.toFixed(0)}` : '$0'}
                       </p>
                     </div>
                     
                     <div>
                       <p className="text-muted-foreground mb-1">Avg Hold</p>
                       <p className="font-bold text-blue-400">
-                        {cat.avgHoldTime > 0 ? `${cat.avgHoldTime.toFixed(1)}h` : 'N/A'}
+                        {avgHoldTime > 0 ? `${avgHoldTime.toFixed(1)}h` : 'N/A'}
                       </p>
                     </div>
                     
                     <div>
                       <p className="text-muted-foreground mb-1">Consistency</p>
-                      <p className={`font-bold ${cat.consistency >= 70 ? 'text-green-400' : cat.consistency >= 40 ? 'text-yellow-400' : 'text-orange-400'}`}>
-                        {cat.consistency > 0 ? `${cat.consistency.toFixed(0)}%` : 'N/A'}
+                      <p className={`font-bold ${consistency >= 70 ? 'text-green-400' : consistency >= 40 ? 'text-yellow-400' : 'text-orange-400'}`}>
+                        {consistency > 0 ? `${consistency.toFixed(0)}%` : 'N/A'}
                       </p>
                     </div>
                   </div>

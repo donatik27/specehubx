@@ -1057,21 +1057,24 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           consistency = Math.max(0, 100 - cv * 100); // Higher = more consistent
         }
         
+        // Ensure all numbers are valid (no NaN, no Infinity)
+        const safeNumber = (val: number) => (isNaN(val) || !isFinite(val)) ? 0 : val;
+        
         return {
           category,
           count: stats.count,
-          volume: stats.volume,
-          percentage: (stats.count / totalTrades) * 100,
+          volume: safeNumber(stats.volume),
+          percentage: safeNumber((stats.count / totalTrades) * 100),
           // NEW METRICS! 🚀
-          avgTradeSize,
-          winRate,
-          totalProfit,
-          roi,
-          avgProfit,
-          biggestWin: metrics?.biggestWin || 0,
-          biggestLoss: metrics?.biggestLoss || 0,
-          avgHoldTime,
-          consistency,
+          avgTradeSize: safeNumber(avgTradeSize),
+          winRate: safeNumber(winRate),
+          totalProfit: safeNumber(totalProfit),
+          roi: safeNumber(roi),
+          avgProfit: safeNumber(avgProfit),
+          biggestWin: safeNumber(metrics?.biggestWin || 0),
+          biggestLoss: safeNumber(metrics?.biggestLoss || 0),
+          avgHoldTime: safeNumber(avgHoldTime),
+          consistency: safeNumber(consistency),
           finishedTradesCount: metrics ? (metrics.wins + metrics.losses) : 0
         };
       })
