@@ -84,9 +84,144 @@ export default function TraderProfilePage() {
   const [trader, setTrader] = useState<Trader | null>(null)
   const [activity, setActivity] = useState<ActivityStats | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Bot Scan State 🤖
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanResult, setScanResult] = useState<{
+    score: number
+    status: 'REAL_HUMAN' | 'SUSPICIOUS' | 'BOT_DETECTED'
+    factors: string[]
+  } | null>(null)
+  const [showScanResult, setShowScanResult] = useState(false)
 
   // Railway API base URL
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://adorable-grace-production-e919.up.railway.app'
+
+  // BOT SCAN LOGIC! 🤖
+  const calculateBotScore = () => {
+    if (!trader || !activity) return { score: 50, status: 'SUSPICIOUS' as const, factors: ['Insufficient data'] }
+
+    let score = 100 // Start at 100% human
+    const factors: string[] = []
+
+    // Factor 1: Trade frequency (too many trades too fast = bot-like)
+    if (activity.totalTrades > 0 && activity.activeDays > 0) {
+      const tradesPerDay = activity.totalTrades / activity.activeDays
+      if (tradesPerDay > 50) {
+        score -= 15
+        factors.push(`High frequency: ${tradesPerDay.toFixed(0)} trades/day`)
+      } else if (tradesPerDay > 100) {
+        score -= 25
+        factors.push(`EXTREME frequency: ${tradesPerDay.toFixed(0)} trades/day`)
+      }
+    }
+
+    // Factor 2: Market diversity (only 1-2 markets = suspicious)
+    const uniqueMarkets = new Set(activity.trades?.map(t => t.title) || []).size
+    if (uniqueMarkets < 3 && activity.totalTrades > 20) {
+      score -= 20
+      factors.push(`Low diversity: Only ${uniqueMarkets} unique markets`)
+    } else if (uniqueMarkets >= 10) {
+      factors.push(`Good diversity: ${uniqueMarkets} unique markets`)
+    }
+
+    // Factor 3: Category concentration (99% in one category = bot)
+    if (activity.categoryBreakdown.length > 0) {
+      const maxCategoryPercentage = Math.max(...activity.categoryBreakdown.map(c => c.percentage))
+      if (maxCategoryPercentage > 90 && activity.totalTrades > 30) {
+        score -= 18
+        factors.push(`Single category focus: ${maxCategoryPercentage.toFixed(0)}%`)
+      }
+    }
+
+    // Factor 4: Time pattern analysis (trades at exactly same intervals = bot)
+    if (activity.trades && activity.trades.length > 10) {
+      const timestamps = activity.trades.map(t => t.timestamp).sort((a, b) => a - b)
+      const intervals: number[] = []
+      for (let i = 1; i < Math.min(timestamps.length, 20); i++) {
+        intervals.push(timestamps[i] - timestamps[i - 1])
+      }
+      
+      // Check if intervals are too regular (variance too low)
+      if (intervals.length > 5) {
+        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
+        const variance = intervals.reduce((sum, val) => sum + Math.pow(val - avgInterval, 2), 0) / intervals.length
+        const stdDev = Math.sqrt(variance)
+        
+        // If stdDev is very low relative to average, it's too regular
+        if (stdDev / avgInterval < 0.1 && avgInterval < 3600000) { // Less than 1 hour
+          score -= 22
+          factors.push(`Robotic timing: Too regular intervals`)
+        }
+      }
+    }
+
+    // Factor 5: Trade sizes (all exact same size = bot)
+    if (activity.trades && activity.trades.length > 5) {
+      const sizes = activity.trades.slice(0, 20).map(t => t.size)
+      const uniqueSizes = new Set(sizes.map(s => Math.round(s))).size
+      if (uniqueSizes < 3 && sizes.length > 10) {
+        score -= 15
+        factors.push(`Identical trade sizes: ${uniqueSizes} unique sizes`)
+      }
+    }
+
+    // Factor 6: Win rate too perfect (100% or 0% = suspicious)
+    if (trader.winRate === 1 || trader.winRate === 0) {
+      score -= 10
+      factors.push(`Perfect win rate: ${(trader.winRate * 100).toFixed(0)}%`)
+    }
+
+    // Bonus points for human traits
+    if (trader.verified) {
+      score += 5
+      factors.push(`✓ Verified account`)
+    }
+    
+    if (trader.xUsername) {
+      score += 3
+      factors.push(`✓ Twitter linked`)
+    }
+
+    if (activity.activeDays > 30) {
+      score += 2
+      factors.push(`✓ Active ${activity.activeDays} days`)
+    }
+
+    // Cap score between 0-100
+    score = Math.max(0, Math.min(100, score))
+
+    // Determine status
+    let status: 'REAL_HUMAN' | 'SUSPICIOUS' | 'BOT_DETECTED'
+    if (score >= 85) {
+      status = 'REAL_HUMAN'
+    } else if (score >= 60) {
+      status = 'SUSPICIOUS'
+    } else {
+      status = 'BOT_DETECTED'
+    }
+
+    return { score, status, factors }
+  }
+
+  // Run Bot Scan with animation!
+  const runBotScan = async () => {
+    setIsScanning(true)
+    setShowScanResult(false)
+    
+    // Simulate scanning animation (2 seconds)
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Calculate score
+    const result = calculateBotScore()
+    setScanResult(result)
+    setIsScanning(false)
+    
+    // Show result after a brief delay
+    setTimeout(() => {
+      setShowScanResult(true)
+    }, 300)
+  }
 
   useEffect(() => {
     fetchTraderData()
@@ -627,6 +762,27 @@ export default function TraderProfilePage() {
               </div>
             </Link>
 
+            {/* BOT SCAN Button 🤖 */}
+            <button
+              onClick={runBotScan}
+              disabled={isScanning}
+              className={`inline-flex items-center gap-2 px-6 py-3 font-bold pixel-border transition-all group ${
+                isScanning
+                  ? 'bg-cyan-600 border-cyan-400 cursor-wait'
+                  : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 border-cyan-400'
+              } text-white`}
+            >
+              <span className="text-2xl">{isScanning ? '🔍' : '🤖'}</span>
+              <div className="text-left">
+                <div className="text-xs uppercase tracking-wider opacity-90">
+                  {isScanning ? 'Scanning...' : 'Run'}
+                </div>
+                <div className="text-sm font-bold">
+                  {isScanning ? 'ANALYZING' : 'BOT SCAN'}
+                </div>
+              </div>
+            </button>
+
             {/* Polymarket Profile Button */}
             <a
               href={`https://polymarket.com/profile/${trader.address}?via=01k`}
@@ -646,6 +802,139 @@ export default function TraderProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* BOT SCAN ANIMATION! 🤖 */}
+      {isScanning && (
+        <div className="fixed inset-0 z-50 pointer-events-none">
+          {/* Laser Scan Lines */}
+          <div className="absolute inset-0 overflow-hidden">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                style={{
+                  top: `${i * 20}%`,
+                  animation: `scanLine 2s ease-in-out ${i * 0.2}s infinite`,
+                  boxShadow: '0 0 20px rgba(34, 211, 238, 0.8), 0 0 40px rgba(34, 211, 238, 0.4)'
+                }}
+              />
+            ))}
+          </div>
+          
+          {/* Scanning Text */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/90 pixel-border border-cyan-400 p-8 backdrop-blur-sm">
+            <div className="text-center">
+              <span className="text-6xl mb-4 block animate-pulse">🔍</span>
+              <h3 className="text-2xl font-bold text-cyan-400 mb-2">ANALYZING TRADER...</h3>
+              <p className="text-sm text-muted-foreground font-mono">
+                Checking patterns • Analyzing behavior • Detecting anomalies
+              </p>
+            </div>
+          </div>
+
+          <style jsx>{`
+            @keyframes scanLine {
+              0% {
+                top: -10%;
+                opacity: 0;
+              }
+              50% {
+                opacity: 1;
+              }
+              100% {
+                top: 110%;
+                opacity: 0;
+              }
+            }
+          `}</style>
+        </div>
+      )}
+
+      {/* BOT SCAN RESULTS! 🎯 */}
+      {showScanResult && scanResult && (
+        <div className={`pixel-border p-6 mb-6 relative overflow-hidden ${
+          scanResult.status === 'REAL_HUMAN' 
+            ? 'bg-green-950/50 border-green-400' 
+            : scanResult.status === 'SUSPICIOUS'
+            ? 'bg-yellow-950/50 border-yellow-400'
+            : 'bg-red-950/50 border-red-400'
+        }`}>
+          {/* Close Button */}
+          <button
+            onClick={() => setShowScanResult(false)}
+            className="absolute top-4 right-4 text-white/60 hover:text-white text-2xl"
+          >
+            ✕
+          </button>
+
+          <div className="flex items-start gap-6">
+            {/* Status Icon */}
+            <div className="flex-shrink-0">
+              <div className={`w-24 h-24 rounded-full flex items-center justify-center text-5xl ${
+                scanResult.status === 'REAL_HUMAN'
+                  ? 'bg-green-500/20 border-4 border-green-400'
+                  : scanResult.status === 'SUSPICIOUS'
+                  ? 'bg-yellow-500/20 border-4 border-yellow-400'
+                  : 'bg-red-500/20 border-4 border-red-400'
+              }`}>
+                {scanResult.status === 'REAL_HUMAN' ? '✓' : scanResult.status === 'SUSPICIOUS' ? '⚠' : '✗'}
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="flex-1">
+              <h3 className={`text-3xl font-bold mb-2 ${
+                scanResult.status === 'REAL_HUMAN' 
+                  ? 'text-green-400' 
+                  : scanResult.status === 'SUSPICIOUS'
+                  ? 'text-yellow-400'
+                  : 'text-red-400'
+              }`}>
+                {scanResult.status === 'REAL_HUMAN' 
+                  ? 'REAL HUMAN DETECTED' 
+                  : scanResult.status === 'SUSPICIOUS'
+                  ? 'SUSPICIOUS ACTIVITY'
+                  : 'BOT DETECTED'}
+              </h3>
+
+              {/* Score */}
+              <div className="mb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-white text-xl font-bold">HUMAN SCORE:</span>
+                  <span className={`text-4xl font-bold ${
+                    scanResult.score >= 85 ? 'text-green-400' : scanResult.score >= 60 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {scanResult.score}%
+                  </span>
+                </div>
+                
+                {/* Score Bar */}
+                <div className="w-full h-3 bg-black/50 pixel-border border-white/20 overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${
+                      scanResult.score >= 85 ? 'bg-green-500' : scanResult.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${scanResult.score}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Factors */}
+              <div>
+                <p className="text-sm text-white/60 mb-2 uppercase tracking-wider">Analysis Factors:</p>
+                <div className="space-y-1">
+                  {scanResult.factors.map((factor, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-sm">
+                      <span className="text-cyan-400">▸</span>
+                      <span className="text-white/80 font-mono">{factor}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
