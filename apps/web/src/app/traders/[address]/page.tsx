@@ -253,9 +253,31 @@ export default function TraderProfilePage() {
             categoryBreakdown: activityData.categoryBreakdown,
             finishedTrades: activityData.trades?.length || 0
           })
+
+            // ✅ Primary source: finished trades from backend (most accurate)
+            const finishedTrades = Array.isArray(activityData.trades) ? activityData.trades : []
+            if (finishedTrades.length > 0) {
+              let wins = 0
+              let losses = 0
+              for (const trade of finishedTrades) {
+                const profit = parseFloat(trade.profit || '0')
+                if (profit > 0) wins++
+                else if (profit < 0) losses++
+              }
+
+              const total = wins + losses
+              if (total > 0) {
+                const overallWinRate = wins / total
+                foundTrader.winRate = overallWinRate
+                console.log(`✅ OVERALL WIN RATE (BACKEND TRADES): ${(overallWinRate * 100).toFixed(1)}% (${wins}W / ${losses}L from ${total} finished trades)`)
+              }
+            } else {
+              console.log('⚠️ No finished trades from backend - using Polymarket fallback')
+            }
           
-          // FRONTEND FIX: Fetch TRADES + POSITIONS DIRECTLY from Polymarket! 🚀
-          try {
+          // FRONTEND FALLBACK: Fetch TRADES + POSITIONS DIRECTLY from Polymarket! 🚀
+          if (finishedTrades.length === 0) {
+            try {
             console.log('🔍 Fetching trades from Polymarket (checking for losses)...')
             
             // TRY BOTH: closed-positions AND trades to compare!
@@ -742,8 +764,9 @@ export default function TraderProfilePage() {
             } else {
               console.log('⚠️ No trades found - using backend data only (may have biased win rates)')
             }
-          } catch (err) {
-            console.error('❌ Failed to fetch data from Polymarket:', err)
+            } catch (err) {
+              console.error('❌ Failed to fetch data from Polymarket:', err)
+            }
           }
           
           // Update trader with new winRate BEFORE setting state
