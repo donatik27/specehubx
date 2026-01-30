@@ -128,7 +128,7 @@ export default function TraderProfilePage() {
     }
   }
 
-  // Calculate radar chart data for Most Traded Categories
+  // Calculate radar chart data for Most Traded Categories (count)
   const getMostTradedCategories = () => {
     if (!activity?.categoryBreakdown) return []
     
@@ -141,7 +141,20 @@ export default function TraderProfilePage() {
     }))
   }
 
-  // Calculate Win Rate by Category (from trades)
+  // Calculate Volume by Category (dollar amount)
+  const getVolumeByCategory = () => {
+    if (!activity?.categoryBreakdown) return []
+    
+    const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
+    const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.volume]))
+    
+    return categories.map(cat => ({
+      category: cat,
+      value: dataMap.get(cat) || 0
+    }))
+  }
+
+  // Calculate Win Rate by Category (percentage)
   const getWinRateByCategory = () => {
     if (!activity?.trades) return []
     
@@ -469,83 +482,66 @@ export default function TraderProfilePage() {
         </div>
       </div>
 
-      {/* Trading Analytics - 3 Radar Charts */}
+      {/* Trading Analytics - Performance Metrics */}
       {activity && activity.categoryBreakdown.length > 0 && (
         <div className="bg-card pixel-border border-purple-500/40 p-6 mb-6">
           <div className="flex items-center gap-3 mb-6">
             <Activity className="h-6 w-6 text-purple-400" />
             <h2 className="text-2xl font-bold text-purple-400">TRADING_ANALYTICS</h2>
+            <span className="text-muted-foreground text-xs">Performance Metrics</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Most Traded Categories */}
-            <div className="bg-black/40 pixel-border border-white/20 p-4">
-              <h3 className="text-sm font-bold text-white mb-4 text-center">Most Traded Categories</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <RadarChart data={getMostTradedCategories()}>
-                  <PolarGrid stroke="#333" />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#888', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#666', fontSize: 10 }} />
-                  <Radar name="Trades" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Smart Score by Category */}
-            <div className="bg-black/40 pixel-border border-white/20 p-4 relative">
-              <h3 className="text-sm font-bold text-white mb-4 text-center">Smart Score by Category</h3>
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm z-10">
-                <div className="text-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500/20 border-2 border-orange-500 pixel-border">
-                    <span className="text-2xl">🔒</span>
-                    <span className="text-orange-400 font-bold">Pro Only</span>
-                  </div>
-                </div>
+            {/* Most Traded Categories - Blue */}
+            <div className="bg-black/40 pixel-border border-blue-500/20 p-4">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <h3 className="text-sm font-bold text-blue-400 text-center">Most Traded Categories</h3>
               </div>
-              <ResponsiveContainer width="100%" height={250}>
+              <p className="text-xs text-center text-muted-foreground mb-3">Number of trades</p>
+              <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getMostTradedCategories()}>
-                  <PolarGrid stroke="#333" />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#888', fontSize: 11 }} />
-                  <Radar dataKey="value" stroke="#f97316" fill="#f97316" fillOpacity={0.6} />
+                  <PolarGrid stroke="#1e40af" strokeOpacity={0.3} />
+                  <PolarAngleAxis dataKey="category" tick={{ fill: '#93c5fd', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#3b82f6', fontSize: 10 }} />
+                  <Radar name="Trades" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.6} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Win Rate by Category */}
-            <div className="bg-black/40 pixel-border border-white/20 p-4">
-              <h3 className="text-sm font-bold text-white mb-4 text-center">Win Rate by Category</h3>
-              <ResponsiveContainer width="100%" height={250}>
+            {/* Volume by Category - Green */}
+            <div className="bg-black/40 pixel-border border-green-500/20 p-4">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <h3 className="text-sm font-bold text-green-400 text-center">Volume by Category</h3>
+              </div>
+              <p className="text-xs text-center text-muted-foreground mb-3">Total dollar volume</p>
+              <ResponsiveContainer width="100%" height={240}>
+                <RadarChart data={getVolumeByCategory()}>
+                  <PolarGrid stroke="#15803d" strokeOpacity={0.3} />
+                  <PolarAngleAxis dataKey="category" tick={{ fill: '#86efac', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 'auto']} tick={{ fill: '#22c55e', fontSize: 10 }} />
+                  <Radar name="Volume" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} strokeWidth={2} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Win Rate by Category - Orange */}
+            <div className="bg-black/40 pixel-border border-orange-500/20 p-4">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                <h3 className="text-sm font-bold text-orange-400 text-center">Win Rate by Category</h3>
+              </div>
+              <p className="text-xs text-center text-muted-foreground mb-3">Percentage profitable</p>
+              <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getWinRateByCategory()}>
-                  <PolarGrid stroke="#333" />
-                  <PolarAngleAxis dataKey="category" tick={{ fill: '#888', fontSize: 11 }} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#666', fontSize: 10 }} />
-                  <Radar name="Win %" dataKey="value" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
+                  <PolarGrid stroke="#c2410c" strokeOpacity={0.3} />
+                  <PolarAngleAxis dataKey="category" tick={{ fill: '#fdba74', fontSize: 11 }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#f97316', fontSize: 10 }} />
+                  <Radar name="Win %" dataKey="value" stroke="#f97316" fill="#f97316" fillOpacity={0.6} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Category Breakdown - Compact */}
-      {activity && activity.categoryBreakdown.length > 0 && (
-        <div className="bg-card pixel-border border-cyan-500/40 p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <svg className="h-5 w-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h2 className="text-xl font-bold text-cyan-400">CATEGORY_BREAKDOWN</h2>
-            <span className="text-muted-foreground text-xs">(Last 100 trades)</span>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            {activity.categoryBreakdown.map((cat, idx) => (
-              <div key={idx} className="bg-black/40 pixel-border border-white/20 p-3">
-                <p className="text-xs text-muted-foreground mb-1">{cat.category}</p>
-                <p className="text-lg font-bold text-cyan-400">{cat.count}</p>
-                <p className="text-xs text-muted-foreground">{cat.percentage.toFixed(0)}% of trades</p>
-              </div>
-            ))}
           </div>
         </div>
       )}
