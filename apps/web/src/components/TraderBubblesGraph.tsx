@@ -76,17 +76,18 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
         console.log(`👤 Trader: ${traderData.displayName}`)
       }
 
-      // Fetch open positions from Polymarket CLOB API
-      console.log('🔍 Fetching open positions from Polymarket CLOB...')
+      // Fetch open positions via proxy endpoint
+      console.log('🔍 Fetching open positions via proxy...')
       const positionsRes = await fetch(
-        `https://clob.polymarket.com/positions?user=${address}`
+        `/api/trader-positions?address=${address}`
       )
 
       if (!positionsRes.ok) {
         throw new Error('Failed to fetch positions')
       }
 
-      const positionsData: Position[] = await positionsRes.json()
+      const positionsResponse = await positionsRes.json()
+      const positionsData: Position[] = positionsResponse.positions || []
       console.log(`📊 Fetched ${positionsData.length} open positions!`)
 
       if (positionsData.length === 0) {
