@@ -851,6 +851,7 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         totalTrades: 0,
         activeDays: 0,
         categoryBreakdown: [],
+        trades: [],
       });
     }
     
@@ -891,10 +892,11 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         return 'Sports';
       }
       
-      // Pop Culture
+      // Pop Culture / Culture
       if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
-          t.includes('celebrity') || t.includes('box office')) {
-        return 'Pop Culture';
+          t.includes('celebrity') || t.includes('box office') || t.includes('music') ||
+          t.includes('entertainment')) {
+        return 'Culture';
       }
       
       return 'Other';
@@ -926,11 +928,66 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       .sort((a, b) => b.volume - a.volume)
       .slice(0, 5); // Top 5 categories
     
+    // Calculate finished trades with profit/loss
+    // Group trades by market + outcome
+    const positionMap = new Map<string, { buys: any[], sells: any[] }>();
+    
+    for (const trade of trades) {
+      const key = `${trade.market_id || trade.asset_id}_${trade.outcome}`;
+      if (!positionMap.has(key)) {
+        positionMap.set(key, { buys: [], sells: [] });
+      }
+      
+      const position = positionMap.get(key)!;
+      if (trade.side === 'BUY') {
+        position.buys.push(trade);
+      } else if (trade.side === 'SELL') {
+        position.sells.push(trade);
+      }
+    }
+    
+    // Match buys with sells to calculate profit
+    const finishedTrades = [];
+    
+    for (const [key, position] of positionMap.entries()) {
+      const { buys, sells } = position;
+      
+      // Simple matching: pair oldest buy with oldest sell
+      const pairs = Math.min(buys.length, sells.length);
+      
+      for (let i = 0; i < pairs; i++) {
+        const buy = buys[i];
+        const sell = sells[i];
+        
+        const buyPrice = parseFloat(buy.price || '0');
+        const sellPrice = parseFloat(sell.price || '0');
+        const size = Math.min(parseFloat(buy.size || '0'), parseFloat(sell.size || '0'));
+        
+        // Calculate profit: (sell_price - buy_price) * size
+        const profit = (sellPrice - buyPrice) * size;
+        
+        finishedTrades.push({
+          id: `${buy.id}_${sell.id}`,
+          timestamp: sell.timestamp,
+          title: buy.title || sell.title,
+          outcome: buy.outcome || sell.outcome,
+          side: 'CLOSED',
+          size: size,
+          buyPrice: buyPrice,
+          sellPrice: sellPrice,
+          price: sellPrice, // For compatibility
+          profit: profit,
+          category: detectCategory(buy.title || sell.title || ''),
+        });
+      }
+    }
+    
     res.json({
       lastTrade,
       totalTrades,
       activeDays,
       categoryBreakdown,
+      trades: finishedTrades,
     });
   } catch (error: any) {
     console.error('Error fetching activity:', error);
@@ -939,6 +996,7 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       totalTrades: 0,
       activeDays: 0,
       categoryBreakdown: [],
+      trades: [],
     });
   }
 });
