@@ -60,6 +60,10 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
   const [hubPosition, setHubPosition] = useState({ x: 0, y: 0 })
   const [positionsInitialized, setPositionsInitialized] = useState(false)
   
+  // Velocity tracking for fluid lines (як віровок! 🪢)
+  const [positionVelocities, setPositionVelocities] = useState<Map<string, { vx: number; vy: number }>>(new Map())
+  const lastPositionsRef = useRef<Map<string, { x: number; y: number; timestamp: number }>>(new Map())
+  
   const hubRef = useRef<HTMLDivElement>(null)
   const positionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const simulationRef = useRef<d3.Simulation<any, any> | null>(null)
@@ -142,7 +146,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
     fetchPositionBubbles()
   }, [fetchPositionBubbles])
 
-  // Initialize D3 Force Simulation
+  // Initialize D3 Force Simulation - ARKHAM STYLE! 🔥
   useEffect(() => {
     if (loading || error || (!profitablePositions.length && !losingPositions.length)) return
 
@@ -153,35 +157,75 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
     const centerY = window.innerHeight / 2
     
     const nodes = allPositions.map((pos, idx) => {
-      // Radial placement around hub
+      // Radial placement around hub (evenly distributed!)
       const angle = (idx / allPositions.length) * Math.PI * 2
-      const radius = 200 + Math.random() * 150
+      const radius = 250 + Math.random() * 100 // 250-350px from center
       
       return {
         id: pos.id,
+        type: 'position',
         x: centerX + Math.cos(angle) * radius,
         y: centerY + Math.sin(angle) * radius,
+        fx: null, // Not fixed initially
+        fy: null,
         side: pos.pnl >= 0 ? 'profit' : 'loss'
       }
     })
 
-    // Create simulation with radial forces
-    const simulation = d3.forceSimulation(nodes)
-      .force('charge', d3.forceManyBody().strength(-50)) // Less repulsion
-      .force('collision', d3.forceCollide().radius(50))
-      .force('radial', d3.forceRadial(250, centerX, centerY).strength(0.5)) // Keep near hub!
-      .force('center', d3.forceCenter(centerX, centerY).strength(0.1))
-      .alphaDecay(0.01)
-      .velocityDecay(0.4)
+    // Hub node (virtual, for links)
+    const hubNode = {
+      id: 'hub',
+      type: 'hub',
+      x: centerX,
+      y: centerY,
+      fx: centerX, // Hub is always fixed in center
+      fy: centerY
+    }
+
+    // All nodes (hub + positions)
+    const allNodes = [hubNode, ...nodes]
+
+    // Links: Hub to each position
+    const links = nodes.map(node => ({
+      source: 'hub',
+      target: node.id,
+      type: 'hub-position'
+    }))
+
+    // Create simulation with forces - LIKE ARKHAM! 🎯
+    const simulation = d3.forceSimulation(allNodes)
+      .force('link', d3.forceLink(links)
+        .id((d: any) => d.id)
+        .distance(300) // Distance from hub to bubbles
+        .strength(0.3) // Medium strength - bubbles orbit hub!
+      )
+      .force('charge', d3.forceManyBody()
+        .strength(-100) // Repulsion between bubbles
+      )
+      .force('collision', d3.forceCollide()
+        .radius(60) // Prevent overlap (bubble size + padding)
+        .strength(0.8)
+      )
+      .force('center', d3.forceCenter(centerX, centerY).strength(0.05))
+      .alphaDecay(0.015) // Slower cooldown = longer animation
+      .velocityDecay(0.3) // Less friction = more fluid!
 
     simulationRef.current = simulation
 
     // Update positions on tick
     simulation.on('tick', () => {
       const newPositions = new Map<string, { x: number; y: number }>()
+      
       nodes.forEach(node => {
-        newPositions.set(node.id, { x: node.x || 0, y: node.y || 0 })
+        // Convert from center coords to top-left coords (for Draggable)
+        const position = allPositions.find(p => p.id === node.id)
+        if (position) {
+          const x = (node.x || centerX) - position.size / 2
+          const y = (node.y || centerY) - position.size / 2
+          newPositions.set(node.id, { x, y })
+        }
       })
+      
       setPositionPositions(newPositions)
       if (!positionsInitialized) {
         setPositionsInitialized(true)
@@ -193,19 +237,127 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
     }
   }, [loading, error, profitablePositions, losingPositions, positionsInitialized])
 
-  // Handle hub drag
-  const handleHubDrag = (_e: any, data: DraggableData) => {
+  // Handle hub drag - ALL BUBBLES FOLLOW! 🧲
+  const handleHubDrag = useCallback((_e: any, data: DraggableData) => {
+    if (!simulationRef.current) return
+    
+    // Convert Draggable coords to center coords
+    const newHubCenterX = window.innerWidth / 2 + data.x
+    const newHubCenterY = window.innerHeight / 2 + data.y
+    
+    const oldHubCenterX = window.innerWidth / 2 + hubPosition.x
+    const oldHubCenterY = window.innerHeight / 2 + hubPosition.y
+    
+    const dx = newHubCenterX - oldHubCenterX
+    const dy = newHubCenterY - oldHubCenterY
+    
+    // Move hub
     setHubPosition({ x: data.x, y: data.y })
-  }
-
-  // Handle position drag
-  const handlePositionDrag = (positionId: string) => (_e: any, data: DraggableData) => {
+    
+    // Move hub node in D3
+    const hubNode = simulationRef.current.nodes().find((n: any) => n.type === 'hub')
+    if (hubNode) {
+      hubNode.fx = newHubCenterX
+      hubNode.fy = newHubCenterY
+      hubNode.x = newHubCenterX
+      hubNode.y = newHubCenterY
+    }
+    
+    // Move ALL position bubbles together! (group drag!)
+    simulationRef.current.nodes().forEach((node: any) => {
+      if (node.type === 'position') {
+        if (node.fx !== null && node.fy !== null) {
+          node.fx += dx
+          node.fy += dy
+        }
+        if (node.x !== undefined && node.y !== undefined) {
+          node.x += dx
+          node.y += dy
+        }
+      }
+    })
+    
+    // Update position map (Draggable coords)
     setPositionPositions(prev => {
       const updated = new Map(prev)
-      updated.set(positionId, { x: data.x, y: data.y })
+      prev.forEach((pos, id) => {
+        updated.set(id, { x: pos.x + dx, y: pos.y + dy })
+      })
       return updated
     })
-  }
+    
+    // Reheat simulation for smooth movement! 🔥
+    simulationRef.current.alpha(0.2).restart()
+  }, [hubPosition])
+
+  // Handle position drag - WITH VELOCITY TRACKING! 🌊
+  const handlePositionDrag = useCallback((position: PositionBubble) => (_e: any, data: DraggableData) => {
+    if (!simulationRef.current) return
+    
+    // Find node in D3 simulation
+    const node = simulationRef.current.nodes().find((n: any) => n.id === position.id && n.type === 'position')
+    if (!node) return
+    
+    // Convert Draggable coords (top-left) to D3 coords (center)
+    const centerX = data.x + position.size / 2
+    const centerY = data.y + position.size / 2
+    
+    // Calculate velocity for fluid lines! 🌊
+    const now = Date.now()
+    const lastPos = lastPositionsRef.current.get(position.id)
+    if (lastPos) {
+      const dt = (now - lastPos.timestamp) / 1000 // seconds
+      if (dt > 0 && dt < 1) { // Ignore huge gaps
+        const vx = (centerX - lastPos.x) / dt
+        const vy = (centerY - lastPos.y) / dt
+        
+        setPositionVelocities(prev => {
+          const newVelocities = new Map(prev)
+          newVelocities.set(position.id, { vx, vy })
+          return newVelocities
+        })
+      }
+    }
+    
+    // Save current position for next velocity calc
+    lastPositionsRef.current.set(position.id, { x: centerX, y: centerY, timestamp: now })
+    
+    // Fix THIS bubble in place during drag
+    node.fx = centerX
+    node.fy = centerY
+    node.x = centerX
+    node.y = centerY
+    
+    // Update position map (top-left coords for Draggable)
+    setPositionPositions(prev => {
+      const updated = new Map(prev)
+      updated.set(position.id, { x: data.x, y: data.y })
+      return updated
+    })
+    
+    // Reheat simulation - others will follow softly through links! 🔥
+    simulationRef.current.alpha(0.3).restart()
+  }, [])
+
+  // Handle drag end - release fixed position
+  const handleDragStop = useCallback((positionId: string) => () => {
+    if (!simulationRef.current) return
+    
+    const node = simulationRef.current.nodes().find((n: any) => n.id === positionId)
+    if (node) {
+      node.fx = null // Release! Let physics take over!
+      node.fy = null
+    }
+    
+    // Clear velocity after a delay
+    setTimeout(() => {
+      setPositionVelocities(prev => {
+        const updated = new Map(prev)
+        updated.delete(positionId)
+        return updated
+      })
+    }, 500)
+  }, [])
 
   if (loading) {
     return (
@@ -328,7 +480,8 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
               <Draggable
                 key={position.id}
                 position={positionsInitialized ? pos : { x: 0, y: 0 }}
-                onDrag={handlePositionDrag(position.id)}
+                onDrag={handlePositionDrag(position)}
+                onStop={handleDragStop(position.id)}
               >
                 <div 
                   className="absolute cursor-move"
@@ -389,7 +542,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             )
           })}
 
-          {/* SVG Lines (Hub to Positions) - Curved like WhaleNetworkGraph! */}
+          {/* SVG Lines (Hub to Positions) - STRAIGHT lines like Arkham! 🎯 */}
           <svg
             className="absolute inset-0 pointer-events-none"
             style={{ 
@@ -405,35 +558,52 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
               const pos = positionPositions.get(position.id)
               if (!pos || !positionsInitialized) return null
 
-              // Hub center
-              const hubX = window.innerWidth / 2 + hubPosition.x + 64
-              const hubY = window.innerHeight / 2 + hubPosition.y + 64
+              // Hub center (avatar in middle of 128px hub)
+              const hubX = window.innerWidth / 2 + hubPosition.x
+              const hubY = window.innerHeight / 2 + hubPosition.y
 
-              // Bubble center
+              // Bubble center (Draggable uses top-left, so add half size)
               const bubbleX = pos.x + position.size / 2
               const bubbleY = pos.y + position.size / 2
 
-              // Curved path (like WhaleNetworkGraph!)
-              const midX = (hubX + bubbleX) / 2
-              const midY = (hubY + bubbleY) / 2
+              // Get velocity for fluid effect! 🌊
+              const velocity = positionVelocities.get(position.id)
+              const speed = velocity ? Math.sqrt(velocity.vx ** 2 + velocity.vy ** 2) : 0
+              const velocityOpacity = Math.min(0.7, 0.25 + speed * 0.0005) // Fluid boost when moving!
+
+              // Calculate line length for gradient effect
               const dx = bubbleX - hubX
               const dy = bubbleY - hubY
               const distance = Math.sqrt(dx * dx + dy * dy)
-              
-              // Control point for curve
-              const curvature = distance * 0.1
-              const controlX = midX + (-dy / distance) * curvature
-              const controlY = midY + (dx / distance) * curvature
 
               return (
-                <path
-                  key={`line-${position.id}`}
-                  d={`M ${hubX} ${hubY} Q ${controlX} ${controlY} ${bubbleX} ${bubbleY}`}
-                  stroke={position.color}
-                  strokeWidth={2}
-                  strokeOpacity={0.4}
-                  fill="none"
-                />
+                <g key={`line-${position.id}`}>
+                  {/* Main line */}
+                  <line
+                    x1={hubX}
+                    y1={hubY}
+                    x2={bubbleX}
+                    y2={bubbleY}
+                    stroke={position.color}
+                    strokeWidth={2.5}
+                    strokeOpacity={velocityOpacity}
+                    strokeLinecap="round"
+                  />
+                  {/* Glow effect when moving fast */}
+                  {speed > 50 && (
+                    <line
+                      x1={hubX}
+                      y1={hubY}
+                      x2={bubbleX}
+                      y2={bubbleY}
+                      stroke={position.color}
+                      strokeWidth={6}
+                      strokeOpacity={Math.min(0.3, speed * 0.0003)}
+                      strokeLinecap="round"
+                      filter="blur(4px)"
+                    />
+                  )}
+                </g>
               )
             })}
           </svg>
