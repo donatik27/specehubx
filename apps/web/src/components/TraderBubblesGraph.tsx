@@ -1,7 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import * as d3 from 'd3'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import { Loader2 } from 'lucide-react'
+import Draggable, { DraggableData } from 'react-draggable'
+import { motion } from 'framer-motion'
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
+import * as d3 from 'd3-force'
+import { useRouter } from 'next/navigation'
 
 interface Trader {
   address: string
@@ -9,7 +14,6 @@ interface Trader {
   avatar: string
   estimatedPnL: number
   tier: string
-  verified?: boolean
 }
 
 interface Position {
@@ -17,267 +21,374 @@ interface Position {
   market_title: string
   outcome: string
   size: number
-  current_price: number
-  avg_entry_price: number
   unrealized_pnl: number
-  value: number
 }
 
-interface Props {
-  trader: Trader
-  positions: Position[]
-}
-
-interface Node extends d3.SimulationNodeDatum {
+interface PositionBubble {
   id: string
-  type: 'trader' | 'position'
-  label: string
-  avatar?: string
-  pnl?: number
-  size?: number
-  color?: string
+  title: string
+  outcome: string
+  pnl: number
+  size: number
+  color: string
+  x: number
+  y: number
 }
 
-interface Link extends d3.SimulationLinkDatum<Node> {
-  source: string | Node
-  target: string | Node
+interface TraderHub {
+  x: number
+  y: number
 }
 
-export default function TraderBubblesGraph({ trader, positions }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [dimensions, setDimensions] = useState({ width: 1200, height: 800 })
+interface TraderBubblesGraphProps {
+  address: string
+}
+
+export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps) {
+  const router = useRouter()
+  const [trader, setTrader] = useState<Trader | null>(null)
+  const [profitablePositions, setProfitablePositions] = useState<PositionBubble[]>([])
+  const [losingPositions, setLosingPositions] = useState<PositionBubble[]>([])
+  const [traderHub, setTraderHub] = useState<TraderHub>({ x: 0, y: 0 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [hoveredPositionId, setHoveredPositionId] = useState<string | null>(null)
+  
+  const [positionPositions, setPositionPositions] = useState<Map<string, { x: number; y: number }>>(new Map())
+  const [hubPosition, setHubPosition] = useState({ x: 0, y: 0 })
+  const [positionsInitialized, setPositionsInitialized] = useState(false)
+  
+  const hubRef = useRef<HTMLDivElement>(null)
+  const positionRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const simulationRef = useRef<d3.Simulation<any, any> | null>(null)
+
+  const fetchPositionBubbles = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Fetch trader info
+      console.log(`🔍 Fetching trader: ${address}`)
+      const traderRes = await fetch(`/api/trader/${address}`)
+      if (traderRes.ok) {
+        const traderData = await traderRes.json()
+        setTrader(traderData)
+        console.log(`👤 Trader: ${traderData.displayName}`)
+      }
+
+      // Fetch open positions from Polymarket CLOB API
+      console.log('🔍 Fetching open positions from Polymarket CLOB...')
+      const positionsRes = await fetch(
+        `https://clob.polymarket.com/positions?user=${address}`
+      )
+
+      if (!positionsRes.ok) {
+        throw new Error('Failed to fetch positions')
+      }
+
+      const positionsData: Position[] = await positionsRes.json()
+      console.log(`📊 Fetched ${positionsData.length} open positions!`)
+
+      if (positionsData.length === 0) {
+        setError('No open positions')
+        setLoading(false)
+        return
+      }
+
+      // Split into profitable vs losing
+      const profitable: PositionBubble[] = []
+      const losing: PositionBubble[] = []
+
+      positionsData.forEach((pos, idx) => {
+        const pnl = pos.unrealized_pnl || 0
+        const bubble: PositionBubble = {
+          id: `pos-${idx}`,
+          title: pos.market_title,
+          outcome: pos.outcome,
+          pnl,
+          size: Math.min(Math.max(Math.abs(pnl) / 10, 30), 80),
+          color: pnl >= 0 ? '#22c55e' : '#ef4444',
+          x: 0,
+          y: 0
+        }
+
+        if (pnl >= 0) {
+          profitable.push(bubble)
+        } else {
+          losing.push(bubble)
+        }
+      })
+
+      setProfitablePositions(profitable)
+      setLosingPositions(losing)
+
+      console.log(`🟢 Profitable: ${profitable.length}`)
+      console.log(`🔴 Losing: ${losing.length}`)
+
+      setLoading(false)
+    } catch (err) {
+      console.error('❌ Error fetching positions:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load positions')
+      setLoading(false)
+    }
+  }, [address])
 
   useEffect(() => {
-    if (!svgRef.current || positions.length === 0) return
+    fetchPositionBubbles()
+  }, [fetchPositionBubbles])
 
-    // Clear previous graph
-    d3.select(svgRef.current).selectAll('*').remove()
+  // Initialize D3 Force Simulation
+  useEffect(() => {
+    if (loading || error || (!profitablePositions.length && !losingPositions.length)) return
 
-    const width = dimensions.width
-    const height = dimensions.height
+    const allPositions = [...profitablePositions, ...losingPositions]
+    
+    // D3 Force Simulation nodes
+    const nodes = allPositions.map(pos => ({
+      id: pos.id,
+      x: Math.random() * 800 + 200,
+      y: Math.random() * 600 + 100,
+      side: pos.pnl >= 0 ? 'profit' : 'loss'
+    }))
 
-    // Create SVG
-    const svg = d3.select(svgRef.current)
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', [0, 0, width, height])
-
-    // Create container for zoom
-    const container = svg.append('g')
-
-    // Zoom behavior
-    const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 4])
-      .on('zoom', (event) => {
-        container.attr('transform', event.transform)
-      })
-
-    svg.call(zoom)
-
-    // Prepare data
-    const nodes: Node[] = []
-    const links: Link[] = []
-
-    // Central trader node
-    const traderNode: Node = {
-      id: 'trader',
-      type: 'trader',
-      label: trader.displayName,
-      avatar: trader.avatar,
-      pnl: trader.estimatedPnL,
-      size: 80,
-      color: '#8b5cf6', // purple
-      fx: width / 2, // Fix in center
-      fy: height / 2
-    }
-    nodes.push(traderNode)
-
-    // Position nodes
-    positions.forEach((pos, idx) => {
-      const posNode: Node = {
-        id: `pos-${idx}`,
-        type: 'position',
-        label: `${pos.market_title.substring(0, 40)}...`,
-        pnl: pos.unrealized_pnl,
-        size: Math.min(Math.max(Math.abs(pos.unrealized_pnl) / 10, 20), 60),
-        color: pos.unrealized_pnl >= 0 ? '#22c55e' : '#ef4444' // green or red
-      }
-      nodes.push(posNode)
-
-      // Link from trader to position
-      links.push({
-        source: 'trader',
-        target: `pos-${idx}`
-      })
-    })
-
-    console.log(`🫧 Graph: ${nodes.length} nodes, ${links.length} links`)
-
-    // Create force simulation
+    // Create simulation
     const simulation = d3.forceSimulation(nodes)
-      .force('link', d3.forceLink<Node, Link>(links)
-        .id(d => d.id)
-        .distance(200)
-        .strength(0.3)
-      )
-      .force('charge', d3.forceManyBody()
-        .strength(-300)
-      )
-      .force('collision', d3.forceCollide()
-        .radius(d => (d as Node).size! + 20)
-      )
-      .force('center', d3.forceCenter(width / 2, height / 2).strength(0.05))
+      .force('charge', d3.forceManyBody().strength(-100))
+      .force('collision', d3.forceCollide().radius(60))
+      .force('center', d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
+      .alphaDecay(0.02)
+      .velocityDecay(0.3)
 
-    // Create links (lines)
-    const link = container.append('g')
-      .selectAll('line')
-      .data(links)
-      .join('line')
-      .attr('stroke', '#666')
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.6)
+    simulationRef.current = simulation
 
-    // Create node groups
-    const node = container.append('g')
-      .selectAll('g')
-      .data(nodes)
-      .join('g')
-      .call(d3.drag<any, Node>()
-        .on('start', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0.3).restart()
-          d.fx = d.x
-          d.fy = d.y
-        })
-        .on('drag', (event, d) => {
-          d.fx = event.x
-          d.fy = event.y
-        })
-        .on('end', (event, d) => {
-          if (!event.active) simulation.alphaTarget(0)
-          // Keep position fixed after drag
-          // d.fx = null
-          // d.fy = null
-        })
-      )
-
-    // Add circles for nodes
-    node.append('circle')
-      .attr('r', d => d.size!)
-      .attr('fill', d => d.color!)
-      .attr('stroke', '#fff')
-      .attr('stroke-width', 3)
-      .style('filter', 'drop-shadow(0 0 10px rgba(0,0,0,0.5))')
-
-    // Add images for trader node
-    node.filter(d => d.type === 'trader')
-      .append('image')
-      .attr('href', d => d.avatar!)
-      .attr('x', d => -d.size! * 0.7)
-      .attr('y', d => -d.size! * 0.7)
-      .attr('width', d => d.size! * 1.4)
-      .attr('height', d => d.size! * 1.4)
-      .attr('clip-path', 'circle()')
-
-    // Add PnL labels
-    node.append('text')
-      .attr('y', d => d.type === 'trader' ? d.size! + 25 : 0)
-      .attr('text-anchor', 'middle')
-      .attr('fill', d => d.type === 'trader' ? '#fff' : d.color!)
-      .attr('font-size', d => d.type === 'trader' ? '18px' : '14px')
-      .attr('font-weight', 'bold')
-      .attr('stroke', '#000')
-      .attr('stroke-width', 3)
-      .attr('paint-order', 'stroke')
-      .text(d => {
-        if (d.type === 'trader') {
-          return d.label
-        }
-        const pnl = d.pnl || 0
-        return pnl >= 0 ? `+$${pnl.toFixed(0)}` : `-$${Math.abs(pnl).toFixed(0)}`
-      })
-
-    // Add market title on hover
-    node.append('title')
-      .text(d => {
-        if (d.type === 'trader') {
-          return `${d.label}\nTotal PnL: $${d.pnl?.toFixed(2)}`
-        }
-        return `${d.label}\nUnrealized P&L: $${d.pnl?.toFixed(2)}`
-      })
-
-    // Update positions on simulation tick
+    // Update positions on tick
     simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as Node).x!)
-        .attr('y1', d => (d.source as Node).y!)
-        .attr('x2', d => (d.target as Node).x!)
-        .attr('y2', d => (d.target as Node).y!)
-
-      node.attr('transform', d => `translate(${d.x},${d.y})`)
+      const newPositions = new Map<string, { x: number; y: number }>()
+      nodes.forEach(node => {
+        newPositions.set(node.id, { x: node.x || 0, y: node.y || 0 })
+      })
+      setPositionPositions(newPositions)
+      if (!positionsInitialized) {
+        setPositionsInitialized(true)
+      }
     })
-
-    // Initial zoom to fit
-    svg.call(zoom.transform as any, d3.zoomIdentity)
 
     return () => {
       simulation.stop()
     }
-  }, [trader, positions, dimensions])
+  }, [loading, error, profitablePositions, losingPositions, positionsInitialized])
 
-  // Responsive dimensions
-  useEffect(() => {
-    const handleResize = () => {
-      const container = svgRef.current?.parentElement
-      if (container) {
-        setDimensions({
-          width: container.clientWidth,
-          height: Math.min(container.clientWidth * 0.6, 800)
-        })
-      }
-    }
+  // Handle hub drag
+  const handleHubDrag = (_e: any, data: DraggableData) => {
+    setHubPosition({ x: data.x, y: data.y })
+  }
 
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
+  // Handle position drag
+  const handlePositionDrag = (positionId: string) => (_e: any, data: DraggableData) => {
+    setPositionPositions(prev => {
+      const updated = new Map(prev)
+      updated.set(positionId, { x: data.x, y: data.y })
+      return updated
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-green-400 mx-auto mb-4" />
+          <p className="text-xl text-muted-foreground">Loading position bubbles...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="text-center">
+          <p className="text-6xl mb-4">🫧</p>
+          <p className="text-xl text-white mb-2">{error}</p>
+          <p className="text-sm text-muted-foreground">
+            This trader has no active positions at the moment
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  const allPositions = [...profitablePositions, ...losingPositions]
 
   return (
-    <div className="relative w-full" style={{ height: `${dimensions.height}px` }}>
-      <svg
-        ref={svgRef}
-        className="w-full h-full bg-black/20 rounded-lg pixel-border border-white/10"
-      />
+    <TransformWrapper
+      initialScale={1}
+      minScale={0.1}
+      maxScale={3}
+      centerOnInit
+      wheel={{ step: 0.1 }}
+    >
+      <TransformComponent
+        wrapperStyle={{
+          width: '100vw',
+          height: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          cursor: 'grab'
+        }}
+      >
+        <div
+          style={{
+            width: '100vw',
+            height: '100vh',
+            position: 'relative'
+          }}
+        >
+          {/* Trader Hub (Center) */}
+          <Draggable
+            position={hubPosition}
+            onDrag={handleHubDrag}
+            nodeRef={hubRef}
+          >
+            <div
+              ref={hubRef}
+              className="absolute cursor-move"
+              style={{
+                left: `calc(50vw - 60px)`,
+                top: `calc(50vh - 60px)`,
+                transform: `translate(${hubPosition.x}px, ${hubPosition.y}px)`,
+                willChange: 'transform'
+              }}
+            >
+              <motion.div
+                className="relative"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              >
+                {/* Hub Circle */}
+                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 border-4 border-green-400 shadow-2xl shadow-green-500/50 flex items-center justify-center overflow-hidden">
+                  {trader?.avatar && (
+                    <img
+                      src={trader.avatar}
+                      alt={trader.displayName}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=default'
+                      }}
+                    />
+                  )}
+                </div>
 
-      {positions.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-6xl mb-4">🫧</p>
-            <p className="text-xl text-muted-foreground">No open positions</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              This trader has no active positions at the moment
-            </p>
-          </div>
-        </div>
-      )}
+                {/* Trader Name */}
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <p className="text-white font-bold text-lg text-center drop-shadow-lg">
+                    {trader?.displayName || 'Trader'}
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+          </Draggable>
 
-      {/* Stats overlay */}
-      {positions.length > 0 && (
-        <div className="absolute top-4 left-4 bg-black/80 pixel-border border-primary/40 p-4 text-sm">
-          <p className="text-white font-bold mb-2">POSITION STATS:</p>
-          <p className="text-green-400">
-            🟢 Profitable: {positions.filter(p => p.unrealized_pnl > 0).length}
-          </p>
-          <p className="text-red-400">
-            🔴 Losing: {positions.filter(p => p.unrealized_pnl < 0).length}
-          </p>
-          <p className="text-white mt-2">
-            Total Unrealized P&L:{' '}
-            <span className={positions.reduce((sum, p) => sum + p.unrealized_pnl, 0) >= 0 ? 'text-green-400' : 'text-red-400'}>
-              ${positions.reduce((sum, p) => sum + p.unrealized_pnl, 0).toFixed(2)}
-            </span>
-          </p>
+          {/* Position Bubbles */}
+          {allPositions.map((position, idx) => {
+            const pos = positionPositions.get(position.id) || { x: 0, y: 0 }
+            const isHovered = hoveredPositionId === position.id
+
+            return (
+              <Draggable
+                key={position.id}
+                position={pos}
+                onDrag={handlePositionDrag(position.id)}
+                nodeRef={(ref) => {
+                  if (ref) positionRefs.current.set(position.id, ref as HTMLDivElement)
+                  return ref
+                }}
+              >
+                <motion.div
+                  className="absolute cursor-move"
+                  style={{
+                    willChange: 'transform',
+                    zIndex: isHovered ? 1000 : 1
+                  }}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 200,
+                    damping: 15,
+                    delay: idx * 0.05
+                  }}
+                  onMouseEnter={() => setHoveredPositionId(position.id)}
+                  onMouseLeave={() => setHoveredPositionId(null)}
+                >
+                  {/* Bubble */}
+                  <div
+                    className="rounded-full border-4 shadow-2xl flex items-center justify-center transition-all"
+                    style={{
+                      width: position.size,
+                      height: position.size,
+                      backgroundColor: position.color,
+                      borderColor: position.pnl >= 0 ? '#86efac' : '#fca5a5',
+                      boxShadow: isHovered 
+                        ? `0 0 40px ${position.color}`
+                        : `0 0 20px ${position.color}80`,
+                      transform: isHovered ? 'scale(1.2)' : 'scale(1)'
+                    }}
+                  >
+                    {/* PnL Label */}
+                    <p className="text-white font-bold text-xs drop-shadow-lg">
+                      {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(0)}
+                    </p>
+                  </div>
+
+                  {/* Hover Tooltip */}
+                  {isHovered && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 backdrop-blur-sm pixel-border border-white/30 p-3 whitespace-nowrap z-50 shadow-xl">
+                      <p className="text-white font-bold text-sm mb-1">
+                        {position.title.substring(0, 50)}...
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        Outcome: <span className="text-white">{position.outcome}</span>
+                      </p>
+                      <p className={`text-xs mt-1 font-bold ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        Unrealized P&L: {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
+              </Draggable>
+            )
+          })}
+
+          {/* SVG Lines (Hub to Positions) */}
+          <svg
+            className="absolute inset-0 pointer-events-none"
+            style={{ width: '100%', height: '100%' }}
+          >
+            {allPositions.map(position => {
+              const pos = positionPositions.get(position.id)
+              if (!pos) return null
+
+              const hubX = window.innerWidth / 2 + hubPosition.x
+              const hubY = window.innerHeight / 2 + hubPosition.y
+
+              return (
+                <line
+                  key={`line-${position.id}`}
+                  x1={hubX}
+                  y1={hubY}
+                  x2={pos.x + position.size / 2}
+                  y2={pos.y + position.size / 2}
+                  stroke={position.color}
+                  strokeWidth={2}
+                  strokeOpacity={0.3}
+                />
+              )
+            })}
+          </svg>
         </div>
-      )}
-    </div>
+      </TransformComponent>
+    </TransformWrapper>
   )
 }
