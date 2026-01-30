@@ -254,25 +254,61 @@ export default function TraderProfilePage() {
             finishedTrades: activityData.trades?.length || 0
           })
           
-          // FRONTEND FIX: Fetch closed positions DIRECTLY from Polymarket! 🚀
+          // FRONTEND FIX: Fetch TRADES (not closed-positions) DIRECTLY from Polymarket! 🚀
           try {
-            console.log('🔍 Fetching closed positions from Polymarket...')
-            const closedRes = await fetch(
-              `https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000`
-            )
+            console.log('🔍 Fetching trades from Polymarket (checking for losses)...')
+            
+            // TRY BOTH: closed-positions AND trades to compare!
+            const [closedRes, tradesRes] = await Promise.all([
+              fetch(`https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000`),
+              fetch(`https://data-api.polymarket.com/v1/trades?trader=${address}&limit=1000`)
+            ])
+            
+            let closedPositions: any[] = []
+            let allTrades: any[] = []
             
             if (closedRes.ok) {
-              const closedPositions = await closedRes.json() as any[]
-              console.log(`📊 Fetched ${closedPositions.length} closed positions! (limit: 1000, NO sortBy)`)
+              closedPositions = await closedRes.json() as any[]
+              console.log(`📊 CLOSED POSITIONS: ${closedPositions.length} fetched`)
               
-              // DEBUG: Show PnL distribution
-              const pnlDistribution = {
+              // DEBUG: Show PnL distribution from closed positions
+              const closedPnlDist = {
                 profitable: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') > 0).length,
                 unprofitable: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') < 0).length,
-                breakEven: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') === 0).length
+                breakEven: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') === 0).length,
+                zeroOrNull: closedPositions.filter(p => !p.realizedPnl || p.realizedPnl === '0').length
               }
-              console.log('💰 PnL Distribution:', pnlDistribution)
+              console.log('💰 Closed Positions PnL Distribution:', closedPnlDist)
               
+              // Show first 3 positions with their PnL
+              console.log('📍 First 3 closed positions PnL values:')
+              closedPositions.slice(0, 3).forEach((p, i) => {
+                console.log(`  #${i + 1}: realizedPnl = "${p.realizedPnl}" (parsed: ${parseFloat(p.realizedPnl || '0')})`)
+              })
+            }
+            
+            if (tradesRes.ok) {
+              const tradesData = await tradesRes.json() as any
+              allTrades = tradesData.trades || tradesData || []
+              console.log(`📊 TRADES: ${allTrades.length} fetched`)
+              
+              // Show trades distribution
+              const tradesDist = {
+                BUY: allTrades.filter(t => t.side === 'BUY').length,
+                SELL: allTrades.filter(t => t.side === 'SELL').length
+              }
+              console.log('💰 Trades Distribution:', tradesDist)
+            }
+            
+            // Use closed positions if available, otherwise fall back to trades
+            const dataSource = closedPositions.length > 0 ? 'closed-positions' : 'trades'
+            console.log(`🎯 Using data source: ${dataSource}`)
+            
+            if (closedPositions.length === 0 && allTrades.length === 0) {
+              console.log('⚠️ No data from either API!')
+            }
+            // Continue ONLY if we have closed positions data
+            if (closedPositions.length > 0) {
               // Enhance categoryBreakdown with REAL PnL from closed positions
               const categoryPnL = new Map<string, { pnl: number; volume: number }>()
               
@@ -452,10 +488,12 @@ export default function TraderProfilePage() {
               })
               
               activityData.categoryBreakdown = enhancedBreakdown
-              console.log('✅ Enhanced categoryBreakdown with real ROI!')
+              console.log('✅ Enhanced categoryBreakdown with real ROI and Win Rate!')
+            } else {
+              console.log('⚠️ No closed positions found - using backend data only')
             }
           } catch (err) {
-            console.error('❌ Failed to fetch closed positions:', err)
+            console.error('❌ Failed to fetch data from Polymarket:', err)
           }
           
           // Update trader with new winRate BEFORE setting state
