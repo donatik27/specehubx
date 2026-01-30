@@ -292,12 +292,30 @@ export default function TraderProfilePage() {
               allTrades = tradesData.trades || tradesData || []
               console.log(`📊 TRADES: ${allTrades.length} fetched`)
               
+              // DEBUG: Show first trade structure
+              if (allTrades.length > 0) {
+                console.log('📍 FIRST TRADE (full structure):', JSON.stringify(allTrades[0], null, 2))
+              }
+              
               // Show trades distribution
               const tradesDist = {
                 BUY: allTrades.filter(t => t.side === 'BUY').length,
                 SELL: allTrades.filter(t => t.side === 'SELL').length
               }
               console.log('💰 Trades Distribution:', tradesDist)
+              
+              // Show field names
+              if (allTrades.length > 0) {
+                const firstTrade = allTrades[0]
+                console.log('🔑 Trade fields:', Object.keys(firstTrade))
+                console.log('📍 Sample values:', {
+                  market: firstTrade.market || firstTrade.asset_id || firstTrade.token_id || firstTrade.id,
+                  side: firstTrade.side,
+                  size: firstTrade.size || firstTrade.amount,
+                  price: firstTrade.price,
+                  title: firstTrade.title || firstTrade.question
+                })
+              }
             }
             
             // Use closed positions if available, otherwise fall back to trades
@@ -356,9 +374,26 @@ export default function TraderProfilePage() {
               const tradesByMarket = new Map<string, { buys: any[], sells: any[] }>()
               
               // Group trades by market
+              let skippedNoMarketId = 0
+              let skippedNoSide = 0
+              
               for (const trade of allTrades) {
-                const marketId = trade.market || trade.asset_id || trade.token_id
-                if (!marketId) continue
+                const marketId = trade.market || trade.asset_id || trade.token_id || trade.id
+                if (!marketId) {
+                  skippedNoMarketId++
+                  if (skippedNoMarketId <= 3) {
+                    console.log(`⚠️ Trade without marketId:`, trade)
+                  }
+                  continue
+                }
+                
+                if (!trade.side) {
+                  skippedNoSide++
+                  if (skippedNoSide <= 3) {
+                    console.log(`⚠️ Trade without side:`, trade)
+                  }
+                  continue
+                }
                 
                 if (!tradesByMarket.has(marketId)) {
                   tradesByMarket.set(marketId, { buys: [], sells: [] })
@@ -373,6 +408,15 @@ export default function TraderProfilePage() {
               }
               
               console.log(`📊 Grouped trades: ${tradesByMarket.size} markets`)
+              console.log(`⚠️ Skipped: ${skippedNoMarketId} no marketId, ${skippedNoSide} no side`)
+              
+              // Show first 3 markets
+              let marketCount = 0
+              for (const [marketId, { buys, sells }] of tradesByMarket) {
+                if (marketCount++ < 3) {
+                  console.log(`  Market ${marketId.substring(0, 20)}...: ${buys.length} BUY, ${sells.length} SELL`)
+                }
+              }
               
               // Match BUY/SELL using FIFO
               for (const [marketId, { buys, sells }] of tradesByMarket) {
