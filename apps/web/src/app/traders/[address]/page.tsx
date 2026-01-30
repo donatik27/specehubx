@@ -165,9 +165,27 @@ export default function TraderProfilePage() {
               // Calculate REAL win rate from closed positions!
               const categoryWinRate = new Map<string, { wins: number; losses: number }>()
               
+              console.log('🔍 ANALYZING CLOSED POSITIONS:')
+              let totalWins = 0
+              let totalLosses = 0
+              let breakEven = 0
+              
               for (const pos of closedPositions) {
                 const category = detectCategory(pos.title || '')
                 const pnl = parseFloat(pos.realizedPnl || '0')
+                
+                // DEBUG: Log first 5 positions
+                if (closedPositions.indexOf(pos) < 5) {
+                  console.log(`  Position #${closedPositions.indexOf(pos) + 1}:`, {
+                    title: pos.title?.substring(0, 50),
+                    category,
+                    realizedPnl: pos.realizedPnl,
+                    parsedPnl: pnl,
+                    isWin: pnl > 0,
+                    isLoss: pnl < 0,
+                    isBreakEven: pnl === 0
+                  })
+                }
                 
                 if (!categoryWinRate.has(category)) {
                   categoryWinRate.set(category, { wins: 0, losses: 0 })
@@ -176,12 +194,27 @@ export default function TraderProfilePage() {
                 const stats = categoryWinRate.get(category)!
                 if (pnl > 0) {
                   stats.wins++
+                  totalWins++
                 } else if (pnl < 0) {
                   stats.losses++
+                  totalLosses++
+                } else {
+                  breakEven++
                 }
               }
               
               console.log('🎯 Win/Loss stats:', Object.fromEntries(categoryWinRate))
+              console.log(`📊 TOTAL: ${totalWins} wins, ${totalLosses} losses, ${breakEven} break-even`)
+              
+              // Calculate OVERALL win rate from closed positions
+              const overallWinRate = (totalWins + totalLosses) > 0 
+                ? (totalWins / (totalWins + totalLosses)) 
+                : (traderData.winRate || 0.5)
+              
+              console.log(`✅ OVERALL WIN RATE: ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L)`)
+              
+              // Update trader with REAL win rate!
+              traderData.winRate = overallWinRate
               
               // Update categoryBreakdown with REAL ROI and Win Rate!
               const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
