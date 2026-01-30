@@ -123,7 +123,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
           title: pos.title,
           outcome: pos.outcome,
           pnl,
-          size: Math.min(Math.max(Math.abs(pnl) / 50, 30), 80), // Adjusted size calculation
+          size: Math.min(Math.max(Math.abs(pnl) / 30, 60), 150), // BIGGER bubbles! 🫧
           color: pnl >= 0 ? '#22c55e' : '#ef4444',
           x: 0,
           y: 0
@@ -211,7 +211,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
         .strength(-100) // Repulsion between bubbles
       )
       .force('collision', d3.forceCollide()
-        .radius(60) // Prevent overlap (bubble size + padding)
+        .radius(80) // Prevent overlap (bigger bubbles need more space!)
         .strength(0.8)
       )
       .force('center', d3.forceCenter(centerX, centerY).strength(0.05))
