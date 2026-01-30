@@ -613,8 +613,21 @@ export default function TraderProfilePage() {
             </div>
           </div>
 
-          {/* Polymarket Profile Button */}
-          <div className="flex-shrink-0">
+          {/* Action Buttons */}
+          <div className="flex-shrink-0 flex flex-col gap-3">
+            {/* View Bubbles Button */}
+            <Link
+              href={`/traders/${trader.address}/bubbles`}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold pixel-border border-green-400 transition-all group animate-pulse hover:animate-none"
+            >
+              <span className="text-2xl">🫧</span>
+              <div className="text-left">
+                <div className="text-xs uppercase tracking-wider opacity-90">View Position</div>
+                <div className="text-sm font-bold">BUBBLES</div>
+              </div>
+            </Link>
+
+            {/* Polymarket Profile Button */}
             <a
               href={`https://polymarket.com/profile/${trader.address}?via=01k`}
               target="_blank"
