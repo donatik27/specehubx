@@ -105,11 +105,19 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
       }
 
       // Split into profitable vs losing
+      // FILTER: Keep ALL profitable, only LARGE losing positions (for good profile look!)
       const profitable: PositionBubble[] = []
       const losing: PositionBubble[] = []
 
       positionsData.forEach((pos, idx) => {
         const pnl = pos.cashPnl || 0
+        
+        // Skip small losing positions (< -500) - play in trader's favor! 💚
+        if (pnl < 0 && Math.abs(pnl) < 500) {
+          console.log(`⏭️ Skipping small loss: $${pnl.toFixed(0)} - ${pos.title.substring(0, 30)}`)
+          return
+        }
+        
         const bubble: PositionBubble = {
           id: `pos-${idx}`,
           title: pos.title,
@@ -393,6 +401,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
       maxScale={3}
       centerOnInit
       wheel={{ step: 0.1 }}
+      panning={{ disabled: false }} // Enable panning by default
     >
       <TransformComponent
         wrapperStyle={{
@@ -403,6 +412,10 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
           left: 0,
           cursor: 'grab'
         }}
+        contentStyle={{
+          width: '100%',
+          height: '100%'
+        }}
       >
         <div
           style={{
@@ -411,7 +424,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             position: 'relative'
           }}
         >
-          {/* Trader Hub (Center) - Fixed in middle! */}
+          {/* Trader Hub (Center) - ON TOP of lines! */}
           <Draggable
             position={hubPosition}
             onDrag={handleHubDrag}
@@ -425,7 +438,16 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 top: `calc(50vh - 64px)`,
                 width: '128px',
                 height: '128px',
+                zIndex: 100, // Above everything!
                 willChange: 'transform'
+              }}
+              onMouseDown={(e) => {
+                // Stop propagation to prevent TransformWrapper pan!
+                e.stopPropagation()
+              }}
+              onTouchStart={(e) => {
+                // Stop propagation for mobile
+                e.stopPropagation()
               }}
             >
               <motion.div
@@ -488,10 +510,18 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                   style={{ 
                     width: `${position.size}px`, 
                     height: `${position.size}px`,
-                    zIndex: isHovered ? 1000 : 1
+                    zIndex: isHovered ? 1000 : 10 // Above lines, below hub
                   }}
                   onMouseEnter={() => setHoveredPositionId(position.id)}
                   onMouseLeave={() => setHoveredPositionId(null)}
+                  onMouseDown={(e) => {
+                    // Stop propagation to prevent TransformWrapper pan!
+                    e.stopPropagation()
+                  }}
+                  onTouchStart={(e) => {
+                    // Stop propagation for mobile
+                    e.stopPropagation()
+                  }}
                 >
                   <motion.div
                     className="absolute inset-0"
