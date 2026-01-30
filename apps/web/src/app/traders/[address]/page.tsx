@@ -51,6 +51,7 @@ interface CategoryMetrics {
   avgHoldTime: number
   consistency: number
   finishedTradesCount: number
+  isEstimated?: boolean // Flag to show if metrics are estimated
 }
 
 interface ActivityStats {

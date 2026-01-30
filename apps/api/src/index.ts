@@ -1030,19 +1030,97 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       }
     }
     
+    // ENHANCED: Calculate estimated metrics from ALL trades (not just finished)
+    // This provides data even when there are few finished trades!
+    const estimatedMetrics = new Map<string, {
+      buyVolume: number;
+      sellVolume: number;
+      buyCount: number;
+      sellCount: number;
+      avgBuyPrice: number;
+      avgSellPrice: number;
+      totalSize: number;
+    }>();
+    
+    for (const trade of trades) {
+      const category = detectCategory(trade.title || '');
+      if (!estimatedMetrics.has(category)) {
+        estimatedMetrics.set(category, {
+          buyVolume: 0,
+          sellVolume: 0,
+          buyCount: 0,
+          sellCount: 0,
+          avgBuyPrice: 0,
+          avgSellPrice: 0,
+          totalSize: 0
+        });
+      }
+      
+      const est = estimatedMetrics.get(category)!;
+      const price = parseFloat(trade.price || '0');
+      const size = parseFloat(trade.size || '0');
+      const volume = price * size;
+      
+      if (trade.side === 'BUY') {
+        est.buyVolume += volume;
+        est.buyCount++;
+        est.avgBuyPrice = est.buyVolume / est.buyCount;
+      } else if (trade.side === 'SELL') {
+        est.sellVolume += volume;
+        est.sellCount++;
+        est.avgSellPrice = est.sellVolume / est.sellCount;
+      }
+      est.totalSize += size;
+    }
+    
     // Calculate enhanced category breakdown with all metrics
     const categoryBreakdown = Array.from(categoryMap.entries())
       .map(([category, stats]) => {
         const metrics = categoryMetrics.get(category);
+        const estimated = estimatedMetrics.get(category);
         const avgTradeSize = stats.volume / stats.count;
         
-        // Calculate metrics
-        const winRate = metrics ? (metrics.wins / (metrics.wins + metrics.losses)) * 100 : 0;
-        const totalProfit = metrics?.totalProfit || 0;
-        const roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
-        const avgProfit = metrics && (metrics.wins + metrics.losses) > 0 
-          ? metrics.totalProfit / (metrics.wins + metrics.losses) 
-          : 0;
+        // Calculate win rate from finished trades OR estimate from price patterns
+        let winRate = 0;
+        if (metrics && (metrics.wins + metrics.losses) > 0) {
+          // Use real win rate from finished trades
+          winRate = (metrics.wins / (metrics.wins + metrics.losses)) * 100;
+        } else if (estimated && estimated.buyCount > 0 && estimated.sellCount > 0) {
+          // ESTIMATE: If avg sell price > avg buy price, likely profitable
+          const estimatedProfit = estimated.avgSellPrice - estimated.avgBuyPrice;
+          winRate = estimatedProfit > 0 ? 55 : 45; // Conservative estimate
+        }
+        
+        // Calculate total profit and ROI
+        let totalProfit = metrics?.totalProfit || 0;
+        let roi = 0;
+        
+        if (metrics && metrics.totalProfit !== 0) {
+          // Use real profit from finished trades
+          roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
+        } else if (estimated && estimated.buyVolume > 0 && estimated.sellVolume > 0) {
+          // ESTIMATE: profit from price difference × average size
+          const avgProfit = (estimated.avgSellPrice - estimated.avgBuyPrice) * (estimated.totalSize / stats.count);
+          totalProfit = avgProfit * Math.min(estimated.buyCount, estimated.sellCount);
+          roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
+        }
+        
+        // Calculate avg profit
+        let avgProfit = 0;
+        if (metrics && (metrics.wins + metrics.losses) > 0) {
+          avgProfit = metrics.totalProfit / (metrics.wins + metrics.losses);
+        } else if (totalProfit !== 0 && stats.count > 0) {
+          avgProfit = totalProfit / stats.count;
+        }
+        
+        // Calculate biggest win (use estimated if no finished trades)
+        let biggestWin = metrics?.biggestWin || 0;
+        if (biggestWin === 0 && totalProfit > 0) {
+          // Estimate: assume best trade is 3x average profit
+          biggestWin = Math.abs(avgProfit) * 3;
+        }
+        
+        // Calculate avg hold time
         const avgHoldTime = metrics && metrics.holdTimes.length > 0
           ? metrics.holdTimes.reduce((a, b) => a + b, 0) / metrics.holdTimes.length
           : 0;
@@ -1054,7 +1132,10 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           const variance = metrics.profits.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / metrics.profits.length;
           const stdDev = Math.sqrt(variance);
           const cv = mean !== 0 ? Math.abs(stdDev / mean) : 0;
-          consistency = Math.max(0, 100 - cv * 100); // Higher = more consistent
+          consistency = Math.max(0, 100 - cv * 100);
+        } else if (winRate > 0) {
+          // Estimate consistency from win rate
+          consistency = winRate > 50 ? 60 : 40;
         }
         
         // Ensure all numbers are valid (no NaN, no Infinity)
@@ -1065,17 +1146,19 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           count: stats.count,
           volume: safeNumber(stats.volume),
           percentage: safeNumber((stats.count / totalTrades) * 100),
-          // NEW METRICS! 🚀
+          // ENHANCED METRICS with fallbacks! 🚀
           avgTradeSize: safeNumber(avgTradeSize),
           winRate: safeNumber(winRate),
           totalProfit: safeNumber(totalProfit),
           roi: safeNumber(roi),
           avgProfit: safeNumber(avgProfit),
-          biggestWin: safeNumber(metrics?.biggestWin || 0),
+          biggestWin: safeNumber(biggestWin),
           biggestLoss: safeNumber(metrics?.biggestLoss || 0),
           avgHoldTime: safeNumber(avgHoldTime),
           consistency: safeNumber(consistency),
-          finishedTradesCount: metrics ? (metrics.wins + metrics.losses) : 0
+          finishedTradesCount: metrics ? (metrics.wins + metrics.losses) : 0,
+          // Add estimated flag to show data quality
+          isEstimated: !metrics || (metrics.wins + metrics.losses) === 0
         };
       })
       .sort((a, b) => b.volume - a.volume)
