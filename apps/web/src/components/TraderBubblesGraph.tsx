@@ -149,20 +149,30 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
     const allPositions = [...profitablePositions, ...losingPositions]
     
     // D3 Force Simulation nodes
-    const nodes = allPositions.map(pos => ({
-      id: pos.id,
-      x: Math.random() * 800 + 200,
-      y: Math.random() * 600 + 100,
-      side: pos.pnl >= 0 ? 'profit' : 'loss'
-    }))
+    const centerX = window.innerWidth / 2
+    const centerY = window.innerHeight / 2
+    
+    const nodes = allPositions.map((pos, idx) => {
+      // Radial placement around hub
+      const angle = (idx / allPositions.length) * Math.PI * 2
+      const radius = 200 + Math.random() * 150
+      
+      return {
+        id: pos.id,
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+        side: pos.pnl >= 0 ? 'profit' : 'loss'
+      }
+    })
 
-    // Create simulation
+    // Create simulation with radial forces
     const simulation = d3.forceSimulation(nodes)
-      .force('charge', d3.forceManyBody().strength(-100))
-      .force('collision', d3.forceCollide().radius(60))
-      .force('center', d3.forceCenter(window.innerWidth / 2, window.innerHeight / 2))
-      .alphaDecay(0.02)
-      .velocityDecay(0.3)
+      .force('charge', d3.forceManyBody().strength(-50)) // Less repulsion
+      .force('collision', d3.forceCollide().radius(50))
+      .force('radial', d3.forceRadial(250, centerX, centerY).strength(0.5)) // Keep near hub!
+      .force('center', d3.forceCenter(centerX, centerY).strength(0.1))
+      .alphaDecay(0.01)
+      .velocityDecay(0.4)
 
     simulationRef.current = simulation
 
@@ -362,28 +372,41 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             )
           })}
 
-          {/* SVG Lines (Hub to Positions) */}
+          {/* SVG Lines (Hub to Positions) - ALWAYS visible! */}
           <svg
             className="absolute inset-0 pointer-events-none"
-            style={{ width: '100%', height: '100%' }}
+            style={{ 
+              width: '100%', 
+              height: '100%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 0
+            }}
           >
             {allPositions.map(position => {
               const pos = positionPositions.get(position.id)
-              if (!pos) return null
+              if (!pos || !positionsInitialized) return null
 
-              const hubX = window.innerWidth / 2 + hubPosition.x
-              const hubY = window.innerHeight / 2 + hubPosition.y
+              // Hub is centered
+              const hubX = window.innerWidth / 2 + hubPosition.x + 64 // +64 for half hub size
+              const hubY = window.innerHeight / 2 + hubPosition.y + 64
+
+              // Position bubble center
+              const bubbleX = pos.x + position.size / 2
+              const bubbleY = pos.y + position.size / 2
 
               return (
                 <line
                   key={`line-${position.id}`}
                   x1={hubX}
                   y1={hubY}
-                  x2={pos.x + position.size / 2}
-                  y2={pos.y + position.size / 2}
+                  x2={bubbleX}
+                  y2={bubbleY}
                   stroke={position.color}
-                  strokeWidth={2}
-                  strokeOpacity={0.3}
+                  strokeWidth={3}
+                  strokeOpacity={0.4}
+                  strokeDasharray="5,5"
                 />
               )
             })}
