@@ -378,7 +378,8 @@ export default function TraderProfilePage() {
               let skippedNoSide = 0
               
               for (const trade of allTrades) {
-                const marketId = trade.market || trade.asset_id || trade.token_id || trade.id
+                // Polymarket trades API uses 'asset' field for market ID!
+                const marketId = trade.asset || trade.market || trade.asset_id || trade.token_id
                 if (!marketId) {
                   skippedNoMarketId++
                   if (skippedNoMarketId <= 3) {
@@ -420,9 +421,9 @@ export default function TraderProfilePage() {
               
               // Match BUY/SELL using FIFO
               for (const [marketId, { buys, sells }] of tradesByMarket) {
-                // Sort by timestamp
-                buys.sort((a, b) => (a.timestamp || a.created_at || 0) - (b.timestamp || b.created_at || 0))
-                sells.sort((a, b) => (a.timestamp || a.created_at || 0) - (b.timestamp || b.created_at || 0))
+                // Sort by timestamp (Polymarket uses 't' field for timestamp)
+                buys.sort((a, b) => (a.t || a.timestamp || a.created_at || 0) - (b.t || b.timestamp || b.created_at || 0))
+                sells.sort((a, b) => (a.t || a.timestamp || a.created_at || 0) - (b.t || b.timestamp || b.created_at || 0))
                 
                 let buyIdx = 0
                 let sellIdx = 0
@@ -432,6 +433,7 @@ export default function TraderProfilePage() {
                   const buy = buys[buyIdx]
                   const sell = sells[sellIdx]
                   
+                  // Polymarket uses 'size' field for amount
                   const buySize = parseFloat(buy.size || buy.amount || '0')
                   const sellSize = parseFloat(sell.size || sell.amount || '0')
                   const buyPrice = parseFloat(buy.price || '0')
