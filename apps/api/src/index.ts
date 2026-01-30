@@ -902,8 +902,12 @@ app.get('/api/trader/:address/activity', async (req, res) => {
       return 'Other';
     };
     
-    // Category breakdown from trades
-    const categoryMap = new Map<string, { count: number; volume: number }>();
+    // Category breakdown from trades - ENHANCED with more metrics!
+    const categoryMap = new Map<string, { 
+      count: number; 
+      volume: number;
+      trades: any[];
+    }>();
     
     for (const trade of trades) {
       const category = detectCategory(trade.title || '');
@@ -913,20 +917,11 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         const existing = categoryMap.get(category)!;
         existing.count++;
         existing.volume += volume;
+        existing.trades.push(trade);
       } else {
-        categoryMap.set(category, { count: 1, volume });
+        categoryMap.set(category, { count: 1, volume, trades: [trade] });
       }
     }
-    
-    const categoryBreakdown = Array.from(categoryMap.entries())
-      .map(([category, stats]) => ({
-        category,
-        count: stats.count,
-        volume: stats.volume,
-        percentage: (stats.count / totalTrades) * 100,
-      }))
-      .sort((a, b) => b.volume - a.volume)
-      .slice(0, 5); // Top 5 categories by volume
     
     // Calculate finished trades with profit/loss
     // Group trades by market + outcome
@@ -966,6 +961,11 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         // Calculate profit: (sell_price - buy_price) * size
         const profit = (sellPrice - buyPrice) * size;
         
+        // Calculate hold time (time between buy and sell)
+        const buyTime = new Date(buy.timestamp).getTime();
+        const sellTime = new Date(sell.timestamp).getTime();
+        const holdTime = (sellTime - buyTime) / (1000 * 60 * 60); // hours
+        
         finishedTrades.push({
           id: `${buy.id}_${sell.id}`,
           timestamp: sell.timestamp,
@@ -977,10 +977,106 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           sellPrice: sellPrice,
           price: sellPrice, // For compatibility
           profit: profit,
+          holdTime: holdTime,
           category: detectCategory(buy.title || sell.title || ''),
         });
       }
     }
+    
+    // Calculate enhanced metrics per category using finished trades
+    const categoryMetrics = new Map<string, {
+      wins: number;
+      losses: number;
+      totalProfit: number;
+      profits: number[];
+      biggestWin: number;
+      biggestLoss: number;
+      avgHoldTime: number;
+      holdTimes: number[];
+    }>();
+    
+    for (const trade of finishedTrades) {
+      if (!categoryMetrics.has(trade.category)) {
+        categoryMetrics.set(trade.category, {
+          wins: 0,
+          losses: 0,
+          totalProfit: 0,
+          profits: [],
+          biggestWin: 0,
+          biggestLoss: 0,
+          avgHoldTime: 0,
+          holdTimes: []
+        });
+      }
+      
+      const metrics = categoryMetrics.get(trade.category)!;
+      metrics.totalProfit += trade.profit;
+      metrics.profits.push(trade.profit);
+      
+      if (trade.profit > 0) {
+        metrics.wins++;
+        if (trade.profit > metrics.biggestWin) {
+          metrics.biggestWin = trade.profit;
+        }
+      } else {
+        metrics.losses++;
+        if (trade.profit < metrics.biggestLoss) {
+          metrics.biggestLoss = trade.profit;
+        }
+      }
+      
+      if (trade.holdTime) {
+        metrics.holdTimes.push(trade.holdTime);
+      }
+    }
+    
+    // Calculate enhanced category breakdown with all metrics
+    const categoryBreakdown = Array.from(categoryMap.entries())
+      .map(([category, stats]) => {
+        const metrics = categoryMetrics.get(category);
+        const avgTradeSize = stats.volume / stats.count;
+        
+        // Calculate metrics
+        const winRate = metrics ? (metrics.wins / (metrics.wins + metrics.losses)) * 100 : 0;
+        const totalProfit = metrics?.totalProfit || 0;
+        const roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
+        const avgProfit = metrics && (metrics.wins + metrics.losses) > 0 
+          ? metrics.totalProfit / (metrics.wins + metrics.losses) 
+          : 0;
+        const avgHoldTime = metrics && metrics.holdTimes.length > 0
+          ? metrics.holdTimes.reduce((a, b) => a + b, 0) / metrics.holdTimes.length
+          : 0;
+        
+        // Calculate consistency (inverse of coefficient of variation)
+        let consistency = 0;
+        if (metrics && metrics.profits.length > 1) {
+          const mean = metrics.totalProfit / metrics.profits.length;
+          const variance = metrics.profits.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / metrics.profits.length;
+          const stdDev = Math.sqrt(variance);
+          const cv = mean !== 0 ? Math.abs(stdDev / mean) : 0;
+          consistency = Math.max(0, 100 - cv * 100); // Higher = more consistent
+        }
+        
+        return {
+          category,
+          count: stats.count,
+          volume: stats.volume,
+          percentage: (stats.count / totalTrades) * 100,
+          // NEW METRICS! 🚀
+          avgTradeSize,
+          winRate,
+          totalProfit,
+          roi,
+          avgProfit,
+          biggestWin: metrics?.biggestWin || 0,
+          biggestLoss: metrics?.biggestLoss || 0,
+          avgHoldTime,
+          consistency,
+          finishedTradesCount: metrics ? (metrics.wins + metrics.losses) : 0
+        };
+      })
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, 5); // Top 5 categories by volume
     
     res.json({
       lastTrade,
