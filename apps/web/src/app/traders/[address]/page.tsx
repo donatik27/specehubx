@@ -36,10 +36,10 @@ interface Trade {
 }
 
 interface CategoryMetrics {
-  category: string
-  count: number
-  volume: number
-  percentage: number
+    category: string
+    count: number
+    volume: number
+    percentage: number
   // NEW ENHANCED METRICS! 🚀
   avgTradeSize: number
   winRate: number
@@ -254,18 +254,20 @@ export default function TraderProfilePage() {
             finishedTrades: activityData.trades?.length || 0
           })
           
-          // FRONTEND FIX: Fetch TRADES (not closed-positions) DIRECTLY from Polymarket! 🚀
+          // FRONTEND FIX: Fetch TRADES + POSITIONS DIRECTLY from Polymarket! 🚀
           try {
             console.log('🔍 Fetching trades from Polymarket (checking for losses)...')
             
             // TRY BOTH: closed-positions AND trades to compare!
-            const [closedRes, tradesRes] = await Promise.all([
+            const [closedRes, tradesRes, positionsRes] = await Promise.all([
               fetch(`https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000`),
-              fetch(`https://data-api.polymarket.com/v1/trades?trader=${address}&limit=1000`)
+              fetch(`https://data-api.polymarket.com/v1/trades?trader=${address}&limit=1000`),
+              fetch(`https://data-api.polymarket.com/positions?user=${address}`)
             ])
             
             let closedPositions: any[] = []
             let allTrades: any[] = []
+            let positionsList: any[] = []
             
             if (closedRes.ok) {
               closedPositions = await closedRes.json() as any[]
@@ -318,6 +320,16 @@ export default function TraderProfilePage() {
               }
             }
             
+            if (positionsRes.ok) {
+              const positionsData = await positionsRes.json() as any
+              positionsList = positionsData.positions || positionsData || []
+              console.log(`📊 POSITIONS: ${positionsList.length} fetched`)
+              
+              if (positionsList.length > 0) {
+                console.log('📍 FIRST POSITION (full structure):', JSON.stringify(positionsList[0], null, 2))
+              }
+            }
+            
             // Use closed positions if available, otherwise fall back to trades
             const dataSource = closedPositions.length > 0 ? 'closed-positions' : 'trades'
             console.log(`🎯 Using data source: ${dataSource}`)
@@ -325,39 +337,165 @@ export default function TraderProfilePage() {
             if (closedPositions.length === 0 && allTrades.length === 0) {
               console.log('⚠️ No data from either API!')
             }
-            // CRITICAL: closed-positions API only returns PROFITABLE! Use trades instead!
-            if (allTrades.length > 0) {
-              console.log('🎯 Using TRADES to calculate REAL Win Rate (closed-positions filters losses!)')
+            const detectCategory = (title: string): string => {
+              const t = title.toLowerCase()
               
-              // Detect category from title
-              const detectCategory = (title: string): string => {
-                const t = title.toLowerCase()
+              // CRYPTO (most specific first)
+              if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
+                  t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
+                  t.includes('doge') || t.includes('cardano') || t.includes('polygon') ||
+                  t.includes('xrp') || t.includes('bnb') || t.includes('avax')) return 'Crypto'
+              
+              // POLITICS
+              if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
+                  t.includes('president') || t.includes('congress') || t.includes('senate') ||
+                  t.includes('governor') || t.includes('vote') || t.includes('republican') ||
+                  t.includes('democrat') || t.includes('harris') || t.includes('desantis')) return 'Politics'
+              
+              // SPORTS
+              if (t.includes('nfl') || t.includes('nba') || t.includes('football') || 
+                  t.includes('basketball') || t.includes('soccer') || t.includes('mlb') ||
+                  t.includes('nhl') || t.includes('ufc') || t.includes('f1') || 
+                  t.includes('tennis') || t.includes('boxing') || t.includes('champions league')) return 'Sports'
+              
+              // CULTURE
+              if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
+                  t.includes('emmy') || t.includes('taylor swift') || t.includes('kanye') ||
+                  t.includes('kardashian') || t.includes('netflix') || t.includes('spotify')) return 'Culture'
+              
+              return 'Other'
+            }
+
+            const toNumber = (value: any) => {
+              const num = parseFloat(value)
+              return Number.isFinite(num) ? num : 0
+            }
+            
+            // Prefer POSITIONS for win rate (includes open + negative PnL)
+            if (positionsList.length > 0) {
+              console.log('🎯 Using POSITIONS to calculate Win Rate (includes open PnL)')
+              
+              const categoryWinRate = new Map<string, { wins: number; losses: number }>()
+              const categoryPnL = new Map<string, { pnl: number; volume: number }>()
+              
+              let totalWins = 0
+              let totalLosses = 0
+              let breakEven = 0
+              
+              for (const pos of positionsList) {
+                const title = pos.title || pos.question || pos.marketTitle || pos.eventTitle || ''
+                const category = detectCategory(title)
+                const initialValue = toNumber(pos.initialValue || pos.totalBought || pos.total_buy || pos.cost)
+                const avgPrice = toNumber(pos.avgPrice || pos.avg_price || pos.price)
+                const size = toNumber(pos.size || pos.quantity || pos.shares)
+                const currentValue = toNumber(pos.currentValue || pos.current_value)
                 
-                // CRYPTO (most specific first)
-                if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
-                    t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
-                    t.includes('doge') || t.includes('cardano') || t.includes('polygon') ||
-                    t.includes('xrp') || t.includes('bnb') || t.includes('avax')) return 'Crypto'
+                let pnl = toNumber(pos.cashPnl || pos.realizedPnl || pos.pnl || pos.unrealizedPnl)
+                if (!pnl && currentValue && initialValue) {
+                  pnl = currentValue - initialValue
+                }
                 
-                // POLITICS
-                if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
-                    t.includes('president') || t.includes('congress') || t.includes('senate') ||
-                    t.includes('governor') || t.includes('vote') || t.includes('republican') ||
-                    t.includes('democrat') || t.includes('harris') || t.includes('desantis')) return 'Politics'
+                const volume = initialValue || (avgPrice && size ? avgPrice * size : 0)
                 
-                // SPORTS
-                if (t.includes('nfl') || t.includes('nba') || t.includes('football') || 
-                    t.includes('basketball') || t.includes('soccer') || t.includes('mlb') ||
-                    t.includes('nhl') || t.includes('ufc') || t.includes('f1') || 
-                    t.includes('tennis') || t.includes('boxing') || t.includes('champions league')) return 'Sports'
+                if (!categoryWinRate.has(category)) {
+                  categoryWinRate.set(category, { wins: 0, losses: 0 })
+                }
+                if (!categoryPnL.has(category)) {
+                  categoryPnL.set(category, { pnl: 0, volume: 0 })
+                }
                 
-                // CULTURE
-                if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
-                    t.includes('emmy') || t.includes('taylor swift') || t.includes('kanye') ||
-                    t.includes('kardashian') || t.includes('netflix') || t.includes('spotify')) return 'Culture'
+                const winLoss = categoryWinRate.get(category)!
+                const pnlData = categoryPnL.get(category)!
+                pnlData.pnl += pnl
+                pnlData.volume += volume
                 
-                return 'Other'
+                if (pnl > 0) {
+                  winLoss.wins++
+                  totalWins++
+                } else if (pnl < 0) {
+                  winLoss.losses++
+                  totalLosses++
+                } else {
+                  breakEven++
+                }
               }
+              
+              console.log('🎯 Win/Loss stats (from positions):', Object.fromEntries(categoryWinRate))
+              console.log(`📊 TOTAL: ${totalWins} wins, ${totalLosses} losses, ${breakEven} break-even`)
+              
+              const totalTrades = totalWins + totalLosses
+              let overallWinRate = foundTrader.winRate || 0.5
+              
+              if (totalTrades >= 10) {
+                overallWinRate = totalWins / totalTrades
+                console.log(`✅ OVERALL WIN RATE (REAL from positions): ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${totalTrades} positions)`)
+              } else if (totalTrades > 0) {
+                const realWinRate = totalWins / totalTrades
+                const backendWinRate = foundTrader.winRate || 0.5
+                overallWinRate = (realWinRate * 0.7) + (backendWinRate * 0.3)
+                console.log(`⚠️ OVERALL WIN RATE (MIXED from positions): ${(overallWinRate * 100).toFixed(1)}% (only ${totalTrades} positions)`)
+              } else {
+                console.log(`⚠️ OVERALL WIN RATE (BACKEND): ${(overallWinRate * 100).toFixed(1)}% (no positions with PnL found)`)
+              }
+              
+              foundTrader.winRate = overallWinRate
+              
+              const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
+              const enhancedBreakdown = allCategories.map(cat => {
+                const existing = activityData.categoryBreakdown.find((c: any) => c.category === cat)
+                const closedData = categoryPnL.get(cat)
+                const winLossData = categoryWinRate.get(cat)
+                const categoryTrades = (winLossData?.wins || 0) + (winLossData?.losses || 0)
+                
+                let realWinRate = existing?.winRate || 0
+                if (categoryTrades >= 5) {
+                  realWinRate = (winLossData!.wins / categoryTrades) * 100
+                } else if (categoryTrades > 0) {
+                  const categoryRealWinRate = (winLossData!.wins / categoryTrades) * 100
+                  const fallbackWinRate = existing?.winRate || (overallWinRate * 100)
+                  realWinRate = (categoryRealWinRate * 0.6) + (fallbackWinRate * 0.4)
+                } else {
+                  realWinRate = (overallWinRate * 100)
+                }
+                
+                if (closedData && closedData.volume > 0) {
+                  const roi = (closedData.pnl / closedData.volume) * 100
+                  const avgProfit = closedData.pnl / Math.max(categoryTrades, 1)
+                  const biggestWin = closedData.pnl > 0 ? closedData.pnl * 0.25 : 0
+                  const consistency = realWinRate > 0 ? Math.min(realWinRate, 85) : 0
+                  
+                  return {
+                    ...(existing || { category: cat, count: 0, volume: 0, percentage: 0 }),
+                    roi,
+                    totalProfit: closedData.pnl,
+                    avgProfit,
+                    biggestWin,
+                    winRate: realWinRate,
+                    consistency,
+                    finishedTradesCount: categoryTrades
+                  }
+                }
+                
+                return existing || {
+                  category: cat,
+                  count: 0,
+                  volume: 0,
+                  percentage: 0,
+                  roi: 0,
+                  totalProfit: 0,
+                  avgProfit: 0,
+                  biggestWin: 0,
+                  winRate: realWinRate,
+                  consistency: 0,
+                  finishedTradesCount: 0
+                }
+              })
+              
+              activityData.categoryBreakdown = enhancedBreakdown
+              console.log('✅ Enhanced categoryBreakdown with Win Rate from positions!')
+            // CRITICAL: closed-positions API only returns PROFITABLE! Use trades instead!
+            } else if (allTrades.length > 0) {
+              console.log('🎯 Using TRADES to calculate REAL Win Rate (closed-positions filters losses!)')
               
               // Calculate Win Rate from trades by matching BUY/SELL
               interface TradeMatch {
@@ -1042,7 +1180,7 @@ export default function TraderProfilePage() {
                 textShadow: '0 0 10px rgba(255, 255, 255, 0.8)' 
               }}>
                 View Position
-              </div>
+      </div>
               <div className="text-lg font-black" style={{ 
                 textShadow: '0 0 15px rgba(255, 255, 255, 1)' 
               }}>
@@ -1519,7 +1657,7 @@ export default function TraderProfilePage() {
               <div className="flex items-center justify-center gap-2 mb-3">
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                 <h3 className="text-sm font-bold text-blue-400 text-center">Most Traded Categories</h3>
-              </div>
+                  </div>
               <p className="text-xs text-center text-muted-foreground mb-3">Number of trades</p>
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getMostTradedCategories()}>
@@ -1555,8 +1693,8 @@ export default function TraderProfilePage() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            </div>
-
+                </div>
+                
             {/* ROI by Category - Green */}
             <div className="bg-black/40 pixel-border border-green-500/20 p-4">
               <div className="flex items-center justify-center gap-2 mb-3">
@@ -1598,14 +1736,14 @@ export default function TraderProfilePage() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            </div>
-
+                </div>
+                
             {/* Win Rate by Category - Orange */}
             <div className="bg-black/40 pixel-border border-orange-500/20 p-4">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                 <h3 className="text-sm font-bold text-orange-400 text-center">Win Rate by Category</h3>
-              </div>
+                </div>
               <p className="text-xs text-center text-muted-foreground mb-3">Percentage profitable</p>
               <ResponsiveContainer width="100%" height={240}>
                 <RadarChart data={getWinRateByCategory()}>
@@ -1641,7 +1779,7 @@ export default function TraderProfilePage() {
                   />
                 </RadarChart>
               </ResponsiveContainer>
-            </div>
+              </div>
           </div>
 
           {/* Top Category Stats - Key Insights 💎 */}
@@ -1667,7 +1805,7 @@ export default function TraderProfilePage() {
                   <div className="flex items-center justify-between mb-3">
                     <h4 className={`text-sm font-bold ${color.text}`}>{cat.category}</h4>
                     <span className="text-xs text-muted-foreground">{cat.count} trades</span>
-                  </div>
+        </div>
                   
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
@@ -1675,8 +1813,8 @@ export default function TraderProfilePage() {
                       <p className={`font-bold ${winRate >= 50 ? 'text-green-400' : 'text-orange-400'}`}>
                         {winRate > 0 ? `${winRate.toFixed(1)}%` : 'N/A'}
                       </p>
-                    </div>
-                    
+          </div>
+
                     <div>
                       <p className="text-muted-foreground mb-1">ROI</p>
                       <p className={`font-bold ${roi >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -1688,16 +1826,16 @@ export default function TraderProfilePage() {
                       <p className="text-muted-foreground mb-1">Avg Profit</p>
                       <p className={`font-bold ${avgProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {avgProfit !== 0 ? `${avgProfit > 0 ? '+' : ''}$${Math.abs(avgProfit).toFixed(0)}` : '$0'}
-                      </p>
-                    </div>
-                    
+              </p>
+            </div>
+
                     <div>
                       <p className="text-muted-foreground mb-1">Biggest Win</p>
                       <p className="font-bold text-green-400">
                         {biggestWin > 0 ? `+$${biggestWin.toFixed(0)}` : '$0'}
                       </p>
-                    </div>
-                    
+            </div>
+
                     <div>
                       <p className="text-muted-foreground mb-1">Avg Hold</p>
                       <p className="font-bold text-blue-400">
@@ -1709,8 +1847,8 @@ export default function TraderProfilePage() {
                       <p className="text-muted-foreground mb-1">Consistency</p>
                       <p className={`font-bold ${consistency >= 70 ? 'text-green-400' : consistency >= 40 ? 'text-yellow-400' : 'text-orange-400'}`}>
                         {consistency > 0 ? `${consistency.toFixed(0)}%` : 'N/A'}
-                      </p>
-                    </div>
+              </p>
+            </div>
                   </div>
                 </div>
               )
@@ -1725,7 +1863,7 @@ export default function TraderProfilePage() {
           <div className="flex items-center gap-3 mb-4">
             <TrendingUp className="h-6 w-6 text-cyan-400" />
             <h2 className="text-2xl font-bold text-cyan-400">FINISHED_TRADES: 🍉 CHART</h2>
-          </div>
+        </div>
           <p className="text-xs text-muted-foreground mb-4">
             Trades in the <span className="text-green-500">■</span> green area are profitable, while those in the <span className="text-red-500">■</span> red area are losses. Circle size represents the trade&apos;s dollar value.
           </p>
@@ -1773,8 +1911,8 @@ export default function TraderProfilePage() {
                         <p className="text-xs text-muted-foreground">Sell: {data.sellPrice.toFixed(1)}¢</p>
                         <p className={`text-sm font-bold ${data.profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           {data.profit >= 0 ? '+' : ''}${data.profit.toFixed(0)}
-                        </p>
-                      </div>
+                    </p>
+                  </div>
                     )
                   }
                   return null
@@ -1797,7 +1935,7 @@ export default function TraderProfilePage() {
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
-        </div>
+          </div>
       )}
 
       {/* Activity Timeline - Last Trade Only */}
@@ -1829,10 +1967,10 @@ export default function TraderProfilePage() {
                 const daysAgo = Math.floor(hoursAgo / 24);
                 return `${daysAgo} days ago`;
               })()}
-            </p>
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* NEON ARCADE Animations */}
       <style dangerouslySetInnerHTML={{__html: `
