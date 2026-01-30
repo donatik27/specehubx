@@ -307,125 +307,161 @@ export default function TraderProfilePage() {
             if (closedPositions.length === 0 && allTrades.length === 0) {
               console.log('⚠️ No data from either API!')
             }
-            // Continue ONLY if we have closed positions data
-            if (closedPositions.length > 0) {
-              // Enhance categoryBreakdown with REAL PnL from closed positions
+            // CRITICAL: closed-positions API only returns PROFITABLE! Use trades instead!
+            if (allTrades.length > 0) {
+              console.log('🎯 Using TRADES to calculate REAL Win Rate (closed-positions filters losses!)')
+              
+              // Calculate Win Rate from trades by matching BUY/SELL
+              interface TradeMatch {
+                market: string
+                title: string
+                category: string
+                buyPrice: number
+                sellPrice: number
+                size: number
+                profit: number
+              }
+              
+              const matchedTrades: TradeMatch[] = []
+              const tradesByMarket = new Map<string, { buys: any[], sells: any[] }>()
+              
+              // Group trades by market
+              for (const trade of allTrades) {
+                const marketId = trade.market || trade.asset_id || trade.token_id
+                if (!marketId) continue
+                
+                if (!tradesByMarket.has(marketId)) {
+                  tradesByMarket.set(marketId, { buys: [], sells: [] })
+                }
+                
+                const group = tradesByMarket.get(marketId)!
+                if (trade.side === 'BUY') {
+                  group.buys.push(trade)
+                } else if (trade.side === 'SELL') {
+                  group.sells.push(trade)
+                }
+              }
+              
+              console.log(`📊 Grouped trades: ${tradesByMarket.size} markets`)
+              
+              // Match BUY/SELL using FIFO
+              for (const [marketId, { buys, sells }] of tradesByMarket) {
+                // Sort by timestamp
+                buys.sort((a, b) => (a.timestamp || a.created_at || 0) - (b.timestamp || b.created_at || 0))
+                sells.sort((a, b) => (a.timestamp || a.created_at || 0) - (b.timestamp || b.created_at || 0))
+                
+                let buyIdx = 0
+                let sellIdx = 0
+                let buyRemaining = 0
+                
+                while (buyIdx < buys.length && sellIdx < sells.length) {
+                  const buy = buys[buyIdx]
+                  const sell = sells[sellIdx]
+                  
+                  const buySize = parseFloat(buy.size || buy.amount || '0')
+                  const sellSize = parseFloat(sell.size || sell.amount || '0')
+                  const buyPrice = parseFloat(buy.price || '0')
+                  const sellPrice = parseFloat(sell.price || '0')
+                  
+                  if (buyRemaining === 0) {
+                    buyRemaining = buySize
+                  }
+                  
+                  const matchSize = Math.min(buyRemaining, sellSize)
+                  const profit = (sellPrice - buyPrice) * matchSize
+                  
+                  matchedTrades.push({
+                    market: marketId,
+                    title: buy.title || sell.title || 'Unknown',
+                    category: detectCategory(buy.title || sell.title || ''),
+                    buyPrice,
+                    sellPrice,
+                    size: matchSize,
+                    profit
+                  })
+                  
+                  buyRemaining -= matchSize
+                  
+                  if (buyRemaining <= 0) {
+                    buyIdx++
+                    buyRemaining = 0
+                  }
+                  
+                  if (matchSize >= sellSize) {
+                    sellIdx++
+                  }
+                }
+              }
+              
+              console.log(`🎯 Matched ${matchedTrades.length} BUY/SELL pairs (finished trades)`)
+              
+              // Show first 5 matched trades
+              console.log('📍 First 5 matched trades:')
+              matchedTrades.slice(0, 5).forEach((t, i) => {
+                console.log(`  #${i + 1}: ${t.title.substring(0, 40)} | Buy $${t.buyPrice.toFixed(3)} → Sell $${t.sellPrice.toFixed(3)} | PnL: $${t.profit.toFixed(2)} ${t.profit > 0 ? '✅' : '❌'}`)
+              })
+              
+              // Calculate Win Rate from matched trades
+              const categoryWinRate = new Map<string, { wins: number; losses: number }>()
               const categoryPnL = new Map<string, { pnl: number; volume: number }>()
               
-              const detectCategory = (title: string): string => {
-                const t = title.toLowerCase()
-                
-                // CRYPTO (most specific first)
-                if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
-                    t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
-                    t.includes('doge') || t.includes('cardano') || t.includes('polygon') ||
-                    t.includes('xrp') || t.includes('bnb') || t.includes('avax')) return 'Crypto'
-                
-                // POLITICS
-                if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
-                    t.includes('president') || t.includes('congress') || t.includes('senate') ||
-                    t.includes('governor') || t.includes('vote') || t.includes('republican') ||
-                    t.includes('democrat') || t.includes('harris') || t.includes('desantis')) return 'Politics'
-                
-                // SPORTS
-                if (t.includes('nfl') || t.includes('nba') || t.includes('football') || 
-                    t.includes('basketball') || t.includes('soccer') || t.includes('mlb') ||
-                    t.includes('nhl') || t.includes('ufc') || t.includes('f1') || 
-                    t.includes('tennis') || t.includes('boxing') || t.includes('champions league')) return 'Sports'
-                
-                // CULTURE
-                if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
-                    t.includes('emmy') || t.includes('taylor swift') || t.includes('kanye') ||
-                    t.includes('kardashian') || t.includes('netflix') || t.includes('spotify')) return 'Culture'
-                
-                return 'Other'
-              }
-              
-              for (const pos of closedPositions) {
-                const pnl = parseFloat(pos.realizedPnl || '0')
-                const volume = parseFloat(pos.totalBought || '0') * parseFloat(pos.avgPrice || '0')
-                const category = detectCategory(pos.title || '')
-                
-                if (!categoryPnL.has(category)) {
-                  categoryPnL.set(category, { pnl: 0, volume: 0 })
-                }
-                const data = categoryPnL.get(category)!
-                data.pnl += pnl
-                data.volume += volume
-              }
-              
-              console.log('💰 PnL by category:', Object.fromEntries(categoryPnL))
-              
-              // Calculate REAL win rate from closed positions!
-              const categoryWinRate = new Map<string, { wins: number; losses: number }>()
-              
-              console.log('🔍 ANALYZING CLOSED POSITIONS:')
               let totalWins = 0
               let totalLosses = 0
               let breakEven = 0
               
-              for (const pos of closedPositions) {
-                const category = detectCategory(pos.title || '')
-                const pnl = parseFloat(pos.realizedPnl || '0')
+              for (const trade of matchedTrades) {
+                const cat = trade.category
                 
-                // DEBUG: Log first position FULLY to see structure
-                if (closedPositions.indexOf(pos) === 0) {
-                  console.log(`📍 FIRST POSITION (full structure):`, JSON.stringify(pos, null, 2))
+                if (!categoryWinRate.has(cat)) {
+                  categoryWinRate.set(cat, { wins: 0, losses: 0 })
+                }
+                if (!categoryPnL.has(cat)) {
+                  categoryPnL.set(cat, { pnl: 0, volume: 0 })
                 }
                 
-                // DEBUG: Log first 10 positions summary
-                if (closedPositions.indexOf(pos) < 10) {
-                  console.log(`  #${closedPositions.indexOf(pos) + 1}:`, {
-                    title: pos.title?.substring(0, 40),
-                    category,
-                    realizedPnl: pos.realizedPnl,
-                    parsedPnl: pnl.toFixed(2),
-                    result: pnl > 0 ? '✅ WIN' : pnl < 0 ? '❌ LOSS' : '➖ BREAK-EVEN'
-                  })
-                }
+                const winLoss = categoryWinRate.get(cat)!
+                const pnl = categoryPnL.get(cat)!
                 
-                if (!categoryWinRate.has(category)) {
-                  categoryWinRate.set(category, { wins: 0, losses: 0 })
-                }
+                pnl.pnl += trade.profit
+                pnl.volume += trade.buyPrice * trade.size
                 
-                const stats = categoryWinRate.get(category)!
-                if (pnl > 0) {
-                  stats.wins++
+                if (trade.profit > 0) {
+                  winLoss.wins++
                   totalWins++
-                } else if (pnl < 0) {
-                  stats.losses++
+                } else if (trade.profit < 0) {
+                  winLoss.losses++
                   totalLosses++
                 } else {
                   breakEven++
                 }
               }
               
-              console.log('🎯 Win/Loss stats:', Object.fromEntries(categoryWinRate))
+              console.log('🎯 Win/Loss stats (from matched trades):', Object.fromEntries(categoryWinRate))
               console.log(`📊 TOTAL: ${totalWins} wins, ${totalLosses} losses, ${breakEven} break-even`)
               
-              // Calculate OVERALL win rate from closed positions
+              // Calculate OVERALL win rate from matched trades
               const totalTrades = totalWins + totalLosses
               let overallWinRate = foundTrader.winRate || 0.5 // Default fallback
               
               if (totalTrades >= 10) {
                 // Use REAL win rate if we have enough data (10+ trades)
                 overallWinRate = totalWins / totalTrades
-                console.log(`✅ OVERALL WIN RATE (REAL): ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${totalTrades} trades)`)
+                console.log(`✅ OVERALL WIN RATE (REAL from trades): ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L from ${totalTrades} trades)`)
               } else if (totalTrades > 0) {
                 // Mix real data with backend estimate if < 10 trades
                 const realWinRate = totalWins / totalTrades
                 const backendWinRate = foundTrader.winRate || 0.5
                 overallWinRate = (realWinRate * 0.7) + (backendWinRate * 0.3) // 70% real, 30% estimate
-                console.log(`⚠️ OVERALL WIN RATE (MIXED): ${(overallWinRate * 100).toFixed(1)}% (only ${totalTrades} trades, mixing real ${(realWinRate * 100).toFixed(1)}% with backend ${(backendWinRate * 100).toFixed(1)}%)`)
+                console.log(`⚠️ OVERALL WIN RATE (MIXED from trades): ${(overallWinRate * 100).toFixed(1)}% (only ${totalTrades} trades, mixing real ${(realWinRate * 100).toFixed(1)}% with backend ${(backendWinRate * 100).toFixed(1)}%)`)
               } else {
-                // Use backend estimate if no closed positions
-                console.log(`⚠️ OVERALL WIN RATE (BACKEND): ${(overallWinRate * 100).toFixed(1)}% (no closed positions found)`)
+                // Use backend estimate if no matched trades
+                console.log(`⚠️ OVERALL WIN RATE (BACKEND): ${(overallWinRate * 100).toFixed(1)}% (no matched trades found)`)
               }
               
               // Update trader with REAL win rate!
               foundTrader.winRate = overallWinRate
               
-              // Update categoryBreakdown with REAL ROI and Win Rate!
+              // Update categoryBreakdown with REAL ROI and Win Rate from matched trades!
               const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
               const enhancedBreakdown = allCategories.map(cat => {
                 const existing = activityData.categoryBreakdown.find((c: any) => c.category === cat)
@@ -488,9 +524,9 @@ export default function TraderProfilePage() {
               })
               
               activityData.categoryBreakdown = enhancedBreakdown
-              console.log('✅ Enhanced categoryBreakdown with real ROI and Win Rate!')
+              console.log('✅ Enhanced categoryBreakdown with REAL Win Rate from matched trades!')
             } else {
-              console.log('⚠️ No closed positions found - using backend data only')
+              console.log('⚠️ No trades found - using backend data only (may have biased win rates)')
             }
           } catch (err) {
             console.error('❌ Failed to fetch data from Polymarket:', err)
