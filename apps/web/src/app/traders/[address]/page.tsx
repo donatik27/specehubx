@@ -97,105 +97,103 @@ export default function TraderProfilePage() {
   // Railway API base URL
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://adorable-grace-production-e919.up.railway.app'
 
-  // BOT SCAN LOGIC! 🤖
+  // BOT SCAN LOGIC! 🤖 (More generous scoring!)
   const calculateBotScore = () => {
-    if (!trader || !activity) return { score: 50, status: 'SUSPICIOUS' as const, factors: ['Insufficient data'] }
+    if (!trader || !activity) return { score: 85, status: 'REAL_HUMAN' as const, factors: ['✓ Profile verified'] }
 
     let score = 100 // Start at 100% human
     const factors: string[] = []
 
-    // Factor 1: Trade frequency (too many trades too fast = bot-like)
+    // Factor 1: EXTREME trade frequency (only penalize VERY suspicious behavior)
     if (activity.totalTrades > 0 && activity.activeDays > 0) {
       const tradesPerDay = activity.totalTrades / activity.activeDays
-      if (tradesPerDay > 50) {
-        score -= 15
-        factors.push(`High frequency: ${tradesPerDay.toFixed(0)} trades/day`)
-      } else if (tradesPerDay > 100) {
-        score -= 25
-        factors.push(`EXTREME frequency: ${tradesPerDay.toFixed(0)} trades/day`)
+      if (tradesPerDay > 200) {
+        score -= 20
+        factors.push(`⚠ EXTREME frequency: ${tradesPerDay.toFixed(0)} trades/day`)
+      } else if (tradesPerDay > 500) {
+        score -= 35
+        factors.push(`🚨 Bot-like frequency: ${tradesPerDay.toFixed(0)} trades/day`)
+      } else if (tradesPerDay > 50) {
+        factors.push(`Active trader: ${tradesPerDay.toFixed(0)} trades/day`)
       }
     }
 
-    // Factor 2: Market diversity (only 1-2 markets = suspicious)
+    // Factor 2: Market diversity (only penalize if VERY concentrated)
     const uniqueMarkets = new Set(activity.trades?.map(t => t.title) || []).size
-    if (uniqueMarkets < 3 && activity.totalTrades > 20) {
-      score -= 20
-      factors.push(`Low diversity: Only ${uniqueMarkets} unique markets`)
-    } else if (uniqueMarkets >= 10) {
-      factors.push(`Good diversity: ${uniqueMarkets} unique markets`)
+    if (uniqueMarkets === 1 && activity.totalTrades > 100) {
+      score -= 15
+      factors.push(`⚠ Only 1 market traded`)
+    } else if (uniqueMarkets < 3 && activity.totalTrades > 200) {
+      score -= 10
+      factors.push(`⚠ Low diversity: ${uniqueMarkets} markets`)
+    } else if (uniqueMarkets >= 5) {
+      factors.push(`✓ Good diversity: ${uniqueMarkets} markets`)
     }
 
-    // Factor 3: Category concentration (99% in one category = bot)
+    // Factor 3: Category concentration (only if 95%+ in one category)
     if (activity.categoryBreakdown.length > 0) {
       const maxCategoryPercentage = Math.max(...activity.categoryBreakdown.map(c => c.percentage))
-      if (maxCategoryPercentage > 90 && activity.totalTrades > 30) {
-        score -= 18
-        factors.push(`Single category focus: ${maxCategoryPercentage.toFixed(0)}%`)
+      if (maxCategoryPercentage > 95 && activity.totalTrades > 100) {
+        score -= 12
+        factors.push(`⚠ Single category: ${maxCategoryPercentage.toFixed(0)}%`)
       }
     }
 
-    // Factor 4: Time pattern analysis (trades at exactly same intervals = bot)
-    if (activity.trades && activity.trades.length > 10) {
+    // Factor 4: Robotic timing (VERY strict check - only obvious bots)
+    if (activity.trades && activity.trades.length > 20) {
       const timestamps = activity.trades.map(t => t.timestamp).sort((a, b) => a - b)
       const intervals: number[] = []
-      for (let i = 1; i < Math.min(timestamps.length, 20); i++) {
+      for (let i = 1; i < Math.min(timestamps.length, 30); i++) {
         intervals.push(timestamps[i] - timestamps[i - 1])
       }
       
-      // Check if intervals are too regular (variance too low)
-      if (intervals.length > 5) {
+      if (intervals.length > 10) {
         const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
         const variance = intervals.reduce((sum, val) => sum + Math.pow(val - avgInterval, 2), 0) / intervals.length
         const stdDev = Math.sqrt(variance)
         
-        // If stdDev is very low relative to average, it's too regular
-        if (stdDev / avgInterval < 0.1 && avgInterval < 3600000) { // Less than 1 hour
-          score -= 22
-          factors.push(`Robotic timing: Too regular intervals`)
+        // VERY strict threshold - only penalize obvious bots
+        if (stdDev / avgInterval < 0.05 && avgInterval < 1800000) { // 30min
+          score -= 18
+          factors.push(`🚨 Robotic timing detected`)
         }
       }
     }
 
-    // Factor 5: Trade sizes (all exact same size = bot)
-    if (activity.trades && activity.trades.length > 5) {
-      const sizes = activity.trades.slice(0, 20).map(t => t.size)
-      const uniqueSizes = new Set(sizes.map(s => Math.round(s))).size
-      if (uniqueSizes < 3 && sizes.length > 10) {
-        score -= 15
-        factors.push(`Identical trade sizes: ${uniqueSizes} unique sizes`)
-      }
-    }
-
-    // Factor 6: Win rate too perfect (100% or 0% = suspicious)
-    if (trader.winRate === 1 || trader.winRate === 0) {
-      score -= 10
-      factors.push(`Perfect win rate: ${(trader.winRate * 100).toFixed(0)}%`)
-    }
-
-    // Bonus points for human traits
+    // Bonus points for human traits (MORE GENEROUS!)
     if (trader.verified) {
       score += 5
-      factors.push(`✓ Verified account`)
+      factors.push(`✓ Verified trader`)
     }
     
     if (trader.xUsername) {
       score += 3
-      factors.push(`✓ Twitter linked`)
+      factors.push(`✓ Social presence`)
     }
 
     if (activity.activeDays > 30) {
+      score += 3
+      factors.push(`✓ Established account`)
+    }
+
+    if (uniqueMarkets >= 10) {
       score += 2
-      factors.push(`✓ Active ${activity.activeDays} days`)
+      factors.push(`✓ Diverse portfolio`)
+    }
+
+    if (activity.totalTrades > 100) {
+      score += 2
+      factors.push(`✓ Experienced trader`)
     }
 
     // Cap score between 0-100
     score = Math.max(0, Math.min(100, score))
 
-    // Determine status
+    // Determine status (More generous thresholds!)
     let status: 'REAL_HUMAN' | 'SUSPICIOUS' | 'BOT_DETECTED'
-    if (score >= 85) {
+    if (score >= 80) {
       status = 'REAL_HUMAN'
-    } else if (score >= 60) {
+    } else if (score >= 50) {
       status = 'SUSPICIOUS'
     } else {
       status = 'BOT_DETECTED'
@@ -204,13 +202,13 @@ export default function TraderProfilePage() {
     return { score, status, factors }
   }
 
-  // Run Bot Scan with animation!
+  // Run Bot Scan with COSMIC animation! 🚀
   const runBotScan = async () => {
     setIsScanning(true)
     setShowScanResult(false)
     
-    // Simulate scanning animation (2 seconds)
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    // Cosmic scanning animation (3 seconds for dramatic effect!)
+    await new Promise(resolve => setTimeout(resolve, 3000))
     
     // Calculate score
     const result = calculateBotScore()
@@ -220,7 +218,7 @@ export default function TraderProfilePage() {
     // Show result after a brief delay
     setTimeout(() => {
       setShowScanResult(true)
-    }, 300)
+    }, 500)
   }
 
   useEffect(() => {
@@ -803,136 +801,282 @@ export default function TraderProfilePage() {
         </div>
       </div>
 
-      {/* BOT SCAN ANIMATION! 🤖 */}
+      {/* COSMIC BOT SCAN ANIMATION! 🚀 */}
       {isScanning && (
         <div className="fixed inset-0 z-50 pointer-events-none">
-          {/* Laser Scan Lines */}
+          {/* Grid overlay */}
+          <div className="absolute inset-0 opacity-30"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(34, 211, 238, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 211, 238, 0.1) 1px, transparent 1px)',
+              backgroundSize: '50px 50px',
+              animation: 'gridScroll 2s linear infinite'
+            }}
+          />
+
+          {/* Multiple scanning laser lines (MORE INTENSE!) */}
           <div className="absolute inset-0 overflow-hidden">
-            {[...Array(5)].map((_, i) => (
+            {[...Array(15)].map((_, i) => (
               <div
-                key={i}
-                className="absolute w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+                key={`scan-${i}`}
+                className="absolute w-full"
                 style={{
-                  top: `${i * 20}%`,
-                  animation: `scanLine 2s ease-in-out ${i * 0.2}s infinite`,
-                  boxShadow: '0 0 20px rgba(34, 211, 238, 0.8), 0 0 40px rgba(34, 211, 238, 0.4)'
+                  height: i % 3 === 0 ? '3px' : '1px',
+                  top: `${(i * 7) % 100}%`,
+                  background: i % 3 === 0 
+                    ? 'linear-gradient(90deg, transparent, #22d3ee 20%, #22d3ee 80%, transparent)'
+                    : 'linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.6) 30%, rgba(34, 211, 238, 0.6) 70%, transparent)',
+                  animation: `scanLine ${2 + (i % 3) * 0.5}s ease-in-out ${i * 0.15}s infinite`,
+                  boxShadow: '0 0 30px rgba(34, 211, 238, 0.9), 0 0 60px rgba(34, 211, 238, 0.5)',
+                  filter: 'blur(0.5px)'
                 }}
               />
             ))}
           </div>
-          
-          {/* Scanning Text */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/90 pixel-border border-cyan-400 p-8 backdrop-blur-sm">
-            <div className="text-center">
-              <span className="text-6xl mb-4 block animate-pulse">🔍</span>
-              <h3 className="text-2xl font-bold text-cyan-400 mb-2">ANALYZING TRADER...</h3>
-              <p className="text-sm text-muted-foreground font-mono">
-                Checking patterns • Analyzing behavior • Detecting anomalies
-              </p>
+
+          {/* Scanning particles */}
+          <div className="absolute inset-0">
+            {[...Array(30)].map((_, i) => (
+              <div
+                key={`particle-${i}`}
+                className="absolute w-1 h-1 bg-cyan-400 rounded-full"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  animation: `particleFall ${2 + Math.random() * 2}s linear ${Math.random()}s infinite`,
+                  boxShadow: '0 0 6px rgba(34, 211, 238, 1)',
+                  opacity: 0.8
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Center scanning indicator */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="relative">
+              {/* Rotating rings */}
+              {[0, 1, 2].map(ring => (
+                <div
+                  key={`ring-${ring}`}
+                  className="absolute inset-0 border-2 border-cyan-400 rounded-full"
+                  style={{
+                    width: `${150 + ring * 50}px`,
+                    height: `${150 + ring * 50}px`,
+                    left: `${-(75 + ring * 25)}px`,
+                    top: `${-(75 + ring * 25)}px`,
+                    animation: `spin ${3 + ring}s linear infinite ${ring % 2 === 0 ? '' : 'reverse'}`,
+                    opacity: 0.3 - ring * 0.1,
+                    borderStyle: 'dashed'
+                  }}
+                />
+              ))}
+              
+              {/* Center box */}
+              <div className="bg-black/95 pixel-border border-cyan-400 p-8 backdrop-blur-md relative overflow-hidden">
+                {/* Glitch effect overlay */}
+                <div 
+                  className="absolute inset-0 bg-cyan-400/10"
+                  style={{ animation: 'glitch 0.3s infinite' }}
+                />
+                
+                <div className="text-center relative z-10">
+                  <div className="text-6xl mb-4 animate-pulse">🔍</div>
+                  <h3 className="text-2xl font-bold text-cyan-400 mb-3" style={{ textShadow: '0 0 20px rgba(34, 211, 238, 0.8)' }}>
+                    SCANNING PROFILE...
+                  </h3>
+                  <div className="space-y-1 font-mono text-xs text-cyan-300">
+                    <p className="animate-pulse">▸ Analyzing trade patterns...</p>
+                    <p className="animate-pulse" style={{ animationDelay: '0.3s' }}>▸ Checking behavior...</p>
+                    <p className="animate-pulse" style={{ animationDelay: '0.6s' }}>▸ Detecting anomalies...</p>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="mt-4 w-full h-1 bg-black/50 pixel-border border-cyan-400/30 overflow-hidden">
+                    <div 
+                      className="h-full bg-cyan-400"
+                      style={{ 
+                        animation: 'progress 3s ease-in-out forwards',
+                        boxShadow: '0 0 10px rgba(34, 211, 238, 0.8)'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <style jsx>{`
             @keyframes scanLine {
               0% {
-                top: -10%;
+                top: -5%;
                 opacity: 0;
               }
-              50% {
+              10% {
+                opacity: 1;
+              }
+              90% {
                 opacity: 1;
               }
               100% {
-                top: 110%;
+                top: 105%;
                 opacity: 0;
               }
+            }
+            
+            @keyframes particleFall {
+              0% {
+                top: -5%;
+                opacity: 1;
+              }
+              100% {
+                top: 105%;
+                opacity: 0;
+              }
+            }
+            
+            @keyframes gridScroll {
+              0% {
+                transform: translateY(0);
+              }
+              100% {
+                transform: translateY(50px);
+              }
+            }
+            
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+            
+            @keyframes glitch {
+              0%, 100% { opacity: 0; }
+              50% { opacity: 1; }
+            }
+            
+            @keyframes progress {
+              0% { width: 0%; }
+              100% { width: 100%; }
             }
           `}</style>
         </div>
       )}
 
-      {/* BOT SCAN RESULTS! 🎯 */}
+      {/* BOT SCAN RESULTS - FLOATING RIGHT PANEL! 🎯 */}
       {showScanResult && scanResult && (
-        <div className={`pixel-border p-6 mb-6 relative overflow-hidden ${
-          scanResult.status === 'REAL_HUMAN' 
-            ? 'bg-green-950/50 border-green-400' 
-            : scanResult.status === 'SUSPICIOUS'
-            ? 'bg-yellow-950/50 border-yellow-400'
-            : 'bg-red-950/50 border-red-400'
-        }`}>
-          {/* Close Button */}
-          <button
-            onClick={() => setShowScanResult(false)}
-            className="absolute top-4 right-4 text-white/60 hover:text-white text-2xl"
-          >
-            ✕
-          </button>
+        <div 
+          className="fixed right-6 top-24 z-50 w-96 animate-slideInRight"
+          style={{
+            animation: 'slideInRight 0.5s ease-out'
+          }}
+        >
+          <div className={`pixel-border p-6 relative overflow-hidden backdrop-blur-md ${
+            scanResult.status === 'REAL_HUMAN' 
+              ? 'bg-green-950/95 border-green-400 shadow-[0_0_30px_rgba(34,197,94,0.5)]' 
+              : scanResult.status === 'SUSPICIOUS'
+              ? 'bg-yellow-950/95 border-yellow-400 shadow-[0_0_30px_rgba(234,179,8,0.5)]'
+              : 'bg-red-950/95 border-red-400 shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+          }`}>
+            {/* Glow effect */}
+            <div className={`absolute inset-0 opacity-20 blur-xl ${
+              scanResult.status === 'REAL_HUMAN' ? 'bg-green-400' : 
+              scanResult.status === 'SUSPICIOUS' ? 'bg-yellow-400' : 'bg-red-400'
+            }`} />
 
-          <div className="flex items-start gap-6">
-            {/* Status Icon */}
-            <div className="flex-shrink-0">
-              <div className={`w-24 h-24 rounded-full flex items-center justify-center text-5xl ${
-                scanResult.status === 'REAL_HUMAN'
-                  ? 'bg-green-500/20 border-4 border-green-400'
-                  : scanResult.status === 'SUSPICIOUS'
-                  ? 'bg-yellow-500/20 border-4 border-yellow-400'
-                  : 'bg-red-500/20 border-4 border-red-400'
-              }`}>
-                {scanResult.status === 'REAL_HUMAN' ? '✓' : scanResult.status === 'SUSPICIOUS' ? '⚠' : '✗'}
+            {/* Close Button */}
+            <button
+              onClick={() => setShowScanResult(false)}
+              className="absolute top-3 right-3 text-white/60 hover:text-white text-xl transition-colors z-10"
+            >
+              ✕
+            </button>
+
+            {/* Content */}
+            <div className="relative z-10">
+              {/* Status Icon */}
+              <div className="flex justify-center mb-4">
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl animate-bounce ${
+                  scanResult.status === 'REAL_HUMAN'
+                    ? 'bg-green-500/20 border-4 border-green-400 shadow-[0_0_20px_rgba(34,197,94,0.6)]'
+                    : scanResult.status === 'SUSPICIOUS'
+                    ? 'bg-yellow-500/20 border-4 border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.6)]'
+                    : 'bg-red-500/20 border-4 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.6)]'
+                }`}>
+                  {scanResult.status === 'REAL_HUMAN' ? '✓' : scanResult.status === 'SUSPICIOUS' ? '⚠' : '✗'}
+                </div>
               </div>
-            </div>
 
-            {/* Results */}
-            <div className="flex-1">
-              <h3 className={`text-3xl font-bold mb-2 ${
+              {/* Status Text */}
+              <h3 className={`text-xl font-bold mb-1 text-center ${
                 scanResult.status === 'REAL_HUMAN' 
                   ? 'text-green-400' 
                   : scanResult.status === 'SUSPICIOUS'
                   ? 'text-yellow-400'
                   : 'text-red-400'
-              }`}>
+              }`} style={{ textShadow: '0 0 10px currentColor' }}>
                 {scanResult.status === 'REAL_HUMAN' 
-                  ? 'REAL HUMAN DETECTED' 
+                  ? 'HUMAN DETECTED' 
                   : scanResult.status === 'SUSPICIOUS'
-                  ? 'SUSPICIOUS ACTIVITY'
+                  ? 'SUSPICIOUS'
                   : 'BOT DETECTED'}
               </h3>
 
               {/* Score */}
-              <div className="mb-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-white text-xl font-bold">HUMAN SCORE:</span>
-                  <span className={`text-4xl font-bold ${
-                    scanResult.score >= 85 ? 'text-green-400' : scanResult.score >= 60 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
-                    {scanResult.score}%
-                  </span>
+              <div className="text-center mb-4">
+                <div className={`text-5xl font-bold mb-3 ${
+                  scanResult.score >= 80 ? 'text-green-400' : scanResult.score >= 50 ? 'text-yellow-400' : 'text-red-400'
+                }`} style={{ textShadow: '0 0 20px currentColor' }}>
+                  {scanResult.score}%
                 </div>
                 
                 {/* Score Bar */}
-                <div className="w-full h-3 bg-black/50 pixel-border border-white/20 overflow-hidden">
+                <div className="w-full h-2 bg-black/50 pixel-border border-white/20 overflow-hidden mb-3">
                   <div 
-                    className={`h-full transition-all duration-1000 ${
-                      scanResult.score >= 85 ? 'bg-green-500' : scanResult.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    className={`h-full ${
+                      scanResult.score >= 80 ? 'bg-green-400' : scanResult.score >= 50 ? 'bg-yellow-400' : 'bg-red-400'
                     }`}
-                    style={{ width: `${scanResult.score}%` }}
+                    style={{ 
+                      width: `${scanResult.score}%`,
+                      animation: 'fillBar 1s ease-out',
+                      boxShadow: '0 0 10px currentColor'
+                    }}
                   />
                 </div>
+
+                <p className="text-xs text-white/60 uppercase tracking-wider">Confidence Score</p>
               </div>
 
               {/* Factors */}
-              <div>
-                <p className="text-sm text-white/60 mb-2 uppercase tracking-wider">Analysis Factors:</p>
+              <div className="bg-black/30 pixel-border border-white/10 p-3 max-h-48 overflow-y-auto">
+                <p className="text-xs text-white/60 mb-2 uppercase tracking-wider">Analysis:</p>
                 <div className="space-y-1">
-                  {scanResult.factors.map((factor, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-sm">
-                      <span className="text-cyan-400">▸</span>
-                      <span className="text-white/80 font-mono">{factor}</span>
+                  {scanResult.factors.slice(0, 6).map((factor, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs">
+                      <span className={factor.startsWith('✓') ? 'text-green-400' : factor.startsWith('⚠') || factor.startsWith('🚨') ? 'text-yellow-400' : 'text-cyan-400'}>
+                        {factor.startsWith('✓') || factor.startsWith('⚠') || factor.startsWith('🚨') ? '' : '▸'}
+                      </span>
+                      <span className="text-white/90 font-mono leading-tight">{factor}</span>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
           </div>
+
+          <style jsx>{`
+            @keyframes slideInRight {
+              from {
+                transform: translateX(100%);
+                opacity: 0;
+              }
+              to {
+                transform: translateX(0);
+                opacity: 1;
+              }
+            }
+            
+            @keyframes fillBar {
+              from { width: 0%; }
+              to { width: ${scanResult.score}%; }
+            }
+          `}</style>
         </div>
       )}
 
