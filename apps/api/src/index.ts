@@ -926,6 +926,8 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`🎯 Has closed positions data: ${closedPositionsByCategory.size} categories`);
     
     // ✅ PRIMARY: Fetch CLOSED POSITIONS for accurate Win Rate (includes all P&L)
+    // CRITICAL: Use sortBy=TIMESTAMP (not REALIZEDPNL) to get MIX of wins/losses!
+    // If sortBy=REALIZEDPNL, API returns most profitable first → may miss losses!
     console.log(`🎯 Fetching closed positions for ${address}...`);
     const closedPositionsRes = await fetch(
       `https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000&sortBy=TIMESTAMP&sortDirection=DESC`
@@ -934,7 +936,24 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     let closedPositions: any[] = [];
     if (closedPositionsRes.ok) {
       closedPositions = await closedPositionsRes.json() as any[];
-      console.log(`✅ Fetched ${closedPositions.length} closed positions with PnL`);
+      console.log(`✅ Fetched ${closedPositions.length} closed positions (by TIMESTAMP)`);
+      
+      // ✅ ALSO fetch worst losses to ensure we have BOTH wins AND losses
+      console.log(`🔍 Fetching worst losses (sortBy=REALIZEDPNL ASC)...`);
+      const lossesRes = await fetch(
+        `https://data-api.polymarket.com/closed-positions?user=${address}&limit=500&sortBy=REALIZEDPNL&sortDirection=ASC`
+      );
+      
+      if (lossesRes.ok) {
+        const lossesData = await lossesRes.json() as any[];
+        console.log(`✅ Fetched ${lossesData.length} worst positions (likely losses)`);
+        
+        // Merge and deduplicate (by asset ID)
+        const assetIds = new Set(closedPositions.map(p => p.asset));
+        const newLosses = lossesData.filter(p => !assetIds.has(p.asset));
+        closedPositions = [...closedPositions, ...newLosses];
+        console.log(`📊 Total unique closed positions: ${closedPositions.length} (added ${newLosses.length} losses)`);
+      }
     } else {
       console.log(`⚠️ Closed positions API failed: ${closedPositionsRes.status}`);
     }
@@ -1026,6 +1045,19 @@ app.get('/api/trader/:address/activity', async (req, res) => {
         categoryMap.set(category, { count: 1, volume, trades: [trade] });
       }
     }
+    
+    // ✅ Analyze PnL distribution BEFORE processing
+    const pnlAnalysis = {
+      positive: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') > 0).length,
+      negative: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') < 0).length,
+      zero: closedPositions.filter(p => parseFloat(p.realizedPnl || '0') === 0).length,
+      null: closedPositions.filter(p => !p.realizedPnl).length
+    };
+    console.log(`📊 PnL Distribution:`, pnlAnalysis);
+    console.log(`   Profitable: ${pnlAnalysis.positive} (${(pnlAnalysis.positive / closedPositions.length * 100).toFixed(1)}%)`);
+    console.log(`   Losses: ${pnlAnalysis.negative} (${(pnlAnalysis.negative / closedPositions.length * 100).toFixed(1)}%)`);
+    console.log(`   Break-even: ${pnlAnalysis.zero} (${(pnlAnalysis.zero / closedPositions.length * 100).toFixed(1)}%)`);
+    console.log(`   No PnL data: ${pnlAnalysis.null}`);
     
     // ✅ PRIMARY SOURCE: Use CLOSED POSITIONS for finished trades (most accurate!)
     console.log(`🎯 Processing ${closedPositions.length} closed positions for win rate...`);
