@@ -259,7 +259,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             position: 'relative'
           }}
         >
-          {/* Trader Hub (Center) */}
+          {/* Trader Hub (Center) - Fixed in middle! */}
           <Draggable
             position={hubPosition}
             onDrag={handleHubDrag}
@@ -269,38 +269,52 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
               ref={hubRef}
               className="absolute cursor-move"
               style={{
-                left: `calc(50vw - 60px)`,
-                top: `calc(50vh - 60px)`,
-                transform: `translate(${hubPosition.x}px, ${hubPosition.y}px)`,
+                left: `calc(50vw - 64px)`, // Center hub (128px / 2)
+                top: `calc(50vh - 64px)`,
+                width: '128px',
+                height: '128px',
                 willChange: 'transform'
               }}
             >
               <motion.div
-                className="relative"
+                className="absolute inset-0"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15 }}
               >
-                {/* Hub Circle */}
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-green-600 to-emerald-600 border-4 border-green-400 shadow-2xl shadow-green-500/50 flex items-center justify-center overflow-hidden">
-                  {trader?.avatar && (
+                {/* Hub Circle - Like WhaleNetworkGraph! */}
+                <div 
+                  className="absolute inset-0 rounded-full flex flex-col items-center justify-center shadow-2xl border-4 transition-all hover:scale-105 hover:border-green-300"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.95)',
+                    borderColor: '#22c55e',
+                    boxShadow: '0 0 40px rgba(34, 197, 94, 0.8)'
+                  }}
+                >
+                  {/* Trader Avatar */}
+                  {trader?.avatar ? (
                     <img
                       src={trader.avatar}
                       alt={trader.displayName}
-                      className="w-full h-full object-cover"
+                      className="w-16 h-16 rounded-full mb-2 object-cover ring-4 ring-green-500/50"
                       onError={(e) => {
                         e.currentTarget.src = 'https://api.dicebear.com/7.x/shapes/svg?seed=default'
                       }}
                     />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full mb-2 bg-green-900 flex items-center justify-center ring-4 ring-green-500/50">
+                      <span className="text-4xl">🎯</span>
+                    </div>
                   )}
+
+                  {/* Trader Name */}
+                  <div className="text-green-200 text-[10px] px-3 text-center leading-tight">
+                    {trader?.displayName || 'Trader'}
+                  </div>
                 </div>
 
-                {/* Trader Name */}
-                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                  <p className="text-white font-bold text-lg text-center drop-shadow-lg">
-                    {trader?.displayName || 'Trader'}
-                  </p>
-                </div>
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-full bg-green-500/20 blur-xl -z-10"></div>
               </motion.div>
             </div>
           </Draggable>
@@ -375,7 +389,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             )
           })}
 
-          {/* SVG Lines (Hub to Positions) - ALWAYS visible! */}
+          {/* SVG Lines (Hub to Positions) - Curved like WhaleNetworkGraph! */}
           <svg
             className="absolute inset-0 pointer-events-none"
             style={{ 
@@ -391,25 +405,34 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
               const pos = positionPositions.get(position.id)
               if (!pos || !positionsInitialized) return null
 
-              // Hub is centered
-              const hubX = window.innerWidth / 2 + hubPosition.x + 64 // +64 for half hub size
+              // Hub center
+              const hubX = window.innerWidth / 2 + hubPosition.x + 64
               const hubY = window.innerHeight / 2 + hubPosition.y + 64
 
-              // Position bubble center
+              // Bubble center
               const bubbleX = pos.x + position.size / 2
               const bubbleY = pos.y + position.size / 2
 
+              // Curved path (like WhaleNetworkGraph!)
+              const midX = (hubX + bubbleX) / 2
+              const midY = (hubY + bubbleY) / 2
+              const dx = bubbleX - hubX
+              const dy = bubbleY - hubY
+              const distance = Math.sqrt(dx * dx + dy * dy)
+              
+              // Control point for curve
+              const curvature = distance * 0.1
+              const controlX = midX + (-dy / distance) * curvature
+              const controlY = midY + (dx / distance) * curvature
+
               return (
-                <line
+                <path
                   key={`line-${position.id}`}
-                  x1={hubX}
-                  y1={hubY}
-                  x2={bubbleX}
-                  y2={bubbleY}
+                  d={`M ${hubX} ${hubY} Q ${controlX} ${controlY} ${bubbleX} ${bubbleY}`}
                   stroke={position.color}
-                  strokeWidth={3}
+                  strokeWidth={2}
                   strokeOpacity={0.4}
-                  strokeDasharray="5,5"
+                  fill="none"
                 />
               )
             })}
