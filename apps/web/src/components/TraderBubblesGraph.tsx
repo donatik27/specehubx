@@ -313,61 +313,64 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
             return (
               <Draggable
                 key={position.id}
-                position={pos}
+                position={positionsInitialized ? pos : { x: 0, y: 0 }}
                 onDrag={handlePositionDrag(position.id)}
               >
-                <motion.div
+                <div 
                   className="absolute cursor-move"
-                  style={{
-                    willChange: 'transform',
+                  style={{ 
+                    width: `${position.size}px`, 
+                    height: `${position.size}px`,
                     zIndex: isHovered ? 1000 : 1
-                  }}
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 200,
-                    damping: 15,
-                    delay: idx * 0.05
                   }}
                   onMouseEnter={() => setHoveredPositionId(position.id)}
                   onMouseLeave={() => setHoveredPositionId(null)}
                 >
-                  {/* Bubble */}
-                  <div
-                    className="rounded-full border-4 shadow-2xl flex items-center justify-center transition-all"
-                    style={{
-                      width: position.size,
-                      height: position.size,
-                      backgroundColor: position.color,
-                      borderColor: position.pnl >= 0 ? '#86efac' : '#fca5a5',
-                      boxShadow: isHovered 
-                        ? `0 0 40px ${position.color}`
-                        : `0 0 20px ${position.color}80`,
-                      transform: isHovered ? 'scale(1.2)' : 'scale(1)'
+                  <motion.div
+                    className="absolute inset-0"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 200,
+                      damping: 15,
+                      delay: idx * 0.05
                     }}
                   >
-                    {/* PnL Label */}
-                    <p className="text-white font-bold text-xs drop-shadow-lg">
-                      {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(0)}
-                    </p>
-                  </div>
-
-                  {/* Hover Tooltip */}
-                  {isHovered && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 backdrop-blur-sm pixel-border border-white/30 p-3 whitespace-nowrap z-50 shadow-xl">
-                      <p className="text-white font-bold text-sm mb-1">
-                        {position.title.substring(0, 50)}...
-                      </p>
-                      <p className="text-muted-foreground text-xs">
-                        Outcome: <span className="text-white">{position.outcome}</span>
-                      </p>
-                      <p className={`text-xs mt-1 font-bold ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        Unrealized P&L: {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(2)}
+                    {/* Bubble */}
+                    <div
+                      className="absolute inset-0 rounded-full border-4 shadow-2xl flex items-center justify-center transition-all"
+                      style={{
+                        backgroundColor: position.color,
+                        borderColor: position.pnl >= 0 ? '#86efac' : '#fca5a5',
+                        boxShadow: isHovered 
+                          ? `0 0 40px ${position.color}`
+                          : `0 0 20px ${position.color}80`,
+                        transform: isHovered ? 'scale(1.2)' : 'scale(1)'
+                      }}
+                    >
+                      {/* PnL Label */}
+                      <p className="text-white font-bold text-xs drop-shadow-lg">
+                        {position.pnl >= 0 ? '+' : ''}${Math.abs(position.pnl).toFixed(0)}
                       </p>
                     </div>
-                  )}
-                </motion.div>
+
+                    {/* Hover Tooltip */}
+                    {isHovered && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 backdrop-blur-sm pixel-border border-white/30 p-3 whitespace-nowrap z-50 shadow-xl">
+                        <p className="text-white font-bold text-sm mb-1">
+                          {position.title.substring(0, 50)}...
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          Outcome: <span className="text-white">{position.outcome}</span>
+                        </p>
+                        <p className={`text-xs mt-1 font-bold ${position.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          Unrealized P&L: {position.pnl >= 0 ? '+' : ''}${position.pnl.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
               </Draggable>
             )
           })}
