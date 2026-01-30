@@ -1059,44 +1059,75 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`   Break-even: ${pnlAnalysis.zero} (${(pnlAnalysis.zero / closedPositions.length * 100).toFixed(1)}%)`);
     console.log(`   No PnL data: ${pnlAnalysis.null}`);
     
-    // ✅ PRIMARY SOURCE: Use CLOSED POSITIONS for finished trades (most accurate!)
-    console.log(`🎯 Processing ${closedPositions.length} closed positions for win rate...`);
-    const finishedTrades = [];
+    // ✅ CRITICAL FIX: Group by conditionId (MARKET) instead of individual positions!
+    // Polymarket calculates win rate based on MARKETS won/lost, not individual positions
+    console.log(`🎯 Grouping ${closedPositions.length} closed positions by market (conditionId)...`);
     
+    const marketGroups = new Map<string, {
+      conditionId: string;
+      title: string;
+      category: string;
+      positions: any[];
+      totalPnl: number;
+      timestamp: number;
+    }>();
+    
+    // Group positions by conditionId (market)
     for (const pos of closedPositions) {
       const pnl = parseFloat(pos.realizedPnl || '0');
-      const avgPrice = parseFloat(pos.avgPrice || '0');
-      const totalBought = parseFloat(pos.totalBought || '0');
-      const curPrice = parseFloat(pos.curPrice || '0');
-      const timestamp = pos.timestamp || Date.now() / 1000;
       
       // Skip positions with no PnL data
-      if (isNaN(pnl) || totalBought === 0) {
+      if (isNaN(pnl)) {
         console.log(`⚠️ Skipping position with no PnL: ${pos.title?.substring(0, 30)}...`);
         continue;
       }
       
+      const conditionId = pos.conditionId;
       const category = detectCategory(pos.title || '');
       
-      finishedTrades.push({
-        id: `closed_${pos.asset}`,
-        timestamp: timestamp,
-        title: pos.title || 'Unknown',
-        outcome: pos.outcome || 'Unknown',
-        side: 'CLOSED',
-        size: totalBought,
-        buyPrice: avgPrice,
-        sellPrice: curPrice,
-        price: curPrice,
-        profit: pnl, // ✅ Real PnL from API!
-        holdTime: 0, // Not available from closed-positions
-        category: category,
-      });
+      if (!marketGroups.has(conditionId)) {
+        marketGroups.set(conditionId, {
+          conditionId,
+          title: pos.title || 'Unknown',
+          category,
+          positions: [],
+          totalPnl: 0,
+          timestamp: pos.timestamp || Date.now() / 1000
+        });
+      }
       
-      console.log(`  ${category}: ${pos.title?.substring(0, 40)}... | PnL: ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}`);
+      const group = marketGroups.get(conditionId)!;
+      group.positions.push(pos);
+      group.totalPnl += pnl;
     }
     
-    console.log(`✅ Created ${finishedTrades.length} finished trades from closed positions`);
+    console.log(`📊 Grouped into ${marketGroups.size} unique markets`);
+    
+    // Create finished trades from aggregated markets
+    const finishedTrades = [];
+    for (const [conditionId, market] of marketGroups.entries()) {
+      finishedTrades.push({
+        id: `market_${conditionId}`,
+        timestamp: market.timestamp,
+        title: market.title,
+        outcome: market.positions.length > 1 ? 'Multiple positions' : market.positions[0].outcome,
+        side: 'CLOSED',
+        size: market.positions.reduce((sum, p) => sum + parseFloat(p.totalBought || '0'), 0),
+        buyPrice: market.positions.reduce((sum, p) => sum + parseFloat(p.avgPrice || '0'), 0) / market.positions.length,
+        sellPrice: market.positions[0].curPrice || 0,
+        price: market.positions[0].curPrice || 0,
+        profit: market.totalPnl, // ✅ Aggregated PnL from ALL positions on this market!
+        holdTime: 0,
+        category: market.category,
+        conditionId: conditionId, // ✅ Keep conditionId for reference
+        positionsCount: market.positions.length // ✅ Track how many positions were aggregated
+      });
+      
+      const sign = market.totalPnl >= 0 ? '+' : '';
+      console.log(`  ${market.category}: ${market.title?.substring(0, 40)}... | ${market.positions.length} positions | Net PnL: ${sign}$${market.totalPnl.toFixed(2)}`);
+    }
+    
+    console.log(`✅ Created ${finishedTrades.length} finished trades from ${closedPositions.length} positions (grouped by market)`);
     
     // ✅ Calculate WIN RATE metrics per category from closed positions
     // 🎯 FILTER: Only count SIGNIFICANT trades (abs PnL >= threshold)
