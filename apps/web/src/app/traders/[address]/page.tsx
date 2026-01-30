@@ -135,6 +135,7 @@ export default function TraderProfilePage() {
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
     
+    // Always show all 5 categories for complete radar shape
     return categories.map(cat => ({
       category: cat,
       value: dataMap.get(cat) || 0
@@ -148,19 +149,21 @@ export default function TraderProfilePage() {
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const dataMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.volume]))
     
+    // Always show all 5 categories for complete radar shape
     return categories.map(cat => ({
       category: cat,
-      value: dataMap.get(cat) || 0
+      value: Math.round(dataMap.get(cat) || 0)
     }))
   }
 
   // Calculate Win Rate by Category (percentage)
   const getWinRateByCategory = () => {
-    if (!activity?.trades) return []
+    if (!activity?.trades || !activity?.categoryBreakdown) return []
     
     const categories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
     const categoryStats = new Map<string, { wins: number; total: number }>()
     
+    // Calculate win rate from finished trades
     activity.trades.forEach(trade => {
       if (trade.profit !== undefined) {
         const stats = categoryStats.get(trade.category) || { wins: 0, total: 0 }
@@ -170,12 +173,35 @@ export default function TraderProfilePage() {
       }
     })
     
+    // Create breakdown map to check which categories have trades
+    const breakdownMap = new Map(activity.categoryBreakdown.map(c => [c.category, c.count]))
+    
     return categories.map(cat => {
       const stats = categoryStats.get(cat)
-      const winRate = stats ? (stats.wins / stats.total) : 0
+      const hasTradesInCategory = breakdownMap.has(cat) && breakdownMap.get(cat)! > 0
+      
+      // If we have finished trades stats, use them
+      if (stats && stats.total > 0) {
+        return {
+          category: cat,
+          value: (stats.wins / stats.total) * 100
+        }
+      }
+      
+      // Fallback: if category has trades but no finished trades yet,
+      // estimate with trader's overall win rate or default to 50%
+      if (hasTradesInCategory) {
+        const estimatedWinRate = trader?.winRate ? parseFloat(trader.winRate.toString()) : 50
+        return {
+          category: cat,
+          value: Math.max(10, estimatedWinRate) // Minimum 10% for visibility
+        }
+      }
+      
+      // No trades in this category
       return {
         category: cat,
-        value: winRate * 100 // 0-100 scale
+        value: 0
       }
     })
   }
@@ -514,7 +540,7 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={[0, 'dataMax']} 
+                    domain={[0, 'auto']} 
                     tick={{ fill: '#60a5fa', fontSize: 10 }} 
                     stroke="#1e40af"
                     strokeOpacity={0.3}
@@ -528,6 +554,8 @@ export default function TraderProfilePage() {
                     strokeWidth={3}
                     dot={{ fill: '#3b82f6', r: 4 }}
                     activeDot={{ fill: '#60a5fa', r: 6 }}
+                    isAnimationActive={true}
+                    animationDuration={800}
                   />
                 </RadarChart>
               </ResponsiveContainer>
@@ -555,7 +583,7 @@ export default function TraderProfilePage() {
                   />
                   <PolarRadiusAxis 
                     angle={90} 
-                    domain={[0, 'dataMax']} 
+                    domain={[0, 'auto']} 
                     tick={{ fill: '#4ade80', fontSize: 10 }} 
                     stroke="#15803d"
                     strokeOpacity={0.3}
@@ -569,6 +597,8 @@ export default function TraderProfilePage() {
                     strokeWidth={3}
                     dot={{ fill: '#22c55e', r: 4 }}
                     activeDot={{ fill: '#4ade80', r: 6 }}
+                    isAnimationActive={true}
+                    animationDuration={800}
                   />
                 </RadarChart>
               </ResponsiveContainer>
@@ -610,6 +640,8 @@ export default function TraderProfilePage() {
                     strokeWidth={3}
                     dot={{ fill: '#f97316', r: 4 }}
                     activeDot={{ fill: '#fb923c', r: 6 }}
+                    isAnimationActive={true}
+                    animationDuration={800}
                   />
                 </RadarChart>
               </ResponsiveContainer>
