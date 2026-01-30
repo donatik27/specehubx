@@ -854,6 +854,64 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     const traderPnL = trader ? Number(trader.totalPnl) : 0;
     const traderWinRate = trader ? Number(trader.winRate) : 0.5;
     
+    // Fetch CLOSED POSITIONS from Polymarket for REAL PnL data! 💰
+    let closedPositionsPnL = 0;
+    let closedPositionsByCategory = new Map<string, { pnl: number; volume: number; count: number }>();
+    
+    try {
+      const closedRes = await fetch(
+        `https://data-api.polymarket.com/closed-positions?user=${address}&limit=100&sortBy=REALIZEDPNL`
+      );
+      
+      if (closedRes.ok) {
+        const closedPositions = await closedRes.json() as any[];
+        console.log(`📊 Fetched ${closedPositions.length} closed positions for ${address}`);
+        
+        const detectCategory = (title: string): string => {
+          const t = title.toLowerCase();
+          if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
+              t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
+              t.includes('dogecoin') || t.includes('xrp')) return 'Crypto';
+          if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
+              t.includes('president') || t.includes('congress') || t.includes('senate') ||
+              t.includes('governor') || t.includes('political') || t.includes('white house')) return 'Politics';
+          if (t.includes(' fc ') || t.includes('nfl') || t.includes('nba') || 
+              t.includes('football') || t.includes('basketball') || t.includes('soccer') ||
+              t.includes('win on') || t.includes('championship') || t.includes('super bowl')) return 'Sports';
+          if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
+              t.includes('celebrity') || t.includes('box office') || t.includes('music') ||
+              t.includes('entertainment')) return 'Culture';
+          return 'Other';
+        };
+        
+        for (const pos of closedPositions) {
+          const pnl = parseFloat(pos.realizedPnl || '0');
+          const volume = parseFloat(pos.totalBought || '0') * parseFloat(pos.avgPrice || '0');
+          const category = detectCategory(pos.title || '');
+          
+          closedPositionsPnL += pnl;
+          
+          if (!closedPositionsByCategory.has(category)) {
+            closedPositionsByCategory.set(category, { pnl: 0, volume: 0, count: 0 });
+          }
+          
+          const catData = closedPositionsByCategory.get(category)!;
+          catData.pnl += pnl;
+          catData.volume += volume;
+          catData.count++;
+        }
+        
+        console.log(`💰 Total PnL from closed positions: $${closedPositionsPnL.toFixed(2)}`);
+        console.log(`📊 Categories:`, Object.fromEntries(closedPositionsByCategory));
+      }
+    } catch (err) {
+      console.error('Failed to fetch closed positions:', err);
+    }
+    
+    // Use closed positions PnL if available, otherwise use DB PnL
+    const finalPnL = closedPositionsPnL !== 0 ? closedPositionsPnL : traderPnL;
+    console.log(`🎯 Using PnL: $${finalPnL.toFixed(2)} (closed: $${closedPositionsPnL.toFixed(2)}, db: $${traderPnL.toFixed(2)})`);
+    
     // Fetch last 1000 trades from Polymarket for accurate Win Rate calculation
     const tradesRes = await fetch(
       `https://data-api.polymarket.com/v1/trades?user=${address}&limit=1000`
@@ -1107,19 +1165,30 @@ app.get('/api/trader/:address/activity', async (req, res) => {
           winRate = traderWinRate * 100;
         }
         
-        // Calculate total profit and ROI using REAL trader PnL
+        // Calculate total profit and ROI using REAL data from closed positions! 💰
         let totalProfit = metrics?.totalProfit || 0;
         let roi = 0;
         
-        if (metrics && metrics.totalProfit !== 0) {
-          // Use real profit from finished trades
+        // Priority 1: Use REAL closed positions PnL for this category
+        const closedData = closedPositionsByCategory.get(category);
+        if (closedData && closedData.pnl !== 0) {
+          totalProfit = closedData.pnl;
+          // ROI = profit / investment * 100%
+          roi = closedData.volume > 0 ? (totalProfit / closedData.volume) * 100 : 0;
+          console.log(`  ${category}: REAL PnL $${totalProfit.toFixed(2)}, ROI ${roi.toFixed(2)}%`);
+        }
+        // Priority 2: Use finished trades profit
+        else if (metrics && metrics.totalProfit !== 0) {
           totalProfit = metrics.totalProfit;
           roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
-        } else if (traderPnL !== 0 && totalVolume > 0) {
-          // DISTRIBUTE trader's real PnL proportionally by volume
+          console.log(`  ${category}: Finished trades PnL $${totalProfit.toFixed(2)}, ROI ${roi.toFixed(2)}%`);
+        }
+        // Priority 3: Distribute total PnL proportionally
+        else if (finalPnL !== 0 && totalVolume > 0) {
           const categoryProportion = stats.volume / totalVolume;
-          totalProfit = traderPnL * categoryProportion;
+          totalProfit = finalPnL * categoryProportion;
           roi = stats.volume > 0 ? (totalProfit / stats.volume) * 100 : 0;
+          console.log(`  ${category}: Distributed PnL $${totalProfit.toFixed(2)}, ROI ${roi.toFixed(2)}%`);
         }
         
         // Calculate avg profit
