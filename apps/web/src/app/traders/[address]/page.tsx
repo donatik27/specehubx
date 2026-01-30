@@ -311,6 +311,36 @@ export default function TraderProfilePage() {
             if (allTrades.length > 0) {
               console.log('🎯 Using TRADES to calculate REAL Win Rate (closed-positions filters losses!)')
               
+              // Detect category from title
+              const detectCategory = (title: string): string => {
+                const t = title.toLowerCase()
+                
+                // CRYPTO (most specific first)
+                if (t.includes('bitcoin') || t.includes('btc') || t.includes('ethereum') || 
+                    t.includes('eth') || t.includes('crypto') || t.includes('solana') ||
+                    t.includes('doge') || t.includes('cardano') || t.includes('polygon') ||
+                    t.includes('xrp') || t.includes('bnb') || t.includes('avax')) return 'Crypto'
+                
+                // POLITICS
+                if (t.includes('trump') || t.includes('biden') || t.includes('election') ||
+                    t.includes('president') || t.includes('congress') || t.includes('senate') ||
+                    t.includes('governor') || t.includes('vote') || t.includes('republican') ||
+                    t.includes('democrat') || t.includes('harris') || t.includes('desantis')) return 'Politics'
+                
+                // SPORTS
+                if (t.includes('nfl') || t.includes('nba') || t.includes('football') || 
+                    t.includes('basketball') || t.includes('soccer') || t.includes('mlb') ||
+                    t.includes('nhl') || t.includes('ufc') || t.includes('f1') || 
+                    t.includes('tennis') || t.includes('boxing') || t.includes('champions league')) return 'Sports'
+                
+                // CULTURE
+                if (t.includes('movie') || t.includes('oscars') || t.includes('grammy') ||
+                    t.includes('emmy') || t.includes('taylor swift') || t.includes('kanye') ||
+                    t.includes('kardashian') || t.includes('netflix') || t.includes('spotify')) return 'Culture'
+                
+                return 'Other'
+              }
+              
               // Calculate Win Rate from trades by matching BUY/SELL
               interface TradeMatch {
                 market: string
