@@ -209,12 +209,12 @@ export default function TraderProfilePage() {
               // Calculate OVERALL win rate from closed positions
               const overallWinRate = (totalWins + totalLosses) > 0 
                 ? (totalWins / (totalWins + totalLosses)) 
-                : (traderData.winRate || 0.5)
+                : (foundTrader.winRate || 0.5)
               
               console.log(`✅ OVERALL WIN RATE: ${(overallWinRate * 100).toFixed(1)}% (${totalWins}W / ${totalLosses}L)`)
               
               // Update trader with REAL win rate!
-              traderData.winRate = overallWinRate
+              foundTrader.winRate = overallWinRate
               
               // Update categoryBreakdown with REAL ROI and Win Rate!
               const allCategories = ['Politics', 'Sports', 'Crypto', 'Culture', 'Other']
@@ -272,6 +272,8 @@ export default function TraderProfilePage() {
             console.error('❌ Failed to fetch closed positions:', err)
           }
           
+          // Update trader with new winRate BEFORE setting state
+          setTrader(foundTrader)
           setActivity(activityData)
         } else {
           console.error('❌ Failed to fetch activity:', activityRes.status)
