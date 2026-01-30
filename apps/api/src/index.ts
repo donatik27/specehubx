@@ -925,37 +925,43 @@ app.get('/api/trader/:address/activity', async (req, res) => {
     console.log(`🎯 Using PnL: $${finalPnL.toFixed(2)} (closed: $${closedPositionsPnL.toFixed(2)}, db: $${traderPnL.toFixed(2)})`);
     console.log(`🎯 Has closed positions data: ${closedPositionsByCategory.size} categories`);
     
-    // ✅ PRIMARY: Fetch CLOSED POSITIONS for accurate Win Rate (includes all P&L)
-    // CRITICAL: Use sortBy=TIMESTAMP (not REALIZEDPNL) to get MIX of wins/losses!
-    // If sortBy=REALIZEDPNL, API returns most profitable first → may miss losses!
-    console.log(`🎯 Fetching closed positions for ${address}...`);
-    const closedPositionsRes = await fetch(
-      `https://data-api.polymarket.com/closed-positions?user=${address}&limit=1000&sortBy=TIMESTAMP&sortDirection=DESC`
-    );
+    // ✅ PRIMARY: Fetch ALL CLOSED POSITIONS with pagination
+    // CRITICAL: API returns max 50 per request, so we need to paginate!
+    console.log(`🎯 Fetching ALL closed positions for ${address} (with pagination)...`);
     
     let closedPositions: any[] = [];
-    if (closedPositionsRes.ok) {
-      closedPositions = await closedPositionsRes.json() as any[];
-      console.log(`✅ Fetched ${closedPositions.length} closed positions (by TIMESTAMP)`);
-      
-      // ✅ ALSO fetch worst losses to ensure we have BOTH wins AND losses
-      console.log(`🔍 Fetching worst losses (sortBy=REALIZEDPNL ASC)...`);
-      const lossesRes = await fetch(
-        `https://data-api.polymarket.com/closed-positions?user=${address}&limit=500&sortBy=REALIZEDPNL&sortDirection=ASC`
-      );
-      
-      if (lossesRes.ok) {
-        const lossesData = await lossesRes.json() as any[];
-        console.log(`✅ Fetched ${lossesData.length} worst positions (likely losses)`);
+    let offset = 0;
+    const limit = 50; // API max per request
+    const maxPages = 20; // Max 1000 positions (20 * 50)
+    
+    try {
+      for (let page = 0; page < maxPages; page++) {
+        const url = `https://data-api.polymarket.com/closed-positions?user=${address}&limit=${limit}&offset=${offset}&sortBy=TIMESTAMP&sortDirection=DESC`;
+        const response = await fetch(url);
         
-        // Merge and deduplicate (by asset ID)
-        const assetIds = new Set(closedPositions.map(p => p.asset));
-        const newLosses = lossesData.filter(p => !assetIds.has(p.asset));
-        closedPositions = [...closedPositions, ...newLosses];
-        console.log(`📊 Total unique closed positions: ${closedPositions.length} (added ${newLosses.length} losses)`);
+        if (!response.ok) {
+          console.log(`⚠️ Closed positions API failed at offset ${offset}: ${response.status}`);
+          break;
+        }
+        
+        const data = await response.json() as any[];
+        if (data.length === 0) {
+          break; // No more data
+        }
+        
+        closedPositions = [...closedPositions, ...data];
+        console.log(`  📄 Page ${page + 1}: fetched ${data.length} positions (total: ${closedPositions.length})`);
+        
+        if (data.length < limit) {
+          break; // Last page
+        }
+        
+        offset += limit;
       }
-    } else {
-      console.log(`⚠️ Closed positions API failed: ${closedPositionsRes.status}`);
+      
+      console.log(`✅ Fetched ${closedPositions.length} total closed positions`);
+    } catch (err: any) {
+      console.error('❌ Error fetching closed positions:', err.message);
     }
     
     // ✅ FALLBACK: Fetch trades for activity stats (correct endpoint without /v1/)
