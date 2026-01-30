@@ -914,49 +914,8 @@ export default function TraderProfilePage() {
               </div>
             </button>
           </div>
-        </div>
       </div>
 
-      {/* NEON ARCADE Animations */}
-      <style jsx>{`
-        @keyframes borderFlow {
-          0% {
-            transform: translateX(-100%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-
-        @keyframes pulseRing {
-          0% {
-            transform: scale(1);
-            opacity: 0.6;
-          }
-          50% {
-            transform: scale(1.05);
-            opacity: 0.3;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 0.6;
-          }
-        }
-
-        @keyframes scanMove {
-          0% {
-            top: 0%;
-            opacity: 0;
-          }
-          50% {
-            opacity: 1;
-          }
-          100% {
-            top: 100%;
-            opacity: 0;
-          }
-        }
-      `}</style>
 
       {/* COSMIC BOT SCAN ANIMATION! 🚀 */}
       {isScanning && (
@@ -1672,6 +1631,25 @@ export default function TraderProfilePage() {
         </div>
       )}
 
+      {/* NEON ARCADE Animations */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes borderFlow {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        @keyframes pulseRing {
+          0% { transform: scale(1); opacity: 0.6; }
+          50% { transform: scale(1.05); opacity: 0.3; }
+          100% { transform: scale(1); opacity: 0.6; }
+        }
+
+        @keyframes scanMove {
+          0% { top: 0%; opacity: 0; }
+          50% { opacity: 1; }
+          100% { top: 100%; opacity: 0; }
+        }
+      `}} />
     </div>
   )
 }
