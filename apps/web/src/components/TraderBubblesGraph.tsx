@@ -401,7 +401,10 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
       maxScale={3}
       centerOnInit
       wheel={{ step: 0.1 }}
-      panning={{ disabled: false }} // Enable panning by default
+      panning={{ 
+        disabled: false,
+        excluded: ['draggable-element'] // Exclude draggable elements from panning!
+      }}
     >
       <TransformComponent
         wrapperStyle={{
@@ -432,7 +435,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
           >
             <div
               ref={hubRef}
-              className="absolute cursor-move"
+              className="absolute cursor-move draggable-element"
               style={{
                 left: `calc(50vw - 64px)`, // Center hub (128px / 2)
                 top: `calc(50vh - 64px)`,
@@ -440,14 +443,6 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 height: '128px',
                 zIndex: 100, // Above everything!
                 willChange: 'transform'
-              }}
-              onMouseDown={(e) => {
-                // Stop propagation to prevent TransformWrapper pan!
-                e.stopPropagation()
-              }}
-              onTouchStart={(e) => {
-                // Stop propagation for mobile
-                e.stopPropagation()
               }}
             >
               <motion.div
@@ -506,7 +501,7 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                 onStop={handleDragStop(position.id)}
               >
                 <div 
-                  className="absolute cursor-move"
+                  className="absolute cursor-move draggable-element"
                   style={{ 
                     width: `${position.size}px`, 
                     height: `${position.size}px`,
@@ -514,14 +509,6 @@ export default function TraderBubblesGraph({ address }: TraderBubblesGraphProps)
                   }}
                   onMouseEnter={() => setHoveredPositionId(position.id)}
                   onMouseLeave={() => setHoveredPositionId(null)}
-                  onMouseDown={(e) => {
-                    // Stop propagation to prevent TransformWrapper pan!
-                    e.stopPropagation()
-                  }}
-                  onTouchStart={(e) => {
-                    // Stop propagation for mobile
-                    e.stopPropagation()
-                  }}
                 >
                   <motion.div
                     className="absolute inset-0"
