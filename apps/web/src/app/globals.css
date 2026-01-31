@@ -389,5 +389,20 @@
   .animate-shine {
     animation: shine 3s ease-in-out infinite;
   }
+
+  /* Gradient text animation for Finished Trades Chart */
+  @keyframes gradient-shift {
+    0%, 100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .animate-gradient {
+    background-size: 200% auto;
+    animation: gradient-shift 3s ease-in-out infinite;
+  }
 }
 

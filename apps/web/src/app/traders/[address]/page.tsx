@@ -1918,14 +1918,41 @@ export default function TraderProfilePage() {
 
       {/* Finished Trades Chart */}
       {activity && activity.trades && activity.trades.length > 0 && (
-        <div className="bg-card pixel-border border-cyan-500/40 p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <TrendingUp className="h-6 w-6 text-cyan-400" />
-            <h2 className="text-2xl font-bold text-cyan-400">FINISHED_TRADES: 🍉 CHART</h2>
-        </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Trades in the <span className="text-green-500">■</span> green area are profitable, while those in the <span className="text-red-500">■</span> red area are losses. Circle size represents the trade&apos;s dollar value.
-          </p>
+        <div className="bg-card pixel-border border-cyan-500/60 p-8 mb-6 relative overflow-hidden">
+          {/* Animated background glow */}
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-green-500/5 pointer-events-none" />
+          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 via-green-500/20 to-cyan-500/20 opacity-20 blur-xl pointer-events-none animate-pulse" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="relative">
+                <TrendingUp className="h-8 w-8 text-cyan-400 animate-pulse" />
+                <div className="absolute inset-0 bg-cyan-400/30 blur-lg" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 via-green-400 to-cyan-400 text-transparent bg-clip-text animate-gradient">
+                  FINISHED TRADES CHART
+                </h2>
+                <p className="text-xs text-cyan-400/60 font-mono mt-1">
+                  TRADE PERFORMANCE VISUALIZATION
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-6 mb-6 p-4 bg-black/40 pixel-border border-cyan-500/30 rounded">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-green-500 shadow-lg shadow-green-500/50" />
+                <span className="text-sm text-muted-foreground">Profitable trades (above diagonal)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
+                <span className="text-sm text-muted-foreground">Loss trades (below diagonal)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-muted-foreground text-xs">Circle size = Trade value ($)</div>
+              </div>
+            </div>
+          </div>
           
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
