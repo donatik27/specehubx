@@ -88,14 +88,44 @@ const NODES: SiteNode[] = [
     color: 'from-blue-600/20 to-blue-600/5'
   },
   {
-    id: 'updates',
-    title: 'UPDATES',
-    description: 'Latest features & improvements',
+    id: 'bubbles',
+    title: '🫧 BUBBLE CHARTS',
+    description: 'Interactive position visualization',
+    route: '/traders',
+    icon: <Sparkles className="w-4 h-4" />,
+    status: 'LIVE',
+    position: { row: 3, col: 3 },
+    color: 'from-green-500/20 to-green-500/5'
+  },
+  {
+    id: 'botscan',
+    title: '🤖 BOT SCAN',
+    description: 'AI-powered bot detection',
+    route: '/traders',
+    icon: <Sparkles className="w-4 h-4" />,
+    status: 'LIVE',
+    position: { row: 3, col: 4 },
+    color: 'from-cyan-500/20 to-cyan-500/5'
+  },
+  {
+    id: 'wallet',
+    title: '👛 WALLET CONNECT',
+    description: 'Track personal positions',
     route: '#recent-updates',
+    icon: <Sparkles className="w-4 h-4" />,
+    status: 'BETA',
+    position: { row: 4, col: 3 },
+    color: 'from-yellow-500/20 to-yellow-500/5'
+  },
+  {
+    id: 'radarcharts',
+    title: '📊 RADAR CHARTS',
+    description: 'Category performance metrics',
+    route: '/traders',
     icon: <Sparkles className="w-4 h-4" />,
     status: 'LIVE',
     position: { row: 4, col: 4 },
-    color: 'from-purple-500/20 to-purple-500/5'
+    color: 'from-orange-500/20 to-orange-500/5'
   }
 ]
 
@@ -142,8 +172,14 @@ const METRO_LINES = [
     color: 'rgba(168,85,247,1)',
     colorDim: 'rgba(168,85,247,0.2)',
     connections: [
-      { from: 'markets', to: 'updates' },
-      { from: 'updates', to: 'polymarket' }
+      { from: 'markets', to: 'bubbles' },
+      { from: 'markets', to: 'botscan' },
+      { from: 'markets', to: 'wallet' },
+      { from: 'markets', to: 'radarcharts' },
+      { from: 'bubbles', to: 'polymarket' },
+      { from: 'botscan', to: 'polymarket' },
+      { from: 'wallet', to: 'polymarket' },
+      { from: 'radarcharts', to: 'polymarket' }
     ]
   }
 ]
@@ -370,7 +406,7 @@ export default function SiteMapNeural() {
             </div>
             <div className="flex items-center gap-2">
               <div className="w-8 h-1 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" />
-              <span className="text-purple-400">✨ UPDATES_PATH</span>
+              <span className="text-purple-400">✨ FEATURES_PATH</span>
             </div>
           </div>
         </div>
@@ -407,7 +443,10 @@ export default function SiteMapNeural() {
                   ${node.id === 'alerts' ? 'md:col-start-3' : ''}
                   ${node.id === 'markets' ? 'md:col-start-5' : ''}
                   ${node.id === 'polymarket' ? 'md:col-start-6' : ''}
-                  ${node.id === 'updates' ? 'md:col-start-5' : ''}
+                  ${node.id === 'bubbles' ? 'md:col-start-4' : ''}
+                  ${node.id === 'botscan' ? 'md:col-start-5' : ''}
+                  ${node.id === 'wallet' ? 'md:col-start-4' : ''}
+                  ${node.id === 'radarcharts' ? 'md:col-start-5' : ''}
                 `}
                 style={{
                   gridRow: node.position.row + 1
