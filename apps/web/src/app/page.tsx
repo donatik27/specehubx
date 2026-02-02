@@ -467,7 +467,7 @@ export default function HomePage() {
       <SiteMapNeural />
 
       {/* RECENT UPDATES - NEW FEATURES! 🚀 */}
-      <div className="mt-8 mb-8 bg-gradient-to-br from-purple-950/40 via-black to-cyan-950/40 pixel-border border-purple-500/60 p-6 relative overflow-hidden">
+      <div id="recent-updates" className="mt-8 mb-8 bg-gradient-to-br from-purple-950/40 via-black to-cyan-950/40 pixel-border border-purple-500/60 p-6 relative overflow-hidden scroll-mt-20">
         {/* Animated background effect */}
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-cyan-500/5 to-purple-500/5 animate-pulse pointer-events-none" />
         

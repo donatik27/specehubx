@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Home, Users, Target, Globe, Bell, Activity, TrendingUp } from 'lucide-react'
+import { Home, Users, Target, Globe, Bell, Activity, TrendingUp, Sparkles } from 'lucide-react'
 
 interface SiteNode {
   id: string
@@ -86,6 +86,16 @@ const NODES: SiteNode[] = [
     status: 'LIVE',
     position: { row: 2, col: 5 },
     color: 'from-blue-600/20 to-blue-600/5'
+  },
+  {
+    id: 'updates',
+    title: 'UPDATES',
+    description: 'Latest features & improvements',
+    route: '#recent-updates',
+    icon: <Sparkles className="w-4 h-4" />,
+    status: 'LIVE',
+    position: { row: 4, col: 4 },
+    color: 'from-purple-500/20 to-purple-500/5'
   }
 ]
 
@@ -125,6 +135,15 @@ const METRO_LINES = [
     connections: [
       { from: 'home', to: 'alerts' },
       { from: 'alerts', to: 'polymarket' }
+    ]
+  },
+  {
+    name: 'purple',
+    color: 'rgba(168,85,247,1)',
+    colorDim: 'rgba(168,85,247,0.2)',
+    connections: [
+      { from: 'markets', to: 'updates' },
+      { from: 'updates', to: 'polymarket' }
     ]
   }
 ]
@@ -349,6 +368,10 @@ export default function SiteMapNeural() {
               <div className="w-8 h-1 bg-yellow-500 rounded-full shadow-[0_0_8px_rgba(234,179,8,0.8)] animate-pulse" />
               <span className="text-yellow-400">⚡ ALERT_PATH</span>
             </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-1 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-pulse" />
+              <span className="text-purple-400">✨ UPDATES_PATH</span>
+            </div>
           </div>
         </div>
 
@@ -384,6 +407,7 @@ export default function SiteMapNeural() {
                   ${node.id === 'alerts' ? 'md:col-start-3' : ''}
                   ${node.id === 'markets' ? 'md:col-start-5' : ''}
                   ${node.id === 'polymarket' ? 'md:col-start-6' : ''}
+                  ${node.id === 'updates' ? 'md:col-start-5' : ''}
                 `}
                 style={{
                   gridRow: node.position.row + 1
