@@ -109,14 +109,35 @@ export default function HomePage() {
           <div className="absolute top-8 right-20 w-1 h-1 bg-white animate-pulse"></div>
         </div>
         
-        <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="text-4xl">🛸</div>
-          <div>
-            <h1 className="text-3xl font-bold text-primary alien-glow tracking-wider">
-              SPACEHUB COMMAND CENTER
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              &gt; Polymarket Smart Money Tracker
+        <div className="flex items-center justify-between mb-4 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="text-4xl">🛸</div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-primary alien-glow tracking-wider">
+                  SPACEHUB COMMAND CENTER
+                </h1>
+                {/* Version Badge */}
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-400 text-xs font-bold pixel-border">
+                    v3.2
+                  </span>
+                  <span className="px-2 py-1 bg-green-500 text-black text-xs font-bold pixel-border animate-pulse">
+                    LIVE
+                  </span>
+                </div>
+              </div>
+              <p className="text-muted-foreground text-sm mt-1">
+                &gt; Polymarket Smart Money Tracker
+              </p>
+            </div>
+          </div>
+
+          {/* Last Updated */}
+          <div className="hidden md:block text-right">
+            <p className="text-xs text-muted-foreground font-mono">LAST_UPDATE:</p>
+            <p className="text-sm text-primary font-bold font-mono">
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
         </div>
@@ -445,6 +466,127 @@ export default function HomePage() {
       {/* Neural Network Site Map */}
       <SiteMapNeural />
 
+      {/* RECENT UPDATES - NEW FEATURES! 🚀 */}
+      <div className="mt-8 mb-8 bg-gradient-to-br from-purple-950/40 via-black to-cyan-950/40 pixel-border border-purple-500/60 p-6 relative overflow-hidden">
+        {/* Animated background effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-cyan-500/5 to-purple-500/5 animate-pulse pointer-events-none" />
+        
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-4">
+            <Sparkles className="h-6 w-6 text-purple-400 animate-pulse" />
+            <h3 className="font-bold text-purple-400 text-2xl font-mono">RECENT_UPDATES</h3>
+            <span className="px-2 py-1 bg-purple-500 text-white text-xs font-bold pixel-border animate-pulse">NEW</span>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono mb-6">&gt; Latest features & improvements</p>
+
+          {/* Updates Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Update 1: Bubble Charts */}
+            <div className="bg-black/60 pixel-border border-green-500/30 p-4 hover:border-green-500 transition-all group">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-3xl group-hover:scale-110 transition-transform">🫧</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-bold text-green-400">BUBBLE CHARTS</h4>
+                    <span className="px-1.5 py-0.5 bg-green-500 text-black text-[10px] font-bold">LIVE</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Interactive position visualization for traders and markets
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-green-400/60">
+                <span>▸ Trader Profiles</span>
+                <span>▸ Market Analysis</span>
+              </div>
+            </div>
+
+            {/* Update 2: Bot Detection */}
+            <div className="bg-black/60 pixel-border border-cyan-500/30 p-4 hover:border-cyan-500 transition-all group">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-3xl group-hover:scale-110 transition-transform">🤖</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-bold text-cyan-400">BOT SCAN</h4>
+                    <span className="px-1.5 py-0.5 bg-cyan-500 text-black text-[10px] font-bold">LIVE</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    AI-powered bot detection with cosmic scanning animation
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-cyan-400/60">
+                <span>▸ Pattern Analysis</span>
+                <span>▸ Behavior Scoring</span>
+              </div>
+            </div>
+
+            {/* Update 3: Wallet Connect */}
+            <div className="bg-black/60 pixel-border border-yellow-500/30 p-4 hover:border-yellow-500 transition-all group">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-3xl group-hover:scale-110 transition-transform">👛</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-bold text-yellow-400">WALLET CONNECT</h4>
+                    <span className="px-1.5 py-0.5 bg-yellow-500 text-black text-[10px] font-bold">BETA</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Connect your wallet to track personal positions (Coming Soon)
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-yellow-400/60">
+                <span>▸ Portfolio Tracking</span>
+                <span>▸ Personal Analytics</span>
+              </div>
+            </div>
+
+            {/* Update 4: Enhanced Analytics */}
+            <div className="bg-black/60 pixel-border border-orange-500/30 p-4 hover:border-orange-500 transition-all group">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="text-3xl group-hover:scale-110 transition-transform">📊</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-sm font-bold text-orange-400">RADAR CHARTS</h4>
+                    <span className="px-1.5 py-0.5 bg-orange-500 text-black text-[10px] font-bold">LIVE</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Category-based performance metrics with beautiful visualizations
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono text-orange-400/60">
+                <span>▸ Win Rate</span>
+                <span>▸ ROI</span>
+                <span>▸ Volume</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Upcoming Features */}
+          <div className="mt-6 p-4 bg-black/40 pixel-border border-blue-500/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-blue-400" />
+              <h4 className="text-xs font-bold text-blue-400 font-mono">COMING_NEXT</h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400">▸</span>
+                <span>AI Trade Predictions</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400">▸</span>
+                <span>Telegram Alerts</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400">▸</span>
+                <span>Copy Trading</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Development Roadmap */}
       <div className="mt-8 mb-12 bg-card pixel-border border-primary/40 p-6">
         <div className="mb-4">
@@ -469,21 +611,52 @@ export default function HomePage() {
 
           {/* Phase 3 - Current (Active) */}
           <div className="text-sm font-mono">
-            <span className="text-purple-400 font-bold">PHASE_3: Global Trader Analytics</span>
+            <span className="text-purple-400 font-bold">PHASE_3: Advanced Analytics & Visualization</span>
             <span className="ml-2 text-purple-400 animate-pulse">...</span>
-            <span className="ml-2 text-xs text-muted-foreground">(Deep analytics for every trader, comprehensive statistics)</span>
+            <span className="ml-2 text-xs text-muted-foreground">(Bubble charts, Bot detection, Enhanced trader profiles)</span>
           </div>
 
           {/* Phase 4 - Future */}
           <div className="text-sm font-mono text-blue-400/70">
-            <span>PHASE_4: AI Predictions & Alerts</span>
-            <span className="ml-2 text-xs text-muted-foreground">(Planning: Pattern recognition, Auto-discovery)</span>
+            <span>PHASE_4: AI & Automation</span>
+            <span className="ml-2 text-xs text-muted-foreground">(Planning: Smart alerts, Copy trading, Predictions)</span>
           </div>
         </div>
       </div>
 
       {/* Hot Markets Ticker */}
       <MarketTicker />
+
+      {/* Active Development Indicator */}
+      <div className="mt-8 bg-black/60 pixel-border border-green-500/40 p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 via-transparent to-green-500/5 animate-pulse pointer-events-none" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-xs font-mono text-green-400">ACTIVE_DEVELOPMENT</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-4 text-xs font-mono text-muted-foreground">
+              <span>🔧 Weekly Updates</span>
+              <span>⚡ New Features</span>
+              <span>🐛 Bug Fixes</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <a 
+              href="https://github.com/donatik27/specehubx" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-xs font-mono text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+            >
+              <span>View on GitHub</span>
+              <ArrowRight className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
