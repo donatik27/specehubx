@@ -279,10 +279,10 @@ async function addGeolocation() {
         continue;
       }
       
-      // Add random offset to avoid exact overlap (±0.5 degrees ≈ 55km)
+      // Add random offset to avoid exact overlap (±2.0 degrees ≈ 220km)
       // Keep traders INLAND, not in ocean!
-      let latOffset = (Math.random() - 0.5) * 1.0; // ±0.5 degree
-      let lonOffset = (Math.random() - 0.5) * 1.0;
+      let latOffset = (Math.random() - 0.5) * 4.0; // ±2.0 degree
+      let lonOffset = (Math.random() - 0.5) * 4.0;
       
       // Special handling for coastal cities to avoid ocean
       const cityName = selectedCity.toUpperCase();

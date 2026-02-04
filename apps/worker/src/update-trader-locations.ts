@@ -180,14 +180,14 @@ const COORDINATES: Record<string, () => { lat: number; lng: number; country: str
     const loc = locations[Math.floor(Math.random() * locations.length)]
     return { lat: loc.lat + rand(3), lng: loc.lng + rand(3), country: loc.country }
   },
-  'Spain': () => ({ lat: 40.4168 + rand(3), lng: -3.7038 + rand(3), country: 'Spain' }),
+  'Spain': () => ({ lat: 40.4168 + rand(6), lng: -3.7038 + rand(6), country: 'Spain' }),
   'Hong Kong': () => ({ lat: 22.3193 + rand(0.1), lng: 114.1694 + rand(0.1), country: 'Hong Kong' }),
   'Singapore': () => ({ lat: 1.3521 + rand(0.1), lng: 103.8198 + rand(0.1), country: 'Singapore' }),
   'Brazil': () => ({ lat: -14.2350 + rand(10), lng: -51.9253 + rand(10), country: 'Brazil' }),
   'Uzbekistan': () => ({ lat: 41.2995 + rand(2), lng: 69.2401 + rand(2), country: 'Uzbekistan' }),
   'United Arab Emirates': () => ({ lat: 25.2048 + rand(1), lng: 55.2708 + rand(1), country: 'United Arab Emirates' }),
-  'Netherlands': () => ({ lat: 52.3676 + rand(1), lng: 4.9041 + rand(1), country: 'Netherlands' }),
-  'Ukraine': () => ({ lat: 50.4501 + rand(3), lng: 30.5234 + rand(3), country: 'Ukraine' }),
+  'Netherlands': () => ({ lat: 52.3676 + rand(4), lng: 4.9041 + rand(4), country: 'Netherlands' }),
+  'Ukraine': () => ({ lat: 50.4501 + rand(6), lng: 30.5234 + rand(6), country: 'Ukraine' }),
   'Czech Republic': () => ({ lat: 50.0755 + rand(1), lng: 14.4378 + rand(1), country: 'Czech Republic' }),
   'Taiwan': () => ({ lat: 25.0330 + rand(1), lng: 121.5654 + rand(1), country: 'Taiwan' }),
   'Eastern Europe (Non-EU)': () => {
@@ -199,12 +199,12 @@ const COORDINATES: Record<string, () => { lat: number; lng: number; country: str
     const loc = locations[Math.floor(Math.random() * locations.length)]
     return { lat: loc.lat + rand(2), lng: loc.lng + rand(2), country: loc.country }
   },
-  'Germany': () => ({ lat: 52.5200 + rand(3), lng: 13.4050 + rand(3), country: 'Germany' }),
+  'Germany': () => ({ lat: 52.5200 + rand(6), lng: 13.4050 + rand(6), country: 'Germany' }),
   'Morocco': () => ({ lat: 33.9716 + rand(2), lng: -6.8498 + rand(2), country: 'Morocco' }),
-  'France': () => ({ lat: 48.8566 + rand(2), lng: 2.3522 + rand(2), country: 'France' }),
+  'France': () => ({ lat: 48.8566 + rand(6), lng: 2.3522 + rand(6), country: 'France' }),
   'Australia': () => ({ lat: -25.2744 + rand(10), lng: 133.7751 + rand(10), country: 'Australia' }),
   'Argentina': () => ({ lat: -38.4161 + rand(5), lng: -63.6167 + rand(5), country: 'Argentina' }),
-  'Italy': () => ({ lat: 41.9028 + rand(3), lng: 12.4964 + rand(3), country: 'Italy' }),
+  'Italy': () => ({ lat: 41.9028 + rand(6), lng: 12.4964 + rand(6), country: 'Italy' }),
   'South Asia': () => {
     const locations = [
       { lat: 28.6139, lng: 77.2090, country: 'India' },
@@ -214,8 +214,8 @@ const COORDINATES: Record<string, () => { lat: number; lng: number; country: str
     const loc = locations[Math.floor(Math.random() * locations.length)]
     return { lat: loc.lat + rand(2), lng: loc.lng + rand(2), country: loc.country }
   },
-  'Ireland': () => ({ lat: 53.3498 + rand(1), lng: -6.2603 + rand(1), country: 'Ireland' }),
-  'United Kingdom': () => ({ lat: 51.5074 + rand(2), lng: -0.1278 + rand(2), country: 'United Kingdom' }),
+  'Ireland': () => ({ lat: 53.3498 + rand(4), lng: -6.2603 + rand(4), country: 'Ireland' }),
+  'United Kingdom': () => ({ lat: 51.5074 + rand(5), lng: -0.1278 + rand(5), country: 'United Kingdom' }),
   'India': () => ({ lat: 28.6139 + rand(5), lng: 77.2090 + rand(5), country: 'India' }),
   'Austria': () => ({ lat: 48.2082 + rand(1), lng: 16.3738 + rand(1), country: 'Austria' }),
   'Croatia': () => ({ lat: 45.8150 + rand(1), lng: 15.9819 + rand(1), country: 'Croatia' }),
@@ -232,9 +232,9 @@ const COORDINATES: Record<string, () => { lat: number; lng: number; country: str
   'Slovakia': () => ({ lat: 48.1486 + rand(1), lng: 17.1077 + rand(1), country: 'Slovakia' }),
   'Thailand': () => ({ lat: 13.7563 + rand(2), lng: 100.5018 + rand(2), country: 'Thailand' }),
   'Estonia': () => ({ lat: 59.4370 + rand(1), lng: 24.7536 + rand(1), country: 'Estonia' }),
-  'Turkey': () => ({ lat: 41.0082 + rand(3), lng: 28.9784 + rand(3), country: 'Turkey' }),
+  'Turkey': () => ({ lat: 41.0082 + rand(6), lng: 28.9784 + rand(6), country: 'Turkey' }),
   'Indonesia': () => ({ lat: -6.2088 + rand(5), lng: 106.8456 + rand(5), country: 'Indonesia' }),
-  'Poland': () => ({ lat: 52.2297 + rand(2), lng: 21.0122 + rand(2), country: 'Poland' }),
+  'Poland': () => ({ lat: 52.2297 + rand(5), lng: 21.0122 + rand(5), country: 'Poland' }),
   'West Asia': () => {
     const locations = [
       { lat: 25.2048, lng: 55.2708, country: 'United Arab Emirates' },
