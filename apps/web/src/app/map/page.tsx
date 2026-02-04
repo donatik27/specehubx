@@ -337,9 +337,13 @@ export default function MapPage() {
 
         {/* Top Traders - Featured */}
         <div className="bg-card pixel-border border-primary/40 p-6">
-          <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
-            &gt; TOP_MAPPED_TRADERS:
-            <span className="text-xs text-muted-foreground font-normal">(Click to view on globe)</span>
+          <h2 className="text-lg font-bold text-primary mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              &gt; TOP_MAPPED_TRADERS:
+            </div>
+            <p className="text-xs text-muted-foreground font-normal">
+              Click to locate on globe • Use "VIEW PROFILE" button to open profile
+            </p>
           </h2>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {(() => {
@@ -359,6 +363,9 @@ export default function MapPage() {
                   key={marker.trader.address}
                   className="flex items-center justify-between p-2 bg-black/40 pixel-border border-white/20 hover:border-primary transition-colors cursor-pointer group"
                   onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     // Focus on trader on globe
                     setFocusedTrader({
                       lat: marker.lat,
@@ -376,7 +383,6 @@ export default function MapPage() {
                     });
                     
                     // Scroll to globe
-                    e.preventDefault();
                     document.querySelector('.globe-container')?.scrollIntoView({ 
                       behavior: 'smooth',
                       block: 'center'
