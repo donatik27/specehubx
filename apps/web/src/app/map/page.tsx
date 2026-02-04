@@ -342,7 +342,7 @@ export default function MapPage() {
               &gt; TOP_MAPPED_TRADERS:
             </div>
             <p className="text-xs text-muted-foreground font-normal">
-              Click to locate on globe • Use "VIEW PROFILE" button to open profile
+              Click to locate on globe • Use &ldquo;VIEW PROFILE&rdquo; button to open profile
             </p>
           </h2>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
