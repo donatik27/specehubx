@@ -247,9 +247,6 @@ async function addGeolocation() {
     for (const trader of traders) {
       if (!trader.twitterUsername) continue;
       
-      // FORCE UPDATE: Re-assign all traders to new city-based coordinates
-      // (Skip check to redistribute everyone from country centers to cities)
-      
       // Find region for this Twitter username
       const region = TRADER_LOCATIONS[trader.twitterUsername];
       
@@ -282,10 +279,10 @@ async function addGeolocation() {
         continue;
       }
       
-      // Add TINY random offset to avoid exact overlap (±0.05 degrees ≈ 5.5km)
+      // Add random offset to avoid exact overlap (±0.5 degrees ≈ 55km)
       // Keep traders INLAND, not in ocean!
-      let latOffset = (Math.random() - 0.5) * 0.1; // ±0.05 degree
-      let lonOffset = (Math.random() - 0.5) * 0.1;
+      let latOffset = (Math.random() - 0.5) * 1.0; // ±0.5 degree
+      let lonOffset = (Math.random() - 0.5) * 1.0;
       
       // Special handling for coastal cities to avoid ocean
       const cityName = selectedCity.toUpperCase();
