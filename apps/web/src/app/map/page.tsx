@@ -213,9 +213,9 @@ export default function MapPage() {
       </div>
 
       {/* 3D Earth Globe with Three.js */}
-      <div className="bg-black pixel-border border-primary/40 relative overflow-hidden mb-8 h-[550px]">
+      <div className="globe-container bg-black pixel-border border-primary/40 relative overflow-hidden mb-8 h-[550px]">
         {/* Info overlay */}
-        <div className="absolute top-4 left-4 bg-black/90 pixel-border border-primary/50 p-3 z-20 pointer-events-none">
+        <div className="absolute top-4 left-4 bg-black/90 pixel-border border-primary/50 p-3 z-20">
           <p className="text-primary font-mono text-xs mb-1">&gt; THREE.JS_GLOBE.3D</p>
           <p className="text-white text-sm font-bold">{traders.length} TRADERS MAPPED</p>
           <div className="flex gap-2 mt-2 text-xs">
@@ -223,20 +223,32 @@ export default function MapPage() {
             <span className="text-white">● A</span>
             <span className="text-primary">● B</span>
           </div>
+          {focusedTrader && (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2 text-primary text-xs animate-pulse">
+                <span>🎯</span>
+                <span>FOCUSING...</span>
+              </div>
+              <button
+                onClick={() => setFocusedTrader(null)}
+                className="px-2 py-1 bg-primary/20 border border-primary/40 text-primary text-xs hover:bg-primary/30 transition-colors w-full pointer-events-auto"
+              >
+                ↻ RESET VIEW
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Hovered Trader Info - Top Right */}
         {hoveredTrader && (
-          <Link 
-            href={`/traders/${hoveredTrader.address}`}
-            className="absolute top-4 right-4 bg-black pixel-border border-primary/50 p-4 z-50 min-w-[200px] hover:border-primary transition-all cursor-pointer"
+          <div className="absolute top-4 right-4 bg-black pixel-border border-primary/50 p-4 z-50 min-w-[220px]"
             style={{ backgroundColor: '#000000', opacity: 1 }}
           >
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <img 
                 src={hoveredTrader.profileImage} 
                 alt={hoveredTrader.displayName}
-                className="w-10 h-10 rounded-full border-2"
+                className="w-12 h-12 rounded-full border-2"
                 style={{
                   borderColor: hoveredTrader.tier === 'S' ? '#FFD700' : 
                                hoveredTrader.tier === 'A' ? '#00ff00' : 
@@ -258,10 +270,16 @@ export default function MapPage() {
                 </div>
               </div>
             </div>
-            <div className={`text-sm font-bold font-mono ${hoveredTrader.pnl >= 0 ? 'text-[#00ff00]' : 'text-red-500'}`}>
+            <div className={`text-sm font-bold font-mono mb-3 ${hoveredTrader.pnl >= 0 ? 'text-[#00ff00]' : 'text-red-500'}`}>
               PnL: {hoveredTrader.pnl >= 0 ? '+' : ''}{(hoveredTrader.pnl / 1000).toFixed(1)}K
             </div>
-          </Link>
+            <Link
+              href={`/traders/${hoveredTrader.address}`}
+              className="block w-full px-3 py-2 bg-primary/20 border border-primary/40 text-primary text-xs text-center hover:bg-primary/30 transition-colors font-mono"
+            >
+              VIEW PROFILE →
+            </Link>
+          </div>
         )}
         
         {/* Controls hint */}
@@ -319,8 +337,9 @@ export default function MapPage() {
 
         {/* Top Traders - Featured */}
         <div className="bg-card pixel-border border-primary/40 p-6">
-          <h2 className="text-lg font-bold text-primary mb-4">
+          <h2 className="text-lg font-bold text-primary mb-4 flex items-center gap-2">
             &gt; TOP_MAPPED_TRADERS:
+            <span className="text-xs text-muted-foreground font-normal">(Click to view on globe)</span>
           </h2>
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {(() => {
@@ -336,10 +355,33 @@ export default function MapPage() {
               const displayTraders = shuffled.slice(0, 8);
               
               return displayTraders.map((marker) => (
-                <a
+                <div
                   key={marker.trader.address}
-                  href={`/traders/${marker.trader.address}`}
                   className="flex items-center justify-between p-2 bg-black/40 pixel-border border-white/20 hover:border-primary transition-colors cursor-pointer group"
+                  onClick={(e) => {
+                    // Focus on trader on globe
+                    setFocusedTrader({
+                      lat: marker.lat,
+                      lng: marker.lng,
+                      address: marker.trader.address
+                    });
+                    
+                    // Show trader info
+                    handleTraderHover({
+                      address: marker.trader.address,
+                      displayName: marker.trader.displayName,
+                      tier: marker.trader.tier,
+                      pnl: marker.trader.estimatedPnL,
+                      profileImage: marker.trader.avatar
+                    });
+                    
+                    // Scroll to globe
+                    e.preventDefault();
+                    document.querySelector('.globe-container')?.scrollIntoView({ 
+                      behavior: 'smooth',
+                      block: 'center'
+                    });
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <img 
@@ -375,8 +417,11 @@ export default function MapPage() {
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">{marker.region}</span>
-                </a>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{marker.region}</span>
+                    <span className="text-primary text-xs">📍</span>
+                  </div>
+                </div>
               ))
             })()}
           </div>
